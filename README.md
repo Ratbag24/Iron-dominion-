@@ -161,6 +161,14 @@ mapping. Bloom is the most expensive thing in the frame by a wide margin, so
 there is a **Fast** graphics setting that turns it and shadows off, and the game
 switches to it on its own if the frame rate stays below 24 for five seconds.
 
+## Godot port
+
+A native port is under way in `godot/`, with the models exported as editable
+`.glb` assets and unit data shared between both builds. See
+[`godot/README.md`](godot/README.md) for what is ported so far and how to edit
+the models. The JavaScript build here remains the reference implementation and
+the playable one.
+
 ## Tests
 
 ```sh

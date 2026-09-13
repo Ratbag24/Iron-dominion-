@@ -8,6 +8,9 @@
     "test": "node tests/headless.test.mjs && node tests/browser.test.mjs",
     "test:sim": "node tests/headless.test.mjs",
     "test:browser": "node tests/browser.test.mjs",
+    "test:godot": "bash tools/godot-test.sh",
+    "export:models": "node tools/export-models.mjs",
+    "export:data": "node tools/export-data.mjs",
     "build": "node tools/build.mjs"
   },
   "license": "MIT",

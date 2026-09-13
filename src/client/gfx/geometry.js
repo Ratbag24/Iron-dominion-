@@ -14,8 +14,42 @@ const _s = new THREE.Vector3();
 const _color = new THREE.Color();
 
 /** Apply position/rotation/scale and bake a flat colour into a geometry. */
+/**
+ * Drop zero-area triangles.
+ *
+ * Cone tips generate them by construction - the apex quad collapses to a
+ * point - and they have no normal to compute, which shows up as NaN in any
+ * tool that processes the mesh afterwards, Godot's LOD generator included.
+ */
+function dropDegenerate(g) {
+  const pos = g.attributes.position.array;
+  const triCount = g.attributes.position.count / 3;
+  const keep = [];
+  for (let t = 0; t < triCount; t++) {
+    const o = t * 9;
+    const ax = pos[o + 3] - pos[o];
+    const ay = pos[o + 4] - pos[o + 1];
+    const az = pos[o + 5] - pos[o + 2];
+    const bx = pos[o + 6] - pos[o];
+    const by = pos[o + 7] - pos[o + 1];
+    const bz = pos[o + 8] - pos[o + 2];
+    const cx = ay * bz - az * by;
+    const cy = az * bx - ax * bz;
+    const cz = ax * by - ay * bx;
+    if (Math.hypot(cx, cy, cz) > 1e-9) keep.push(t);
+  }
+  if (keep.length === triCount) return g;
+
+  const out = new Float32Array(keep.length * 9);
+  keep.forEach((t, i) => out.set(pos.subarray(t * 9, t * 9 + 9), i * 9));
+  const trimmed = new THREE.BufferGeometry();
+  trimmed.setAttribute('position', new THREE.BufferAttribute(out, 3));
+  g.dispose();
+  return trimmed;
+}
+
 function finish(geo, color, t) {
-  const g = geo.toNonIndexed();
+  const g = dropDegenerate(geo.toNonIndexed());
   geo.dispose();
   // Per-face normals: a chamfer should read as a distinct facet catching its
   // own highlight, not be averaged away into a soft edge.

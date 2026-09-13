@@ -923,6 +923,32 @@ const EMISSIVE_COLOURS = [GLOW, '#ff9a5b', '#ffd76a', '#8ef6ff', '#9fe8ff'];
 
 const cache = new Map();
 
+/**
+ * Build a model without caching or splitting out the emissive parts.
+ *
+ * The runtime wants the split - glowing detail is drawn with its own unlit
+ * material - but the asset exporter wants the model whole, so it can group
+ * triangles into one material per colour and hand an artist something
+ * sensible to edit.
+ */
+export function buildRawModel(def, colors) {
+  const build = BUILDERS[def.id];
+  const m = build
+    ? build(def, colors)
+    : { body: box(def.radius * 1.6, def.radius * 1.6, def.radius * 1.6, colors.primary, { y: def.radius * 0.8 }) };
+  m.turretY = m.turretY || 0;
+  m.spinnerY = m.spinnerY || 0;
+  m.spinnerX = m.spinnerX || 0;
+  m.spinSpeed = m.spinSpeed || 0;
+  m.spinnerAxis = m.spinnerAxis || 'y';
+  return m;
+}
+
+/** The palette an exported asset is authored in, so materials can be named. */
+export const PALETTE = {
+  HULL, HULL_DARK, HULL_LIGHT, DARK, GLASS, GLOW, TRACK,
+};
+
 /** Build (and cache) the model for a definition rendered in a player colour. */
 export function modelFor(def, colors) {
   const key = def.id + '|' + def.faction + '|' + colors.primary;
