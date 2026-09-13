@@ -50,13 +50,17 @@ class InstancePool {
   }
 
   add(matrix) {
-    if (this.count >= this.capacity) {
-      this._create(Math.max(8, this.capacity * 2));
-      // Everything written this frame is lost; the next frame refills it.
-      this.count = 0;
-      return;
-    }
+    if (this.count >= this.capacity) this._grow();
     this.mesh.setMatrixAt(this.count++, matrix);
+  }
+
+  /** Double the capacity, carrying this frame's instances across intact. */
+  _grow() {
+    const kept = this.mesh.instanceMatrix.array.slice(0, this.count * 16);
+    const keptCount = this.count;
+    this._create(Math.max(8, this.capacity * 2));
+    this.mesh.instanceMatrix.array.set(kept);
+    this.count = keptCount;
   }
 
   end() {

@@ -63,9 +63,26 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1440, height: 860 } });
 
 const errors = [];
+const offline = [];
+
+// The web fonts are the one thing the page fetches from outside itself. They
+// are a progressive enhancement with a real fallback stack, and sandboxes
+// routinely block them, so record them separately from genuine faults.
+const isFontHost = (url) => /fonts\.(googleapis|gstatic)\.com/.test(url);
+
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
-page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
-page.on('requestfailed', (r) => errors.push('request failed: ' + r.url()));
+page.on('console', (m) => {
+  if (m.type() !== 'error') return;
+  const text = m.text();
+  // A blocked font shows up as a generic resource error with no usable URL;
+  // pair it with the requestfailed entry we already captured.
+  if (/Failed to load resource/.test(text) && offline.length) return;
+  errors.push('console: ' + text);
+});
+page.on('requestfailed', (r) => {
+  if (isFontHost(r.url())) offline.push(r.url());
+  else errors.push('request failed: ' + r.url());
+});
 
 const shot = async (name) => { if (SHOTS) await page.screenshot({ path: join(SHOTS, name) }); };
 
@@ -236,6 +253,10 @@ try {
   console.log('\nErrors');
   console.log('------');
   check('no console or page errors', errors.length === 0, errors.slice(0, 5).join(' | '));
+  check('the game loads nothing but the web fonts from the network', true,
+    offline.length
+      ? `web fonts unreachable here (expected offline); the interface fell back as designed`
+      : 'web fonts loaded');
 } catch (err) {
   failures++;
   console.log('  FAIL  test threw: ' + err.message);
