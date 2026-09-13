@@ -380,6 +380,17 @@ func _check_victory() -> void:
 		winner = live.keys()[0] if live.size() == 1 else -1
 
 
+## Forget visual events older than `max_age`. The renderer calls this once it
+## has drawn a frame: the effects list is the one piece of world state that
+## exists purely for the view, and nothing in the simulation reads it back.
+func prune_effects(max_age: float) -> void:
+	var keep: Array[Dictionary] = []
+	for fx in effects:
+		if time - float(fx["t"]) < max_age:
+			keep.append(fx)
+	effects = keep
+
+
 ## Break the world <-> AI reference cycle so the whole graph can be freed.
 ## RefCounted cannot collect a cycle on its own, and each AI holds the world
 ## that holds it.

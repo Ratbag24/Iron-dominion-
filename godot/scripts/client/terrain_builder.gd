@@ -10,6 +10,10 @@ extends RefCounted
 
 const HEIGHT_SCALE: float = 190.0
 const DETAIL_SEED: int = 0x9E3D71
+## World units per repeat of the detail normal map.
+const DETAIL_TILE: float = 110.0
+const NORMAL_MAP_SIZE: int = 256
+const NORMAL_MAP_TILES: int = 6
 
 ## The simulation map this heightfield was resampled from.
 var map: IdGameMap:
@@ -166,9 +170,11 @@ func _sample_colour(x: float, z: float) -> Color:
 func build_mesh() -> ArrayMesh:
 	var verts := PackedVector3Array()
 	var colours := PackedColorArray()
+	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
 	verts.resize(_render_cols * _render_rows)
 	colours.resize(_render_cols * _render_rows)
+	uvs.resize(_render_cols * _render_rows)
 
 	for j in _render_rows:
 		for i in _render_cols:
@@ -177,6 +183,9 @@ func build_mesh() -> ArrayMesh:
 			var n := j * _render_cols + i
 			verts[n] = Vector3(x, height_at(x, z), z)
 			colours[n] = _sample_colour(x, z)
+			# UVs are world position over the tile size, so the detail normal
+			# map repeats at a fixed scale regardless of map size.
+			uvs[n] = Vector2(x / DETAIL_TILE, z / DETAIL_TILE)
 
 	# Godot treats clockwise-as-seen-from-the-front as the front face, which is
 	# the opposite of the OpenGL and Three.js convention. Wound the other way
@@ -194,6 +203,7 @@ func build_mesh() -> ArrayMesh:
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_COLOR] = colours
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	arrays[Mesh.ARRAY_INDEX] = indices
 
 	var mesh := ArrayMesh.new()
@@ -203,7 +213,88 @@ func build_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.create_from(mesh, 0)
 	st.generate_normals()
+	# A normal map needs a tangent basis, and the ground has no authored one.
+	st.generate_tangents()
 	return st.commit()
 
 func water_level() -> float:
 	return _map.water_line * HEIGHT_SCALE
+
+
+# ------------------------------------------------------ detail normal map
+
+## A seamless procedural normal map for the ground.
+##
+## Without it the terrain reads as a smooth sheet of colour: the mesh itself
+## only carries one vertex every eight world units, which is far too coarse to
+## catch the light the way ground does. The lattice wraps, so every octave
+## tiles and there is no seam where the texture repeats.
+static func detail_normal_map() -> ImageTexture:
+	if _normal_map != null:
+		return _normal_map
+
+	var rand := IdRng.new(0x5eed14)
+	var tiles := NORMAL_MAP_TILES
+	var lattice := PackedFloat32Array()
+	lattice.resize(tiles * tiles)
+	for i in range(lattice.size()):
+		lattice[i] = rand.next()
+
+	var size := NORMAL_MAP_SIZE
+	var img := Image.create(size, size, false, Image.FORMAT_RGB8)
+	var step := 1.0 / float(size)
+	var strength := 2.6
+
+	for y in range(size):
+		for x in range(size):
+			var u := float(x) / float(size)
+			var v := float(y) / float(size)
+			# Central differences give the slope; the wrapping lattice means
+			# the samples either side of an edge come from the far side.
+			var dx := (_detail_height(lattice, tiles, u + step, v)
+				- _detail_height(lattice, tiles, u - step, v)) * strength
+			var dy := (_detail_height(lattice, tiles, u, v + step)
+				- _detail_height(lattice, tiles, u, v - step)) * strength
+			var n := Vector3(-dx, -dy, 1.0).normalized()
+			img.set_pixel(x, y, Color(
+				n.x * 0.5 + 0.5, n.y * 0.5 + 0.5, n.z * 0.5 + 0.5
+			))
+
+	_normal_map = ImageTexture.create_from_image(img)
+	return _normal_map
+
+
+static var _normal_map: ImageTexture = null
+
+
+static func _detail_height(lattice: PackedFloat32Array, tiles: int, u: float, v: float) -> float:
+	return (
+		_detail_octave(lattice, tiles, u, v, 1.0) * 0.62
+		+ _detail_octave(lattice, tiles, u, v, 3.0) * 0.26
+		+ _detail_octave(lattice, tiles, u, v, 7.0) * 0.12
+	)
+
+
+## Value noise on a wrapping lattice, so every octave tiles seamlessly.
+static func _detail_octave(
+	lattice: PackedFloat32Array, tiles: int, u: float, v: float, freq: float
+) -> float:
+	var fx := u * float(tiles) * freq
+	var fy := v * float(tiles) * freq
+	var x0 := floori(fx)
+	var y0 := floori(fy)
+	var tx := _smoothstep_t(fx - float(x0))
+	var ty := _smoothstep_t(fy - float(y0))
+
+	var a00 := lattice[posmod(y0, tiles) * tiles + posmod(x0, tiles)]
+	var a10 := lattice[posmod(y0, tiles) * tiles + posmod(x0 + 1, tiles)]
+	var a01 := lattice[posmod(y0 + 1, tiles) * tiles + posmod(x0, tiles)]
+	var a11 := lattice[posmod(y0 + 1, tiles) * tiles + posmod(x0 + 1, tiles)]
+
+	var top := a00 + (a10 - a00) * tx
+	var bot := a01 + (a11 - a01) * tx
+	return top + (bot - top) * ty
+
+
+static func _smoothstep_t(t: float) -> float:
+	return t * t * (3.0 - 2.0 * t)

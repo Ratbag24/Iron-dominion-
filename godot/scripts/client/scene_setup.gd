@@ -58,6 +58,12 @@ static func build_terrain(parent: Node, terrain: IdTerrainBuilder, diag: bool = 
 		mat.vertex_color_use_as_albedo = true
 		mat.roughness = 0.94
 		mat.metallic = 0.0
+		# The ground mesh carries one vertex every few world units, which is
+		# far too coarse to catch the light like ground. A tiling detail
+		# normal map puts the fine relief back without adding geometry.
+		mat.normal_enabled = true
+		mat.normal_texture = IdTerrainBuilder.detail_normal_map()
+		mat.normal_scale = 0.85
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)

@@ -17,6 +17,7 @@ var world: IdWorld
 var terrain: IdTerrainBuilder
 var units: IdUnitView
 var cam: IdRtsCamera
+var effects: IdEffectsView
 var selection: IdSelection
 var hud: IdHud
 
@@ -31,12 +32,17 @@ var _headless_ticks: int = 0
 ## --ai hands the first player to the AI as well, so a match plays itself.
 ## Used by the screenshot and smoke-test paths.
 var _autoplay: bool = false
+## --action points the camera at whatever is being shot at, for renders of a
+## match already in progress.
+var _focus_action: bool = false
 
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--ai":
 			_autoplay = true
+		elif arg == "--action":
+			_focus_action = true
 
 	var t0 := Time.get_ticks_msec()
 	world = IdWorld.new({
@@ -60,7 +66,14 @@ func _ready() -> void:
 	units = IdUnitView.new()
 	units.name = "Units"
 	add_child(units)
-	units.setup(world, terrain)
+	# A self-playing render sees everything; a real match sees what the local
+	# player's units and radar can.
+	units.setup(world, terrain, -1 if _autoplay else 0)
+
+	effects = IdEffectsView.new()
+	effects.name = "Effects"
+	add_child(effects)
+	effects.setup(world, terrain, -1 if _autoplay else 0)
 
 	cam = IdRtsCamera.new()
 	cam.name = "Camera"
@@ -84,6 +97,36 @@ func _ready() -> void:
 	_parse_cmdline()
 	units.sync()
 	print("match ready: %d entities" % world.entities.size())
+
+
+## Centre the view on the fighting: the average of everything that has been
+## shot at or blown up recently, falling back to the midpoint between the two
+## starts when the map is quiet.
+func _look_at_the_fighting() -> void:
+	var sum := Vector2.ZERO
+	var count := 0
+	for e in world.entities:
+		if not e.alive or world.time - e.last_damage_time > 12.0:
+			continue
+		sum += Vector2(e.x, e.y)
+		count += 1
+	for fx in world.effects:
+		if String(fx["type"]) != "explosion":
+			continue
+		sum += Vector2(fx["x"], fx["y"])
+		count += 1
+
+	var centre: Vector2
+	if count > 0:
+		centre = sum / float(count)
+	else:
+		centre = Vector2(
+			(world.players[0].start_x + world.players[1].start_x) * 0.5,
+			(world.players[0].start_y + world.players[1].start_y) * 0.5
+		)
+	cam.distance = 520.0
+	cam.setup(terrain, centre)
+	print("focus: %s (%d contacts)" % [str(centre.round()), count])
 
 
 func _parse_cmdline() -> void:
@@ -110,7 +153,10 @@ func _process(dt: float) -> void:
 		print("ran %d ticks (%.0f simulated seconds) in %.0fms"
 			% [_ticks_run, world.time, _sim_ms])
 		_headless_ticks = 0
+		if _focus_action:
+			_look_at_the_fighting()
 		units.sync()
+		effects.sync()
 		return
 
 	if running and not world.game_over:
@@ -130,6 +176,7 @@ func _process(dt: float) -> void:
 			_accumulator = 0.0
 
 	units.sync()
+	effects.sync()
 
 	var viewport: Vector2 = get_viewport().get_visible_rect().size
 	cam.update(dt, viewport, get_viewport().get_mouse_position())
