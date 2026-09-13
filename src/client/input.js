@@ -283,6 +283,10 @@ export class Input {
       }
     }
 
+    // Below the build menu, so V still builds a Laser Tower when a builder
+    // is selected and only jumps to the last attack otherwise.
+    if (key === 'v') { game.focusLastAttack(); return; }
+
     if (COMMAND_KEYS[key]) {
       const mode = COMMAND_KEYS[key];
       if (mode === 'stop') game.stopSelection();

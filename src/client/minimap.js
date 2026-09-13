@@ -103,6 +103,17 @@ export class Minimap {
       ctx.fillRect(mem.x * scale - 2, mem.y * scale - 2, 4, 4);
     }
 
+    // Attack pings, so an assault on an off-screen expansion is visible.
+    for (const ping of game.pings) {
+      const k = ping.age / 4;
+      const r = (5 + k * 16);
+      ctx.strokeStyle = `rgba(255,90,74,${(1 - k).toFixed(2)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(ping.x * scale, ping.y * scale, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     // Camera footprint. The 3D view covers a trapezoid on the ground, so
     // trace the four picked screen corners rather than an axis-aligned box.
     const cam = game.camera;

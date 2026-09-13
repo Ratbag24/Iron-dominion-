@@ -688,6 +688,23 @@ export class Renderer3D {
       ctx.stroke();
     }
 
+    // Attack pings in the world, for anything currently on screen.
+    if (view.pings) {
+      for (const ping of view.pings) {
+        const g = smoothHeightAt(this.world.map, ping.x, ping.y);
+        const s = this.cam.worldToScreen(ping.x, g + 20, ping.y, this._screen);
+        if (s.behind) continue;
+        const k = (ping.age % 1);
+        ctx.globalAlpha = (1 - k) * (1 - ping.age / 4);
+        ctx.strokeStyle = '#ff5a4a';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, 14 + k * 44, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
+
     // Command feedback pings
     if (view.commandMarkers) {
       for (const mk of view.commandMarkers) {

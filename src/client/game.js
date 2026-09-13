@@ -55,6 +55,8 @@ export class Game {
     this.lastFrame = performance.now();
     this.gameOverShown = false;
     this.idleBuilderCursor = 0;
+    this.pings = [];
+    this._lastAttackAlert = -99;
     this.running = true;
     this.fps = 60;
     this.simMs = 0;
@@ -129,6 +131,12 @@ export class Game {
       if (this.messages[i].age > 3.5) this.messages.splice(i, 1);
     }
 
+    this._checkUnderAttack();
+    for (let i = this.pings.length - 1; i >= 0; i--) {
+      this.pings[i].age += dt;
+      if (this.pings[i].age > 4) this.pings.splice(i, 1);
+    }
+
     this.audio.update(this.world, this.camera, dt);
     this.hud.update(dt);
     this.minimap.update(dt);
@@ -139,6 +147,42 @@ export class Game {
     }
   }
 
+  /**
+   * Warn when something of ours is taking fire. Without this you can lose an
+   * expansion, or the commander, without ever seeing it happen.
+   */
+  _checkUnderAttack() {
+    const now = this.world.time;
+    if (now - this._lastAttackAlert < 7) return;
+
+    let worst = null;
+    let worstScore = 0;
+    for (const e of this.world.entities) {
+      if (!e.alive || e.player !== this.playerIndex) continue;
+      if (now - e.lastDamageTime > 0.6) continue;
+      // The commander matters most, then buildings, then everything else.
+      const score = e.defId === 'commander' ? 100 : e.isBuilding ? 50 : 10;
+      if (score > worstScore) { worstScore = score; worst = e; }
+    }
+    if (!worst) return;
+
+    this._lastAttackAlert = now;
+    this.pings.push({ x: worst.x, y: worst.y, age: 0 });
+    this.lastAttackX = worst.x;
+    this.lastAttackY = worst.y;
+    this.flashMessage(
+      worst.defId === 'commander' ? 'Commander under attack!'
+        : worst.isBuilding ? `${worst.def.name} under attack` : 'Units under attack'
+    );
+    this.audio.play('alert');
+  }
+
+  /** Jump the camera to the most recent attack. */
+  focusLastAttack() {
+    if (this.lastAttackX === undefined) { this.flashMessage('No recent attacks'); return; }
+    this.camera.centerOn(this.lastAttackX, this.lastAttackY);
+  }
+
   render(dt) {
     const view = {
       playerIndex: this.playerIndex,
@@ -146,6 +190,7 @@ export class Game {
       placement: this.placement,
       marquee: this.input.marquee,
       commandMarkers: this.commandMarkers,
+      pings: this.pings,
     };
     this.renderer.render(dt, view);
   }
