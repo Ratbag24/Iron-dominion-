@@ -4,7 +4,7 @@
 // geometry. A model may declare a turret (tracks its target) and a spinner
 // (rotates continuously: drill heads, turbine blades, radar dishes).
 
-import { box, cylinder, cone, sphere, plate, merge } from './geometry.js';
+import { box, cylinder, cone, sphere, plate, merge, splitEmissive } from './geometry.js';
 
 const HULL = '#8b929c';
 const HULL_DARK = '#4e545d';
@@ -134,10 +134,37 @@ function siege(r, c) {
 
 // -------------------------------------------------------------- structures
 
+/**
+ * Roof dressing. From directly above, a structure is its roof, so a bare slab
+ * reads as a featureless block however good the walls are. These put team
+ * colour, panel breaks and a little hardware up where the camera can see them.
+ */
+function roofPanels(s, y, c, opts = {}) {
+  const span = opts.span || 0.86;
+  const parts = [];
+  const half = s * span * 0.5;
+  // Ribs running across the roof.
+  const ribs = opts.ribs || 3;
+  for (let i = 0; i < ribs; i++) {
+    const t = (i + 0.5) / ribs - 0.5;
+    parts.push(box(s * span, s * 0.022, s * 0.045, HULL_DARK, { y: y + s * 0.012, z: t * s * span }));
+  }
+  // Team-coloured edge trim on two sides.
+  parts.push(box(s * span, s * 0.03, s * 0.05, c.primary, { y: y + s * 0.01, z: -half }));
+  parts.push(box(s * span, s * 0.03, s * 0.05, c.primary, { y: y + s * 0.01, z: half }));
+  // Rooftop hardware: a vent block and a couple of pipes.
+  if (opts.vents !== false) {
+    parts.push(box(s * 0.16, s * 0.07, s * 0.16, HULL, { x: -s * 0.24, y: y + s * 0.045 }));
+    parts.push(cylinder(s * 0.035, s * 0.035, s * 0.11, HULL_LIGHT, { x: s * 0.22, z: -s * 0.16, y: y + s * 0.06 }, 6));
+    parts.push(cylinder(s * 0.035, s * 0.035, s * 0.11, HULL_LIGHT, { x: s * 0.22, z: s * 0.16, y: y + s * 0.06 }, 6));
+  }
+  return parts;
+}
+
 function foundation(s, c, h = 2.5) {
   return [
-    box(s, h, s, '#3b4048', { y: h * 0.5 }),
-    box(s * 0.9, h * 0.6, s * 0.9, '#4b515b', { y: h * 1.1 }),
+    box(s, h, s, '#40454d', { y: h * 0.5 }),
+    box(s * 0.9, h * 0.6, s * 0.9, '#545a64', { y: h * 1.1 }),
     box(s * 0.14, h * 2.2, s * 0.14, c.primary, { x: s * 0.42, y: h * 1.1, z: s * 0.42 }),
     box(s * 0.14, h * 2.2, s * 0.14, c.primary, { x: -s * 0.42, y: h * 1.1, z: s * 0.42 }),
     box(s * 0.14, h * 2.2, s * 0.14, c.primary, { x: s * 0.42, y: h * 1.1, z: -s * 0.42 }),
@@ -218,9 +245,13 @@ function lab(s, c, advanced) {
   parts.push(box(wallT, wallH, s * 0.84, c.primary, { x: -s * 0.38, y: wallH * 0.5 + h }));
   parts.push(box(s * 0.88, wallH, wallT, c.primary, { z: -s * 0.38, y: wallH * 0.5 + h }));
 
-  // Roof: two slabs with a service gap down the middle.
-  parts.push(box(s * 0.88, s * 0.07, s * 0.3, HULL_DARK, { z: -s * 0.27, y: wallH + h }));
-  parts.push(box(s * 0.88, s * 0.07, s * 0.16, HULL_DARK, { z: s * 0.1, y: wallH + h }));
+  // Roof: two slabs with a service gap down the middle, plus dressing so it
+  // is not a blank plate when seen from overhead.
+  parts.push(box(s * 0.88, s * 0.07, s * 0.3, '#575d67', { z: -s * 0.27, y: wallH + h }));
+  parts.push(box(s * 0.88, s * 0.07, s * 0.16, '#575d67', { z: s * 0.1, y: wallH + h }));
+  parts.push(box(s * 0.8, s * 0.025, s * 0.05, c.primary, { z: -s * 0.27, y: wallH + h + s * 0.045 }));
+  parts.push(box(s * 0.24, s * 0.09, s * 0.14, HULL, { x: -s * 0.26, z: -s * 0.27, y: wallH + h + s * 0.07 }));
+  parts.push(cylinder(s * 0.04, s * 0.04, s * 0.14, HULL_LIGHT, { x: s * 0.26, z: -s * 0.3, y: wallH + h + s * 0.08 }, 6));
 
   // Gantry arch over the hangar mouth.
   parts.push(box(s * 0.1, wallH * 0.95, s * 0.1, HULL, { x: s * 0.38, z: s * 0.36, y: wallH * 0.5 + h }));
@@ -496,7 +527,12 @@ function conYard(s, c, advanced) {
   parts.push(box(s * 0.9, wallH, s * 0.1, c.primary, { z: -s * 0.4, y: wallH * 0.5 + h }));
   parts.push(box(s * 0.1, wallH, s * 0.8, c.primary, { x: s * 0.4, y: wallH * 0.5 + h }));
   parts.push(box(s * 0.1, wallH, s * 0.8, c.primary, { x: -s * 0.4, y: wallH * 0.5 + h }));
-  parts.push(box(s * 0.9, s * 0.08, s * 0.9, HULL_DARK, { y: wallH + h }));
+  // A lighter roof deck with ribs, trim and hardware, rather than one dark
+  // plate the size of the whole footprint.
+  parts.push(box(s * 0.9, s * 0.08, s * 0.9, '#5a6069', { y: wallH + h }));
+  parts.push(...roofPanels(s, wallH + h + s * 0.04, c, { ribs: 4, span: 0.86 }));
+  // Skylight strip down the middle of the shed.
+  parts.push(box(s * 0.2, s * 0.03, s * 0.7, '#243544', { y: wallH + h + s * 0.05 }));
   parts.push(box(s * 0.66, wallH * 0.7, s * 0.06, '#1b1f24', { z: s * 0.4, y: wallH * 0.35 + h }));
   parts.push(box(s * 0.9, s * 0.07, s * 0.12, c.light, { z: s * 0.4, y: wallH + h }));
   // Hardstanding apron the vehicles roll onto.
@@ -609,6 +645,12 @@ const BUILDERS = {
   con_radar: (d, c) => conRadar(d.footprintPx, c),
 };
 
+/**
+ * Colours treated as self-illuminated. Parts painted in these are split out
+ * and drawn unlit at full brightness, so the bloom pass picks them up.
+ */
+const EMISSIVE_COLOURS = [GLOW, '#ff9a5b', '#ffd76a', '#8ef6ff', '#9fe8ff'];
+
 const cache = new Map();
 
 /** Build (and cache) the model for a definition rendered in a player colour. */
@@ -624,6 +666,15 @@ export function modelFor(def, colors) {
   m.spinnerX = m.spinnerX || 0;
   m.spinSpeed = m.spinSpeed || 0;
   m.spinnerAxis = m.spinnerAxis || 'y';
+
+  // Peel the glowing detail off each part into its own geometry.
+  for (const part of ['body', 'turret', 'spinner']) {
+    if (!m[part]) continue;
+    const { solid, glow } = splitEmissive(m[part], EMISSIVE_COLOURS);
+    m[part] = solid;
+    m[part + 'Glow'] = glow;
+  }
+
   cache.set(key, m);
   return m;
 }

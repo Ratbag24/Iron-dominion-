@@ -93,7 +93,14 @@ try {
   check('start menu renders', await page.isVisible('#btn-start'));
   check('all three factions are offered',
     (await page.$$('#opt-faction .opt')).length === 3);
+  check('graphics quality can be chosen',
+    (await page.$$('#opt-quality .opt')).length === 2);
   await shot('01-menu.png');
+
+  // This runs on a software rasteriser, where the bloom pass is far too slow
+  // to let the simulation advance. Test the game in Fast; the full pipeline
+  // gets its own check below.
+  await page.click('#opt-quality .opt[data-value="low"]');
 
   // Play the human faction, so the test exercises the newest roster.
   await page.click('#opt-faction .opt[data-value="concord"]');
@@ -119,6 +126,38 @@ try {
     Math.abs(boot.camTarget[0] - boot.commander[0]) < 60 && Math.abs(boot.camTarget[1] - boot.commander[1]) < 60,
     `camera ${boot.camTarget} vs commander ${boot.commander}`);
   await shot('02-start.png');
+
+  console.log('\nRender pipeline');
+  console.log('---------------');
+  const pipeline = await page.evaluate(async () => {
+    const g = window.game;
+    const r = g.renderer;
+    const beforeFrame = r.renderer.info.render.frame;
+    // Turn the full pipeline on for a few frames and make sure it draws.
+    g.setGraphicsQuality('high');
+    await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+    const bloom = {
+      enabled: r.bloomEnabled,
+      shadows: r.renderer.shadowMap.enabled,
+      composerPasses: r.composer ? r.composer.passes.length : 0,
+      // frame advances once per composer render, unlike calls/triangles which
+      // are reset by every internal pass.
+      frame: r.renderer.info.render.frame,
+      hasTarget: !!(r.composer && r.composer.renderTarget1),
+      toneMapping: r.renderer.toneMapping,
+    };
+    g.setGraphicsQuality('low');
+    await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+    return { beforeFrame, bloom, fastBloom: r.bloomEnabled };
+  });
+  check('full pipeline renders with bloom and shadows',
+    pipeline.bloom.enabled && pipeline.bloom.shadows
+      && pipeline.bloom.composerPasses === 3 && pipeline.bloom.hasTarget
+      && pipeline.bloom.frame > pipeline.beforeFrame,
+    `${pipeline.bloom.composerPasses} passes, frame ${pipeline.beforeFrame} -> ${pipeline.bloom.frame}`);
+  check('filmic tone mapping is active', pipeline.bloom.toneMapping === 4,
+    'ACESFilmicToneMapping');
+  check('fast pipeline turns bloom off', pipeline.fastBloom === false);
 
   console.log('\nCamera and picking');
   console.log('------------------');
@@ -157,6 +196,11 @@ try {
     const com = g.world.get(g.player.commanderId);
     const map = g.world.map;
     const out = [];
+
+    // Stake the player so the test exercises building and production rather
+    // than waiting out an income curve; the economy has its own coverage.
+    g.player.metal = 4000;
+    g.player.energy = 8000;
 
     const place = (defId, x, y) => {
       g.selectSingle(com, false);

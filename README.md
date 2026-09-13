@@ -134,14 +134,25 @@ src/
     ai.js           the skirmish AI
   client/     camera, input, HUD, minimap, procedural audio
     art.js          flat silhouettes for build-menu and selection icons
-    gfx/            Three.js scene: terrain, models, instanced rendering
-vendor/       three.js r160 (MIT), vendored so nothing is fetched at runtime
+    gfx/            Three.js scene: terrain, models, environment, instanced
+                    rendering and the bloom pipeline
+vendor/       three.js r160 and its post-processing addons (MIT), vendored
+              so nothing is fetched at runtime
 ```
 
 Rendering uses one `InstancedMesh` per unit type per player, so a hundred
-assault bots cost one draw call. Models are built from coloured primitives and
-merged at load; the terrain is a flat-shaded displaced heightfield; fog of war
-is a data texture on a coarse copy of that surface.
+assault bots cost one draw call. Models are built from chamfered, coloured
+primitives and merged at load, with the self-illuminated parts split into their
+own geometry so they can be drawn unlit and picked up by the bloom pass. The
+terrain is a flat-shaded displaced heightfield; fog of war is a data texture on
+a coarse copy of that surface.
+
+Surfaces are physically based and lit by an image-based environment built from
+a procedural sky, which is what makes metal read as metal. The frame runs
+through a composer — scene, then bloom at half resolution, then filmic tone
+mapping. Bloom is the most expensive thing in the frame by a wide margin, so
+there is a **Fast** graphics setting that turns it and shadows off, and the game
+switches to it on its own if the frame rate stays below 24 for five seconds.
 
 ## Tests
 

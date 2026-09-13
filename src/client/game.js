@@ -60,9 +60,13 @@ export class Game {
     this.running = true;
     this.fps = 60;
     this.simMs = 0;
+    this.graphicsQuality = options.quality || loadQuality();
+    this._lowFpsTime = 0;
+    this._qualityAutoDropped = false;
     this._fpsAccum = 0;
     this._fpsFrames = 0;
 
+    this.renderer.setQuality(this.graphicsQuality);
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -100,6 +104,7 @@ export class Game {
       this._fpsFrames = 0;
     }
 
+    this._checkGraphicsBudget(dt);
     this.input.update(dt);
     this.camera.update(dt);
 
@@ -144,6 +149,33 @@ export class Game {
     if (this.world.gameOver && !this.gameOverShown) {
       this.gameOverShown = true;
       this.hud.showGameOver(this.world.winner === this.player.team);
+    }
+  }
+
+  /** Switch the renderer between the full pipeline and the cheap one. */
+  setGraphicsQuality(level) {
+    this.graphicsQuality = level;
+    this.renderer.setQuality(level);
+    saveQuality(level);
+  }
+
+  /**
+   * Drop to the cheap pipeline if the full one cannot hold a playable frame
+   * rate. Bloom is by far the most expensive thing in the frame, and an RTS
+   * that stutters is worse than one that glows less.
+   */
+  _checkGraphicsBudget(dt) {
+    if (this.graphicsQuality !== 'high' || this._qualityAutoDropped) return;
+    // Ignore the first few seconds, while shaders compile and the map builds.
+    if (this.world.time < 4) return;
+
+    if (this.fps < 24) this._lowFpsTime += dt;
+    else this._lowFpsTime = Math.max(0, this._lowFpsTime - dt * 0.5);
+
+    if (this._lowFpsTime > 5) {
+      this._qualityAutoDropped = true;
+      this.setGraphicsQuality('low');
+      this.flashMessage('Graphics set to Fast to keep the frame rate up');
     }
   }
 
@@ -530,6 +562,21 @@ export class Game {
   destroy() {
     this.running = false;
   }
+}
+
+/** Remember the graphics choice per browser; failures here are not fatal. */
+function loadQuality() {
+  try {
+    const v = window.localStorage.getItem('iron-dominion.quality');
+    if (v === 'low' || v === 'high') return v;
+  } catch (err) { /* private mode, blocked storage - fall through */ }
+  return 'high';
+}
+
+function saveQuality(level) {
+  try {
+    window.localStorage.setItem('iron-dominion.quality', level);
+  } catch (err) { /* not worth failing a render over */ }
 }
 
 export { SPEEDS };

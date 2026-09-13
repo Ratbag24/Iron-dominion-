@@ -6,6 +6,7 @@ const state = {
   faction: 'vanguard',
   enemy: 'auto',
   difficulty: 'normal',
+  quality: 'high',
   seed: 1,
 };
 
@@ -61,6 +62,7 @@ function startGame() {
           faction: state.faction,
           enemyFaction: resolveEnemyFaction(),
           difficulty: state.difficulty,
+          quality: state.quality,
         }
       );
       window.game = game; // handy for debugging and for the smoke test
@@ -79,6 +81,18 @@ function init() {
   bindOptionGroup('opt-faction', 'faction');
   bindOptionGroup('opt-enemy', 'enemy');
   bindOptionGroup('opt-difficulty', 'difficulty');
+  bindOptionGroup('opt-quality', 'quality');
+
+  // Reflect the remembered graphics choice in the menu.
+  try {
+    const saved = window.localStorage.getItem('iron-dominion.quality');
+    if (saved === 'low' || saved === 'high') {
+      state.quality = saved;
+      for (const b of document.querySelectorAll('#opt-quality .opt')) {
+        b.classList.toggle('active', b.dataset.value === saved);
+      }
+    }
+  } catch (err) { /* blocked storage; the default stands */ }
 
   document.getElementById('btn-random-seed').onclick = () => {
     document.getElementById('seed-input').value = String(Math.floor(Math.random() * 99999) + 1);

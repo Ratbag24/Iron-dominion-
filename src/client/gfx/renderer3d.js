@@ -13,7 +13,12 @@ import {
   smoothHeightAt, HEIGHT_SCALE,
 } from './terrain.js';
 import { ringXZ, box, sphere, merge } from './geometry.js';
+import { buildEnvironment, SKY } from './environment.js';
 import { clamp } from '../../core/math.js';
+import { EffectComposer } from '../../../vendor/three-addons/postprocessing/EffectComposer.js';
+import { RenderPass } from '../../../vendor/three-addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from '../../../vendor/three-addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from '../../../vendor/three-addons/postprocessing/OutputPass.js';
 
 const MAX_EXPLOSIONS = 48;
 const MAX_SPARKS = 900;
@@ -89,12 +94,23 @@ export class Renderer3D {
     this.renderer = new THREE.WebGLRenderer({
       canvas, antialias: true, powerPreference: 'high-performance',
     });
-    this.renderer.setClearColor(0x070a0f, 1);
+    this.renderer.setClearColor(0x0b1119, 1);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Filmic tone mapping keeps bright muzzle flashes and explosions from
+    // clipping to flat white, and gives the whole scene more depth.
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.15;
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x0a1018, 3800, 9000);
+    this.scene.fog = new THREE.Fog(new THREE.Color(SKY.haze).multiplyScalar(0.45), 3200, 9500);
+
+    // Sky and image-based lighting, so metal has something to reflect.
+    const env = buildEnvironment(this.renderer);
+    this.scene.environment = env.environment;
+    this.sky = env.sky;
+    this.sky.scale.setScalar(7000);
+    this.scene.add(this.sky);
 
     this._setupLights();
     this._setupWorldMeshes();
@@ -111,15 +127,47 @@ export class Renderer3D {
     this.explosions = [];
     this.sparks = [];
     this.beamData = [];
+
+    this._setupComposer();
+  }
+
+  /** Render pipeline: scene, then a bloom pass over the bright pixels. */
+  _setupComposer() {
+    this.composer = new EffectComposer(this.renderer);
+    this.renderPass = new RenderPass(this.scene, this.cam.camera);
+    this.composer.addPass(this.renderPass);
+
+    // Bloom is a blur, so running it at half resolution is visually almost
+    // identical and roughly four times cheaper - and it is by far the most
+    // expensive thing in the frame.
+    this.bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(1, 1),
+      0.66,  // strength
+      0.6,   // radius
+      0.74   // luminance threshold
+    );
+    this.composer.addPass(this.bloomPass);
+
+    // OutputPass applies tone mapping and the colour space conversion that
+    // the renderer would otherwise do on its own.
+    this.composer.addPass(new OutputPass());
+    this.bloomEnabled = true;
   }
 
   // --------------------------------------------------------------- setup
 
   _setupLights() {
-    const hemi = new THREE.HemisphereLight(0x7d94b4, 0x24261c, 0.72);
+    // The environment map now carries most of the ambient light, so the
+    // hemisphere light only fills the deepest shadows.
+    const hemi = new THREE.HemisphereLight(0x8ea6c6, 0x2a2c22, 0.35);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xffeed0, 1.85);
+    // A cool rim from the opposite side separates hulls from the ground.
+    const rim = new THREE.DirectionalLight(0x86b4ff, 0.42);
+    rim.position.set(600, 420, 700);
+    this.scene.add(rim);
+
+    const sun = new THREE.DirectionalLight(0xffe9c4, 2.6);
     sun.position.set(-500, 900, -420);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -156,14 +204,26 @@ export class Renderer3D {
   _setupPools() {
     const scene = this.scene;
 
-    this.bodyMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
-    this.frameMaterial = new THREE.MeshLambertMaterial({
-      vertexColors: true, flatShading: true, transparent: true, opacity: 0.62,
-      emissive: new THREE.Color(0x18414f),
+    this.bodyMaterial = new THREE.MeshStandardMaterial({
+      vertexColors: true, flatShading: true,
+      metalness: 0.62, roughness: 0.44, envMapIntensity: 1.0,
     });
-    this.glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
+    this.frameMaterial = new THREE.MeshStandardMaterial({
+      vertexColors: true, flatShading: true, transparent: true, opacity: 0.6,
+      metalness: 0.2, roughness: 0.7,
+      emissive: new THREE.Color(0x1d4e63), emissiveIntensity: 1.4,
+    });
+    // Unlit and untone-mapped, so these render hot and the bloom pass finds
+    // them: running lights, reactor cores, tracers and explosions.
+    this.emissiveMaterial = new THREE.MeshBasicMaterial({
+      vertexColors: true, toneMapped: false,
+    });
+    this.glowMaterial = new THREE.MeshBasicMaterial({
+      vertexColors: true, toneMapped: false,
+    });
     this.decalMaterial = new THREE.MeshBasicMaterial({
-      vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false, depthTest: true,
+      vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false,
+      depthTest: true, toneMapped: false,
     });
 
     // Selection and range decals
@@ -187,7 +247,7 @@ export class Renderer3D {
     this.sparkGeo = sparkGeo;
     this.sparkPoints = new THREE.Points(sparkGeo, new THREE.PointsMaterial({
       size: 7, vertexColors: true, transparent: true, opacity: 0.95,
-      depthWrite: false, sizeAttenuation: true,
+      depthWrite: false, sizeAttenuation: true, toneMapped: false,
     }));
     this.sparkPoints.frustumCulled = false;
     scene.add(this.sparkPoints);
@@ -197,7 +257,8 @@ export class Renderer3D {
     this.beamGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAX_BEAMS * 6), 3));
     this.beamGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(MAX_BEAMS * 6), 3));
     this.beams = new THREE.LineSegments(this.beamGeo, new THREE.LineBasicMaterial({
-      vertexColors: true, transparent: true, opacity: 0.8, depthWrite: false,
+      vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false,
+      toneMapped: false,
     }));
     this.beams.frustumCulled = false;
     scene.add(this.beams);
@@ -218,6 +279,7 @@ export class Renderer3D {
     for (let i = 0; i < MAX_EXPLOSIONS; i++) {
       const mat = new THREE.MeshBasicMaterial({
         color: 0xffb64a, transparent: true, opacity: 0, depthWrite: false,
+        toneMapped: false,
       });
       const mesh = new THREE.Mesh(expGeo, mat);
       mesh.visible = false;
@@ -247,6 +309,12 @@ export class Renderer3D {
   resize(width, height, dpr) {
     this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(width, height, false);
+    if (this.composer) {
+      this.composer.setPixelRatio(dpr);
+      this.composer.setSize(width, height);
+      // setSize above resizes every pass; put bloom back to half resolution.
+      this.bloomPass.setSize(Math.max(8, width / 2), Math.max(8, height / 2));
+    }
     this.overlay.width = Math.floor(width * dpr);
     this.overlay.height = Math.floor(height * dpr);
     this.octx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -258,9 +326,14 @@ export class Renderer3D {
 
   setQuality(level) {
     this.quality = level;
-    this.renderer.shadowMap.enabled = level !== 'low';
-    if (this.sun) this.sun.castShadow = level !== 'low';
-    this.scene.traverse((o) => { if (o.isInstancedMesh) o.castShadow = level !== 'low'; });
+    const high = level !== 'low';
+    this.bloomEnabled = high;
+    this.renderer.shadowMap.enabled = high;
+    if (this.sun) this.sun.castShadow = high;
+    this.bodyMaterial.flatShading = true;
+    this.bodyMaterial.envMapIntensity = high ? 1.0 : 0.6;
+    this.bodyMaterial.needsUpdate = true;
+    this.scene.traverse((o) => { if (o.isInstancedMesh) o.castShadow = high; });
   }
 
   // -------------------------------------------------------------- pooling
@@ -318,28 +391,49 @@ export class Renderer3D {
       const model = modelFor(e.def, colors);
       const rotY = -e.heading;
 
-      const bodyKey = e.defId + '|' + e.player + (e.underConstruction ? '|f' : '');
-      const material = e.underConstruction ? this.frameMaterial : this.bodyMaterial;
-      const pool = this._poolFor(bodyKey, model.body, material, !e.underConstruction);
-      const grow = e.underConstruction ? Math.max(0.06, e.buildProgress) : 1;
-      pool.add(this._compose(e.x, ground, e.y, rotY, 1, grow));
+      const wip = e.underConstruction;
+      const material = wip ? this.frameMaterial : this.bodyMaterial;
+      const grow = wip ? Math.max(0.06, e.buildProgress) : 1;
+      const bodyMatrix = this._compose(e.x, ground, e.y, rotY, 1, grow);
+
+      if (model.body) {
+        const pool = this._poolFor(
+          e.defId + '|' + e.player + (wip ? '|f' : ''), model.body, material, !wip);
+        pool.add(bodyMatrix);
+      }
+      // Glowing detail is unlit and only appears once the frame is finished.
+      if (model.bodyGlow && !wip) {
+        this._poolFor(e.defId + '|' + e.player + '|bg', model.bodyGlow, this.emissiveMaterial, false)
+          .add(bodyMatrix);
+      }
 
       if (!e.underConstruction) {
         if (model.turret) {
           const tp = this._poolFor(e.defId + '|' + e.player + '|t', model.turret, this.bodyMaterial);
           tp.add(this._compose(e.x, ground + model.turretY, e.y, -e.turretAngle));
         }
-        if (model.spinner) {
-          const sp = this._poolFor(e.defId + '|' + e.player + '|s', model.spinner, this.bodyMaterial);
+        if (model.turretGlow) {
+          this._poolFor(e.defId + '|' + e.player + '|tg', model.turretGlow, this.emissiveMaterial, false)
+            .add(this._compose(e.x, ground + model.turretY, e.y, -e.turretAngle));
+        }
+        if (model.spinner || model.spinnerGlow) {
+          const sp = this._poolFor(e.defId + '|' + e.player + '|s',
+            model.spinner || model.spinnerGlow, this.bodyMaterial);
           const spin = this.time * model.spinSpeed * (e.def.windPowered ? 0.4 + world.windStrength * 2 : 1);
+          let spinMatrix;
           if (model.spinnerAxis === 'x') {
             this._pos.set(e.x + Math.cos(rotY) * model.spinnerX, ground + model.spinnerY, e.y - Math.sin(rotY) * model.spinnerX);
             this._euler.set(spin, rotY, 0, 'YXZ');
             this._quat.setFromEuler(this._euler);
             this._scale.set(1, 1, 1);
-            sp.add(this._matrix.compose(this._pos, this._quat, this._scale));
+            spinMatrix = this._matrix.compose(this._pos, this._quat, this._scale);
           } else {
-            sp.add(this._compose(e.x, ground + model.spinnerY, e.y, spin));
+            spinMatrix = this._compose(e.x, ground + model.spinnerY, e.y, spin);
+          }
+          sp.add(spinMatrix);
+          if (model.spinnerGlow) {
+            this._poolFor(e.defId + '|' + e.player + '|sg', model.spinnerGlow, this.emissiveMaterial, false)
+              .add(spinMatrix);
           }
         }
       }
@@ -368,7 +462,15 @@ export class Renderer3D {
     this._renderGhost(view);
 
     this.cam.update(dt);
-    this.renderer.render(this.scene, this.cam.camera);
+    // Keep the sky centred on the camera so it never clips or drifts.
+    this.sky.position.copy(this.cam.camera.position);
+
+    if (this.bloomEnabled && this.composer) {
+      this.renderPass.camera = this.cam.camera;
+      this.composer.render(dt);
+    } else {
+      this.renderer.render(this.scene, this.cam.camera);
+    }
 
     this._renderOverlay(view, visibleEntities, fog, myTeam);
   }

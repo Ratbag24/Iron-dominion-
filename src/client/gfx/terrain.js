@@ -7,6 +7,7 @@
 import * as THREE from '../../../vendor/three.module.js';
 import { TERRAIN_WATER, TERRAIN_ROCK } from '../../sim/map.js';
 import { clamp } from '../../core/math.js';
+import { makeNoise2D, fbm } from '../../core/rng.js';
 import { ringXZ, merge } from './geometry.js';
 
 /** World units of elevation for the full normalised height range. */
@@ -36,32 +37,76 @@ export function smoothHeightAt(map, x, y) {
   return (a + (b - a) * ty) * HEIGHT_SCALE;
 }
 
+// Smooth noise for ground mottling. A per-cell hash was tried first and read
+// as a hard checkerboard, because every triangle in a cell shares one colour:
+// the variation has to be continuous across cells, not random per cell.
+const groundNoise = makeNoise2D(0x51ed27);
+
 function terrainColor(map, cx, cy, out) {
   const i = map.idx(cx, cy);
   const terrain = map.terrain[i];
   const height = map.heights[i];
-  const hx = map.heights[map.idx(Math.max(0, cx - 1), cy)];
-  const hy = map.heights[map.idx(cx, Math.max(0, cy - 1))];
-  const slope = clamp(((height - hx) + (height - hy)) * 4.5, -0.45, 0.45);
+
+  // Slope from the surrounding cells, used both for shading and to decide
+  // where soil gives way to bare rock.
+  const hx0 = map.heights[map.idx(Math.max(0, cx - 1), cy)];
+  const hx1 = map.heights[map.idx(Math.min(map.cols - 1, cx + 1), cy)];
+  const hy0 = map.heights[map.idx(cx, Math.max(0, cy - 1))];
+  const hy1 = map.heights[map.idx(cx, Math.min(map.rows - 1, cy + 1))];
+  const gx = (hx1 - hx0) * 0.5;
+  const gy = (hy1 - hy0) * 0.5;
+  const steepness = clamp(Math.hypot(gx, gy) * 22, 0, 1);
+  // Only a whisper of slope shading in the albedo. The sun and the
+  // environment map already light the facets; baking more in on top was what
+  // produced the banded, blotchy look.
+  const lightSlope = clamp((-gx - gy) * 3.0, -0.4, 0.4);
+
+  // Two octaves at different scales: broad patches of drier ground, and a
+  // finer break-up on top of them.
+  const broad = fbm(groundNoise, cx * 0.045, cy * 0.045, 2);
+  const fine = fbm(groundNoise, cx * 0.19, cy * 0.19, 2);
 
   let r, g, b;
   if (terrain === TERRAIN_WATER) {
     const d = clamp((map.waterLine - height) * 3.4, 0, 1);
-    r = 0.055 - d * 0.025; g = 0.13 - d * 0.055; b = 0.24 - d * 0.09;
+    // Shallows read green, depths read almost black-blue.
+    r = 0.050 + (1 - d) * 0.035 - d * 0.02;
+    g = 0.135 + (1 - d) * 0.070 - d * 0.05;
+    b = 0.245 + (1 - d) * 0.045 - d * 0.09;
   } else if (terrain === TERRAIN_ROCK) {
     const t = clamp((height - map.rockLine) * 3.2, 0, 1);
-    r = 0.30 + t * 0.26; g = 0.30 + t * 0.26; b = 0.33 + t * 0.27;
+    const tint = 0.93 + fine * 0.14;
+    r = (0.285 + t * 0.26) * tint;
+    g = (0.285 + t * 0.26) * tint;
+    b = (0.315 + t * 0.27) * tint;
   } else {
-    // Land runs from damp green-brown in the low ground to dry pale grass on
-    // the ridges, which reads clearly from directly above.
+    // Land: damp green-brown low down, dry pale grass on the ridges, with
+    // bare earth showing through wherever the ground is steep.
     const t = clamp((height - map.waterLine) / Math.max(0.01, map.rockLine - map.waterLine), 0, 1);
-    const e = t * t * (3 - 2 * t);
-    r = 0.115 + e * 0.34;
-    g = 0.175 + e * 0.30;
-    b = 0.085 + e * 0.20;
+    // Weighted towards the low end so most of the map stays green and only
+    // genuinely high ground dries out to pale grass. A linear ramp turned
+    // every gentle rise into a stripe of tan.
+    const e = Math.pow(t, 2.1);
+    let lr = 0.112 + e * 0.215;
+    let lg = 0.168 + e * 0.170;
+    let lb = 0.082 + e * 0.108;
+
+    // Mottling, kept gentle: enough to break up a wide plain, not enough to
+    // read as a pattern.
+    const patch = (broad - 0.5) * 0.055 + (fine - 0.5) * 0.022;
+    lr += patch * 1.05;
+    lg += patch * 0.85;
+    lb += patch * 0.5;
+
+    // Exposed earth on slopes.
+    const soil = [0.205, 0.152, 0.104];
+    r = lr + (soil[0] - lr) * steepness;
+    g = lg + (soil[1] - lg) * steepness;
+    b = lb + (soil[2] - lb) * steepness;
   }
-  const s = 1 + slope * 0.85;
-  out.setRGB(clamp(r * s, 0, 1), clamp(g * s, 0, 1), clamp(b * s, 0, 1));
+
+  const shade = 1 + lightSlope * 0.22;
+  out.setRGB(clamp(r * shade, 0, 1), clamp(g * shade, 0, 1), clamp(b * shade, 0, 1));
 }
 
 /** The displaced, flat-shaded ground mesh. */
@@ -102,9 +147,14 @@ export function buildTerrainMesh(map) {
   }
   flat.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-  const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  // Ground is rough and non-metallic; it picks up colour from the sky
+  // through the scene environment rather than from a second light.
+  const mat = new THREE.MeshStandardMaterial({
+    vertexColors: true, flatShading: true,
+    roughness: 0.95, metalness: 0.0, envMapIntensity: 0.55,
+  });
   const mesh = new THREE.Mesh(flat, mat);
-  mesh.receiveShadow = false;
+  mesh.receiveShadow = true;
   mesh.name = 'terrain';
   return mesh;
 }
@@ -113,8 +163,10 @@ export function buildWaterMesh(map) {
   const geo = new THREE.PlaneGeometry(map.width * 1.4, map.height * 1.4, 1, 1);
   geo.rotateX(-Math.PI / 2);
   geo.translate(map.width / 2, map.waterLine * HEIGHT_SCALE + 1.2, map.height / 2);
-  const mat = new THREE.MeshLambertMaterial({
-    color: 0x2e6f9e, transparent: true, opacity: 0.72, depthWrite: false,
+  // Smooth and slightly metallic, so the sky actually reflects off it.
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x24587c, transparent: true, opacity: 0.78, depthWrite: false,
+    roughness: 0.12, metalness: 0.35, envMapIntensity: 1.3,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'water';
