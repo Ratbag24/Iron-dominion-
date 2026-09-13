@@ -11,6 +11,10 @@ extends RefCounted
 const HEIGHT_SCALE: float = 190.0
 const DETAIL_SEED: int = 0x9E3D71
 
+## The simulation map this heightfield was resampled from.
+var map: IdGameMap:
+	get: return _map
+
 var _map: IdGameMap
 var _detail: IdNoise2D
 var _render_cols: int = 0

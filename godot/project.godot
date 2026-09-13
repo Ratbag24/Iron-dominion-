@@ -10,7 +10,7 @@ config_version=5
 
 config/name="Iron Dominion"
 config/description="A real-time strategy game in the Beyond All Reason tradition."
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/game.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://icon.svg"
 
