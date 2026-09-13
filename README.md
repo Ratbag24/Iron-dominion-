@@ -10,10 +10,10 @@ It runs in a browser with no install, no build step and no network: open the
 page and play. Every push rebuilds that page automatically, and the simulation
 tests have to pass before it deploys.
 
-<sub>First time only: the deploy workflow cannot switch GitHub Pages on by
-itself, because the Actions token has no repository-admin scope. Set
-**Settings → Pages → Source** to **GitHub Actions** once, re-run the *Deploy to
-GitHub Pages* workflow, and every push after that publishes on its own.</sub>
+<sub>The deploy runs from `main` only, and needs **Settings → Pages → Source**
+set to **GitHub Actions**. It cannot set that itself: the Actions token has no
+repository-admin scope, and the `github-pages` environment refuses deployments
+from any branch but the default one.</sub>
 
 > **On the relationship to Beyond All Reason.** This is not a copy of BAR, and
 > it contains none of its code or assets. BAR is a decade of work by a large
