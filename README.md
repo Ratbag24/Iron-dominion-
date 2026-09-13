@@ -4,8 +4,16 @@ A 3D real-time strategy game in the tradition of **Beyond All Reason** — the d
 metal/energy economy, nanolathe construction, reclaim, tech tiers, and armies
 that grow until one commander is left standing.
 
+**Play it at https://ratbag24.github.io/Iron-dominion-/**
+
 It runs in a browser with no install, no build step and no network: open the
-page and play.
+page and play. Every push rebuilds that page automatically, and the simulation
+tests have to pass before it deploys.
+
+<sub>First time only: the deploy workflow cannot switch GitHub Pages on by
+itself, because the Actions token has no repository-admin scope. Set
+**Settings → Pages → Source** to **GitHub Actions** once, re-run the *Deploy to
+GitHub Pages* workflow, and every push after that publishes on its own.</sub>
 
 > **On the relationship to Beyond All Reason.** This is not a copy of BAR, and
 > it contains none of its code or assets. BAR is a decade of work by a large
@@ -15,6 +23,8 @@ page and play.
 > and every sound here is original and procedural.
 
 ## Play
+
+The hosted build above needs nothing but a browser. To run it from a checkout:
 
 ```sh
 npm run dev          # serves on http://localhost:8000
