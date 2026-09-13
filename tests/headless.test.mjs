@@ -237,6 +237,7 @@ section('Full AI vs AI match');
   let last = 0;
   const reports = [];
   const peakArmy = [0, 0];
+  const peakMex = [0, 0];
   for (const m of marks) {
     run(world, m - last);
     last = m;
@@ -244,6 +245,8 @@ section('Full AI vs AI match');
     const b = snapshot(world, 1);
     peakArmy[0] = Math.max(peakArmy[0], a.army);
     peakArmy[1] = Math.max(peakArmy[1], b.army);
+    peakMex[0] = Math.max(peakMex[0], a.byDef.mex || 0);
+    peakMex[1] = Math.max(peakMex[1], b.byDef.mex || 0);
     reports.push({ t: m, a, b, over: world.gameOver });
     if (world.gameOver) break;
   }
@@ -262,8 +265,10 @@ section('Full AI vs AI match');
   const a = reports[reports.length - 1].a;
   const b = reports[reports.length - 1].b;
 
-  check('AI claimed metal spots', (a.byDef.mex || 0) >= 4 && (b.byDef.mex || 0) >= 4,
-    `A ${a.byDef.mex || 0} / B ${b.byDef.mex || 0} extractors`);
+  // Peak, not final: the loser's base has usually been dismantled by 600s,
+  // which is the match working, not the AI failing.
+  check('both AIs claimed metal spots', peakMex[0] >= 8 && peakMex[1] >= 8,
+    `peak A ${peakMex[0]} / B ${peakMex[1]} extractors`);
   check('AI built energy', a.energyIncome > 40 && b.energyIncome > 40,
     `A ${a.energyIncome.toFixed(0)} / B ${b.energyIncome.toFixed(0)} e/s`);
   check('AI built a factory', (a.byDef.botlab || 0) >= 1 && (b.byDef.botlab || 0) >= 1);

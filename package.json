@@ -5,9 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "python3 -m http.server 8000",
-    "test": "node tests/headless.test.mjs",
+    "test": "node tests/headless.test.mjs && node tests/browser.test.mjs",
+    "test:sim": "node tests/headless.test.mjs",
+    "test:browser": "node tests/browser.test.mjs",
     "build": "node tools/build.mjs"
   },
   "license": "MIT",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
 }

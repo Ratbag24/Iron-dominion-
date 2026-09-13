@@ -7,6 +7,8 @@
 import { makeRng, makeNoise2D, fbm } from '../core/rng.js';
 import { BUILD_CELL } from './defs.js';
 
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
 export const TERRAIN_LAND = 0;
 export const TERRAIN_WATER = 1;
 export const TERRAIN_ROCK = 2;
@@ -232,15 +234,52 @@ export class GameMap {
     return (land / total) * 100 - (maxH - minH) * 60 + fromCentre * 45;
   }
 
-  /** Force a disc of cells to be flat, passable land. */
+  /**
+   * Flatten a disc of ground into a buildable clearing. The flat height is the
+   * local average and the edges are feathered, so a base sits naturally in the
+   * landscape instead of on top of a sheer-sided mesa.
+   */
   _carveClearing(cx, cy, r) {
+    const mid = (this.waterLine + this.rockLine) * 0.5;
+
+    // Local mean height, so the clearing follows the surrounding ground.
+    let sum = 0;
+    let n = 0;
     for (let y = cy - r; y <= cy + r; y++) {
       for (let x = cx - r; x <= cx + r; x++) {
         if (!this.inBounds(x, y)) continue;
         if ((x - cx) ** 2 + (y - cy) ** 2 > r * r) continue;
-        const i = this.idx(x, y);
-        this.terrain[i] = TERRAIN_LAND;
-        this.heights[i] = (this.waterLine + this.rockLine) * 0.5;
+        sum += this.heights[this.idx(x, y)];
+        n++;
+      }
+    }
+    let flat = n > 0 ? sum / n : mid;
+    // Keep the clearing on dry, buildable ground whatever the surroundings.
+    flat = Math.min(Math.max(flat, this.waterLine + 0.06), this.rockLine - 0.06);
+
+    const outer = r * 1.9; // feathered skirt reaching beyond the flat core
+    for (let y = cy - outer; y <= cy + outer; y++) {
+      for (let x = cx - outer; x <= cx + outer; x++) {
+        const ix = Math.round(x);
+        const iy = Math.round(y);
+        if (!this.inBounds(ix, iy)) continue;
+        const d = Math.hypot(ix - cx, iy - cy);
+        if (d > outer) continue;
+
+        // 1 inside the core, easing to 0 at the edge of the skirt.
+        const t = clamp01((d - r * 0.65) / (outer - r * 0.65));
+        const w = 1 - t * t * (3 - 2 * t);
+
+        const i = this.idx(ix, iy);
+        this.heights[i] = this.heights[i] + (flat - this.heights[i]) * w;
+
+        if (d <= r) {
+          this.terrain[i] = TERRAIN_LAND;
+        } else {
+          const h = this.heights[i];
+          this.terrain[i] = h < this.waterLine ? TERRAIN_WATER
+            : h > this.rockLine ? TERRAIN_ROCK : TERRAIN_LAND;
+        }
       }
     }
   }

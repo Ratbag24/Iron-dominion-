@@ -281,11 +281,16 @@ export function getDef(defId, factionId) {
   return d;
 }
 
-/** Hotkey hints shown in the build menu, roughly in BAR's layout spirit. */
+/**
+ * Hotkeys shown on the build menu buttons. These deliberately avoid A/S/D/F/E/R,
+ * which are reserved for the command hotkeys (attack-move, stop, guard,
+ * patrol, reclaim, repair).
+ */
 export const BUILD_HOTKEYS = {
-  mex: 'Q', solar: 'W', wind: 'E', converter: 'R',
-  estore: 'T', mstore: 'Y', botlab: 'A', advbotlab: 'S',
-  nano: 'D', llt: 'F', hlt: 'G', radar: 'C',
-  conbot: 'Q', scout: 'W', rifle: 'E', rocket: 'R',
-  adv_conbot: 'Q', heavy: 'E', siege: 'R',
+  // structures
+  mex: 'Q', solar: 'W', wind: 'T', converter: 'Y', estore: 'U', mstore: 'I',
+  botlab: 'Z', advbotlab: 'X', nano: 'C', llt: 'V', hlt: 'B', radar: 'N',
+  // units
+  conbot: 'Q', scout: 'W', rifle: 'T', rocket: 'Y',
+  adv_conbot: 'Q', heavy: 'T', siege: 'Y',
 };
