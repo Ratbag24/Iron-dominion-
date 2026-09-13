@@ -9,9 +9,12 @@ extends Node3D
 
 const CATCH_UP_LIMIT: int = 5  ## ticks a single frame may run before giving up
 
-@export var map_seed: int = 12345
-@export var player_faction: String = "vanguard"
-@export var enemy_faction: String = "legion"
+## Taken from the front end when there is one, and from the defaults in
+## IdMatchSettings when the scene is run on its own.
+var map_seed: int = IdMatchSettings.map_seed
+var player_faction: String = IdMatchSettings.player_faction
+var enemy_faction: String = IdMatchSettings.enemy_faction
+var difficulty: String = IdMatchSettings.difficulty
 
 var world: IdWorld
 var terrain: IdTerrainBuilder
@@ -51,9 +54,12 @@ func _ready() -> void:
 			{
 				"name": "Vanguard AI" if _autoplay else "Commander",
 				"faction": player_faction,
-				"is_ai": _autoplay, "ai_level": "normal",
+				"is_ai": _autoplay, "ai_level": difficulty,
 			},
-			{"name": "Legion AI", "faction": enemy_faction, "is_ai": true, "ai_level": "normal"},
+			{
+				"name": "%s AI" % IdUnitDefs.faction(enemy_faction)["name"],
+				"faction": enemy_faction, "is_ai": true, "ai_level": difficulty,
+			},
 		],
 	})
 	terrain = IdTerrainBuilder.new(world.map, 2)
@@ -219,7 +225,7 @@ func _handle_key(key: InputEventKey) -> bool:
 			if selection != null and selection.build_def != "":
 				selection.build_def = ""
 				return true
-			get_tree().quit()
+			get_tree().change_scene_to_file("res://scenes/menu.tscn")
 			return true
 		KEY_H:
 			# Halt. Not S, which pans the camera.
