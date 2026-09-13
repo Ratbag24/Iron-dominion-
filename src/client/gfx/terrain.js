@@ -7,7 +7,7 @@
 import * as THREE from '../../../vendor/three.module.js';
 import { TERRAIN_WATER, TERRAIN_ROCK } from '../../sim/map.js';
 import { clamp } from '../../core/math.js';
-import { makeNoise2D, fbm } from '../../core/rng.js';
+import { makeNoise2D, fbm, makeRng } from '../../core/rng.js';
 import { ringXZ, merge } from './geometry.js';
 
 /** World units of elevation for the full normalised height range. */
@@ -17,8 +17,65 @@ export function terrainHeightAt(map, x, y) {
   return map.heightAt(x, y) * HEIGHT_SCALE;
 }
 
-/** Bilinear height sample, so units glide rather than step between cells. */
-export function smoothHeightAt(map, x, y) {
+/** Detail octaves added to the visual surface only. */
+const detailNoise = makeNoise2D(0x9e3d71);
+
+/**
+ * Build a finer heightfield for rendering.
+ *
+ * The simulation's grid is 16 world units per cell, which is the right
+ * resolution for pathing and footprints but far too coarse to look at: it
+ * makes the ground a field of big flat facets. This resamples it at several
+ * times that density and folds in high-frequency noise, so the ground has
+ * grain without changing a single thing the simulation reasons about.
+ *
+ * Everything visual and interactive - the mesh, where units stand, where the
+ * cursor lands - reads back through this field, so they all agree.
+ */
+export function buildRenderHeightfield(map, scale = 2) {
+  const cols = map.cols * scale + 1;
+  const rows = map.rows * scale + 1;
+  const cell = map.cell / scale;
+  const heights = new Float32Array(cols * rows);
+
+  // Amplitude in normalised height units, tuned by measurement rather than by
+  // eye: this works out at roughly one world unit of grain on average and two
+  // and a half at the peaks, against a tank radius of twelve.
+  const coarse = 0.085;
+  const fine = 0.032;
+  const smoothstep = (a, b, t) => {
+    const k = clamp((t - a) / (b - a), 0, 1);
+    return k * k * (3 - 2 * k);
+  };
+
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      const x = i * cell;
+      const y = j * cell;
+      const base = bilinearBase(map, x, y);
+
+      // Grain belongs on open ground. Cliffs already have shape of their own,
+      // and anything below the waterline would only poke through the surface.
+      const slope = Math.hypot(
+        bilinearBase(map, x + map.cell, y) - bilinearBase(map, x - map.cell, y),
+        bilinearBase(map, x, y + map.cell) - bilinearBase(map, x, y - map.cell)
+      );
+      const flatness = 1 - smoothstep(0.02, 0.075, slope);
+      const dry = smoothstep(map.waterLine - 0.01, map.waterLine + 0.04, base);
+      const fade = flatness * dry;
+
+      const a = fbm(detailNoise, x * 0.020, y * 0.020, 3) - 0.5;
+      const b = fbm(detailNoise, x * 0.085, y * 0.085, 2) - 0.5;
+      heights[j * cols + i] = base + (a * coarse + b * fine) * fade;
+    }
+  }
+
+  map._render = { cols, rows, cell, heights, scale };
+  return map._render;
+}
+
+/** Bilinear sample of the simulation heightfield, in normalised units. */
+function bilinearBase(map, x, y) {
   const cell = map.cell;
   const fx = x / cell - 0.5;
   const fy = y / cell - 0.5;
@@ -32,6 +89,33 @@ export function smoothHeightAt(map, x, y) {
   const h10 = map.heights[map.idx(cx(x0 + 1), cy(y0))];
   const h01 = map.heights[map.idx(cx(x0), cy(y0 + 1))];
   const h11 = map.heights[map.idx(cx(x0 + 1), cy(y0 + 1))];
+  const a = h00 + (h10 - h00) * tx;
+  const b = h01 + (h11 - h01) * tx;
+  return a + (b - a) * ty;
+}
+
+/**
+ * Surface height in world units. Reads the fine render field once it has been
+ * built, so units stand on the detailed ground the player can see rather than
+ * on the coarse grid underneath it.
+ */
+export function smoothHeightAt(map, x, y) {
+  const r = map._render;
+  if (!r) return bilinearBase(map, x, y) * HEIGHT_SCALE;
+
+  const fx = x / r.cell;
+  const fy = y / r.cell;
+  let x0 = Math.floor(fx);
+  let y0 = Math.floor(fy);
+  const tx = fx - x0;
+  const ty = fy - y0;
+  x0 = clamp(x0, 0, r.cols - 2);
+  y0 = clamp(y0, 0, r.rows - 2);
+  const i = y0 * r.cols + x0;
+  const h00 = r.heights[i];
+  const h10 = r.heights[i + 1];
+  const h01 = r.heights[i + r.cols];
+  const h11 = r.heights[i + r.cols + 1];
   const a = h00 + (h10 - h00) * tx;
   const b = h01 + (h11 - h01) * tx;
   return (a + (b - a) * ty) * HEIGHT_SCALE;
@@ -109,51 +193,118 @@ function terrainColor(map, cx, cy, out) {
   out.setRGB(clamp(r * shade, 0, 1), clamp(g * shade, 0, 1), clamp(b * shade, 0, 1));
 }
 
-/** The displaced, flat-shaded ground mesh. */
+/**
+ * A tiling normal map, so the ground has surface grain that geometry alone
+ * would need millions of triangles to express. Built from periodic value
+ * noise - the lattice wraps - so the tile repeats without a visible seam.
+ */
+function groundNormalMap(size = 256, tiles = 6) {
+  const rand = makeRng(0x5eed14);
+  const lattice = new Float32Array(tiles * tiles);
+  for (let i = 0; i < lattice.length; i++) lattice[i] = rand();
+
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const wrap = (v) => ((v % tiles) + tiles) % tiles;
+
+  /** Value noise on a wrapping lattice, so every octave tiles seamlessly. */
+  const octave = (u, v, freq) => {
+    const fx = u * tiles * freq;
+    const fy = v * tiles * freq;
+    const x0 = Math.floor(fx);
+    const y0 = Math.floor(fy);
+    const tx = smooth(fx - x0);
+    const ty = smooth(fy - y0);
+    const at = (a, b) => lattice[wrap(b) * tiles + wrap(a)];
+    const top = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * tx;
+    const bot = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * tx;
+    return top + (bot - top) * ty;
+  };
+
+  const height = (u, v) => octave(u, v, 1) * 0.62 + octave(u, v, 3) * 0.26 + octave(u, v, 7) * 0.12;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  const d = img.data;
+  const step = 1 / size;
+  const strength = 2.6;
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size;
+      const v = y / size;
+      // Central differences give the slope; the wrapping lattice means the
+      // samples either side of an edge come from the far side of the tile.
+      const dx = (height(u + step, v) - height(u - step, v)) * strength;
+      const dy = (height(u, v + step) - height(u, v - step)) * strength;
+      let nx = -dx;
+      let ny = -dy;
+      let nz = 1;
+      const len = Math.hypot(nx, ny, nz);
+      nx /= len; ny /= len; nz /= len;
+      const o = (y * size + x) * 4;
+      d[o] = (nx * 0.5 + 0.5) * 255;
+      d[o + 1] = (ny * 0.5 + 0.5) * 255;
+      d[o + 2] = (nz * 0.5 + 0.5) * 255;
+      d[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/**
+ * The ground mesh, built from the fine render heightfield.
+ *
+ * Indexed and smooth-shaded: at this density, faceting reads as noise rather
+ * than as style, and smooth normals let the normal map carry the detail.
+ */
 export function buildTerrainMesh(map) {
-  const geo = new THREE.PlaneGeometry(map.width, map.height, map.cols - 1, map.rows - 1);
+  const r = map._render || buildRenderHeightfield(map);
+  const segX = r.cols - 1;
+  const segY = r.rows - 1;
+
+  const geo = new THREE.PlaneGeometry(map.width, map.height, segX, segY);
   geo.rotateX(-Math.PI / 2);
   geo.translate(map.width / 2, 0, map.height / 2);
 
   const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  const c = new THREE.Color();
+
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const z = pos.getZ(i);
-    const cx = clamp(Math.round(x / map.cell - 0.5), 0, map.cols - 1);
-    const cy = clamp(Math.round(z / map.cell - 0.5), 0, map.rows - 1);
-    pos.setY(i, map.heights[map.idx(cx, cy)] * HEIGHT_SCALE);
-  }
+    pos.setY(i, smoothHeightAt(map, x, z));
 
-  const flat = geo.toNonIndexed();
-  geo.dispose();
-  flat.computeVertexNormals();
-
-  // One colour per triangle gives crisp facets and makes cliffs legible.
-  const p = flat.attributes.position;
-  const colors = new Float32Array(p.count * 3);
-  const c = new THREE.Color();
-  for (let tri = 0; tri < p.count; tri += 3) {
-    let sx = 0;
-    let sz = 0;
-    for (let k = 0; k < 3; k++) { sx += p.getX(tri + k); sz += p.getZ(tri + k); }
-    const cx = clamp(Math.floor((sx / 3) / map.cell), 0, map.cols - 1);
-    const cy = clamp(Math.floor((sz / 3) / map.cell), 0, map.rows - 1);
+    const cx = clamp(Math.floor(x / map.cell), 0, map.cols - 1);
+    const cy = clamp(Math.floor(z / map.cell), 0, map.rows - 1);
     terrainColor(map, cx, cy, c);
-    for (let k = 0; k < 3; k++) {
-      colors[(tri + k) * 3] = c.r;
-      colors[(tri + k) * 3 + 1] = c.g;
-      colors[(tri + k) * 3 + 2] = c.b;
-    }
+    colors[i * 3] = c.r;
+    colors[i * 3 + 1] = c.g;
+    colors[i * 3 + 2] = c.b;
   }
-  flat.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-  // Ground is rough and non-metallic; it picks up colour from the sky
-  // through the scene environment rather than from a second light.
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+
+  const normalMap = groundNormalMap();
+  const tile = 110; // world units per repeat of the detail texture
+  normalMap.repeat.set(map.width / tile, map.height / tile);
+
   const mat = new THREE.MeshStandardMaterial({
-    vertexColors: true, flatShading: true,
-    roughness: 0.95, metalness: 0.0, envMapIntensity: 0.55,
+    vertexColors: true,
+    roughness: 0.94, metalness: 0.0, envMapIntensity: 0.5,
+    normalMap,
+    normalScale: new THREE.Vector2(0.85, 0.85),
   });
-  const mesh = new THREE.Mesh(flat, mat);
+  const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
   mesh.name = 'terrain';
   return mesh;

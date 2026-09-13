@@ -141,15 +141,15 @@ export function box(w, h, d, color, t) {
   return finish(chamferBoxGeometry(w, h, d, bevel), color, t);
 }
 
-export function cylinder(rTop, rBottom, h, color, t, segments = 10) {
+export function cylinder(rTop, rBottom, h, color, t, segments = 14) {
   return finish(new THREE.CylinderGeometry(rTop, rBottom, h, segments), color, t);
 }
 
-export function cone(r, h, color, t, segments = 8) {
+export function cone(r, h, color, t, segments = 12) {
   return finish(new THREE.ConeGeometry(r, h, segments), color, t);
 }
 
-export function sphere(r, color, t, segments = 8) {
+export function sphere(r, color, t, segments = 12) {
   return finish(new THREE.SphereGeometry(r, segments, Math.max(4, segments >> 1)), color, t);
 }
 

@@ -10,7 +10,7 @@ import * as THREE from '../../../vendor/three.module.js';
 import { modelFor } from './models.js';
 import {
   buildTerrainMesh, buildWaterMesh, buildMetalSpotDecals, FogSurface,
-  smoothHeightAt, HEIGHT_SCALE,
+  buildRenderHeightfield, smoothHeightAt, HEIGHT_SCALE,
 } from './terrain.js';
 import { ringXZ, box, sphere, merge } from './geometry.js';
 import { buildEnvironment, SKY } from './environment.js';
@@ -181,6 +181,8 @@ export class Renderer3D {
 
   _setupWorldMeshes() {
     const map = this.world.map;
+    // Everything else samples this, so it has to exist first.
+    buildRenderHeightfield(map, 2);
     this.terrain = buildTerrainMesh(map);
     this.terrain.receiveShadow = true;
     this.scene.add(this.terrain);

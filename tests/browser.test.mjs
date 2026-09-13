@@ -86,6 +86,25 @@ page.on('requestfailed', (r) => {
 
 const shot = async (name) => { if (SHOTS) await page.screenshot({ path: join(SHOTS, name) }); };
 
+/**
+ * Advance the simulation directly, in the page, rather than waiting for
+ * frames. On a software rasteriser the render loop is far too slow to carry
+ * the simulation forward in wall-clock time, and how fast this machine can
+ * draw is not what any of these checks are about. This calls the same
+ * world.tick the game loop calls.
+ */
+const advance = async (seconds) => {
+  const CHUNK = 30;
+  for (let done = 0; done < seconds; done += CHUNK) {
+    await page.evaluate((sec) => {
+      const g = window.game;
+      const DT = 1 / 30;
+      const steps = Math.round(sec / DT);
+      for (let i = 0; i < steps && !g.world.gameOver; i++) g.world.tick(DT);
+    }, Math.min(CHUNK, seconds - done));
+  }
+};
+
 try {
   console.log('\nLoading');
   console.log('-------');
@@ -227,11 +246,7 @@ try {
   });
   check('build orders were accepted', orders.every((o) => o.endsWith(':ok')), orders.join(' '));
 
-  await page.evaluate(() => window.game.setSpeed(4));
-  await page.waitForFunction(() => {
-    const g = window.game;
-    return g.world.unitsOf(0, g.player.roster.factory).some((b) => !b.underConstruction);
-  }, null, { timeout: 180000 });
+  await advance(180);
 
   const built = await page.evaluate(() => {
     const g = window.game;
@@ -262,9 +277,7 @@ try {
     g.chooseBuildOption(R.builder);
     for (let i = 0; i < 6; i++) g.chooseBuildOption(R.assault);
   });
-  await page.waitForFunction(
-    () => window.game.world.unitsOf(0, window.game.player.roster.assault).length >= 3,
-    null, { timeout: 180000 });
+  await advance(120);
 
   const army = await page.evaluate(() => {
     const g = window.game;
@@ -283,7 +296,7 @@ try {
   check('factory produced units', army.count >= 3, `${army.count} x ${army.defId}`);
   check('units accept attack-move orders', army.ordered);
 
-  await page.waitForTimeout(4000);
+  await advance(4);
   const moved = await page.evaluate(() => {
     const g = window.game;
     const rifles = g.world.unitsOf(0, g.player.roster.assault);
@@ -293,8 +306,7 @@ try {
   await shot('04-army.png');
 
   // Let the match run on so the AI meets us somewhere in the middle.
-  await page.evaluate(() => window.game.setSpeed(4));
-  await page.waitForTimeout(25000);
+  await advance(240);
   const late = await page.evaluate(() => {
     const g = window.game;
     return {
@@ -315,6 +327,14 @@ try {
   check('simulation step stays well inside its budget', late.simMs < 8,
     `${late.simMs}ms per tick, budget 33ms`);
   await shot('05-late.png');
+
+  const alive = await page.evaluate(async () => {
+    const before = window.game.renderer.renderer.info.render.frame;
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return { before, after: window.game.renderer.renderer.info.render.frame };
+  });
+  check('renderer is still drawing after the match runs on',
+    alive.after > alive.before, `frame ${alive.before} -> ${alive.after}`);
 
   console.log('\nErrors');
   console.log('------');

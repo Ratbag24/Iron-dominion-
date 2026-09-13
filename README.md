@@ -142,10 +142,17 @@ vendor/       three.js r160 and its post-processing addons (MIT), vendored
 
 Rendering uses one `InstancedMesh` per unit type per player, so a hundred
 assault bots cost one draw call. Models are built from chamfered, coloured
-primitives and merged at load, with the self-illuminated parts split into their
-own geometry so they can be drawn unlit and picked up by the bloom pass. The
-terrain is a flat-shaded displaced heightfield; fog of war is a data texture on
-a coarse copy of that surface.
+primitives and merged at load — around forty thousand triangles across the
+forty definitions — with the self-illuminated parts split into their own
+geometry so they can be drawn unlit and picked up by the bloom pass.
+
+The ground is rendered from a heightfield of its own, resampled at twice the
+simulation's grid with high-frequency noise folded in and a tiling procedural
+normal map over the top. The simulation still reasons about its own 16-unit
+grid, which is right for pathing and footprints and far too coarse to look at;
+everything visual and interactive — the mesh, where units stand, where the
+cursor lands — reads back through the finer field, so they all agree. Fog of
+war is a data texture on a coarse copy of that surface.
 
 Surfaces are physically based and lit by an image-based environment built from
 a procedural sky, which is what makes metal read as metal. The frame runs
