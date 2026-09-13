@@ -4,7 +4,7 @@
 import { GameMap } from './map.js';
 import { Pathfinder } from './pathfinder.js';
 import { SpatialGrid } from '../core/grid.js';
-import { getDef, FACTIONS, BUILD_CELL } from './defs.js';
+import { getDef, FACTIONS, rosterOf, BUILD_CELL } from './defs.js';
 import { makeRng } from '../core/rng.js';
 import { clamp, dist } from '../core/math.js';
 import { updateOrders } from './orders.js';
@@ -62,6 +62,11 @@ export class Player {
   get factionDef() {
     return FACTIONS[this.faction];
   }
+
+  /** Slot -> definition id for this player's faction. */
+  get roster() {
+    return rosterOf(this.faction);
+  }
 }
 
 export class World {
@@ -107,14 +112,15 @@ export class World {
     const starts = this.map.startPositions;
     this.players.forEach((p, i) => {
       const s = starts[i % starts.length];
-      const com = this.spawn('commander', i, s.x, s.y, { complete: true });
+      const roster = rosterOf(p.faction);
+      const com = this.spawn(roster.commander, i, s.x, s.y, { complete: true });
       p.startX = s.x;
       p.startY = s.y;
       p.commanderId = com.id;
       if (opts.startUnits) {
         for (let k = 0; k < opts.startUnits; k++) {
           const a = (k / opts.startUnits) * Math.PI * 2;
-          this.spawn('conbot', i, s.x + Math.cos(a) * 70, s.y + Math.sin(a) * 70, { complete: true });
+          this.spawn(roster.builder, i, s.x + Math.cos(a) * 70, s.y + Math.sin(a) * 70, { complete: true });
         }
       }
       this.fog[i].revealCircle(s.x, s.y, 700);
@@ -274,7 +280,7 @@ export class World {
     const size = e.isBuilding ? e.def.footprintPx * 0.9 : e.radius * 3.4;
     this.addEffect({ type: 'explosion', x: e.x, y: e.y, size, big: e.isBuilding || e.def.hp > 2000 });
 
-    if (this.commanderEnds && e.defId === 'commander') {
+    if (this.commanderEnds && e.def.isCommander) {
       this.addEffect({ type: 'explosion', x: e.x, y: e.y, size: 420, big: true, nuke: true });
       // A dying commander takes its surroundings with it.
       this.grid.query(e.x, e.y, 260, this._queryBuf);

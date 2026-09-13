@@ -2,7 +2,7 @@
 // which is how we prove the simulation works independently of the UI.
 
 import { World, SIM_DT } from '../src/sim/world.js';
-import { getDef, DEFS } from '../src/sim/defs.js';
+import { getDef, DEFS, FACTIONS, FACTION_IDS, rosterOf } from '../src/sim/defs.js';
 import { GameMap } from '../src/sim/map.js';
 import { Pathfinder } from '../src/sim/pathfinder.js';
 
@@ -62,7 +62,7 @@ section('Definitions');
   let ok = true;
   const problems = [];
   for (const id of Object.keys(DEFS)) {
-    for (const faction of ['vanguard', 'legion']) {
+    for (const faction of FACTION_IDS) {
       const d = getDef(id, faction);
       if (!(d.hp > 0)) { ok = false; problems.push(id + ' hp'); }
       if (!(d.buildTime > 0)) { ok = false; problems.push(id + ' buildTime'); }
@@ -74,6 +74,60 @@ section('Definitions');
     }
   }
   check('every definition is well formed', ok, problems.join(', '));
+}
+
+// ------------------------------------------------------------- factions
+section('Faction rosters');
+{
+  const slotSets = FACTION_IDS.map((id) => Object.keys(rosterOf(id)).sort().join(','));
+  check('every faction fills the same slots', new Set(slotSets).size === 1,
+    FACTION_IDS.length + ' factions');
+
+  let unresolved = [];
+  let commanderProblems = [];
+  for (const id of FACTION_IDS) {
+    const roster = rosterOf(id);
+    for (const [slot, defId] of Object.entries(roster)) {
+      if (defId === null) continue;
+      if (!DEFS[defId]) unresolved.push(`${id}.${slot} -> ${defId}`);
+    }
+    const com = DEFS[roster.commander];
+    if (!com || !com.isCommander) commanderProblems.push(id);
+    if (com && !com.buildPower) commanderProblems.push(id + ' (no build power)');
+  }
+  check('every roster slot resolves to a real definition', unresolved.length === 0, unresolved.join(', '));
+  check('every faction has a building commander', commanderProblems.length === 0, commanderProblems.join(', '));
+
+  // A faction's builders must be able to reach its own factory and economy,
+  // or the AI's build order silently dead-ends.
+  const reachProblems = [];
+  for (const id of FACTION_IDS) {
+    const roster = rosterOf(id);
+    const buildable = new Set();
+    for (const key of ['commander', 'builder', 'builderT2']) {
+      for (const b of (DEFS[roster[key]].build || [])) buildable.add(b);
+    }
+    for (const slot of ['mex', 'energy', 'factory', 'nano', 'defence', 'radar', 'converter']) {
+      if (roster[slot] && !buildable.has(roster[slot])) {
+        reachProblems.push(`${id}: nothing can build ${slot} (${roster[slot]})`);
+      }
+    }
+    // Factories must produce the units the AI will ask them for.
+    const t1 = new Set(DEFS[roster.factory].build || []);
+    for (const slot of ['builder', 'raider', 'assault', 'skirmisher']) {
+      if (roster[slot] && !t1.has(roster[slot])) {
+        reachProblems.push(`${id}: factory cannot build ${slot} (${roster[slot]})`);
+      }
+    }
+    const t2 = new Set(DEFS[roster.factoryT2].build || []);
+    for (const slot of ['builderT2', 'heavy', 'artillery']) {
+      if (roster[slot] && !t2.has(roster[slot])) {
+        reachProblems.push(`${id}: tier 2 factory cannot build ${slot} (${roster[slot]})`);
+      }
+    }
+  }
+  check('every roster slot is actually reachable in the build tree',
+    reachProblems.length === 0, reachProblems.join(' | '));
 }
 
 // ---------------------------------------------------------------- map
@@ -285,33 +339,81 @@ section('Full AI vs AI match');
   check('the two AIs actually fought', casualties > 0, casualties + ' units lost');
 }
 
+// --------------------------------------------------- every faction plays
+section('Every faction can be played');
+{
+  for (const faction of FACTION_IDS) {
+    const opponent = FACTION_IDS.find((f) => f !== faction);
+    const world = new World({
+      seed: 99,
+      players: [
+        { name: faction, faction, isAI: true, aiLevel: 'normal' },
+        { name: opponent, faction: opponent, isAI: true, aiLevel: 'normal' },
+      ],
+    });
+    const roster = rosterOf(faction);
+    let peakArmy = 0;
+    let peakMex = 0;
+    let sawFactory = false;
+    let sawT2 = false;
+    for (let i = 0; i < 10 && !world.gameOver; i++) {
+      run(world, 90);
+      const own = world.unitsOf(0).filter((e) => !e.underConstruction);
+      peakArmy = Math.max(peakArmy, own.filter(
+        (e) => e.weapons.length && e.def.speed && !e.def.isCommander).length);
+      peakMex = Math.max(peakMex, own.filter((e) => e.defId === roster.mex).length);
+      if (own.some((e) => e.defId === roster.factory)) sawFactory = true;
+      if (own.some((e) => e.defId === roster.factoryT2)) sawT2 = true;
+    }
+    const p = world.players[0];
+    check(`${faction}: AI runs an economy`, peakMex >= 8 && p.energyIncome > 40,
+      `${peakMex} extractors, +${p.energyIncome.toFixed(0)} energy/s`);
+    check(`${faction}: AI builds production and an army`, sawFactory && peakArmy >= 8,
+      `factory ${sawFactory}, peak army ${peakArmy}${sawT2 ? ', reached tier 2' : ''}`);
+  }
+}
+
 // ------------------------------------------------------- decisive outcomes
 section('Matches reach a conclusion');
 {
+  // One match per ordered pairing, so every faction plays both sides.
+  const wins = {};
+  const games = {};
+  for (const f of FACTION_IDS) { wins[f] = 0; games[f] = 0; }
   let decisive = 0;
-  let balanced = { vanguard: 0, legion: 0 };
-  const total = 6;
-  for (let seed = 1; seed <= total; seed++) {
-    const swap = seed % 2 === 0;
-    const f0 = swap ? 'legion' : 'vanguard';
-    const f1 = swap ? 'vanguard' : 'legion';
-    const world = new World({
-      seed,
-      players: [
-        { name: 'A', faction: f0, isAI: true, aiLevel: 'normal' },
-        { name: 'B', faction: f1, isAI: true, aiLevel: 'normal' },
-      ],
-    });
-    run(world, 1500);
-    if (world.gameOver && world.winner >= 0) {
-      decisive++;
-      balanced[[f0, f1][world.winner]]++;
+  let total = 0;
+
+  for (const a of FACTION_IDS) {
+    for (const b of FACTION_IDS) {
+      if (a === b) continue;
+      for (let seed = 1; seed <= 2; seed++) {
+        const world = new World({
+          seed,
+          players: [
+            { name: 'A', faction: a, isAI: true, aiLevel: 'normal' },
+            { name: 'B', faction: b, isAI: true, aiLevel: 'normal' },
+          ],
+        });
+        run(world, 1500);
+        total++;
+        games[a]++;
+        games[b]++;
+        if (world.gameOver && world.winner >= 0) {
+          decisive++;
+          wins[[a, b][world.winner]]++;
+        }
+      }
     }
   }
-  check('most matches end with a winner', decisive >= total - 1,
+
+  const table = FACTION_IDS.map((f) => `${f} ${wins[f]}/${games[f]}`).join(', ');
+  console.log('  ' + table);
+  check('most matches end with a winner', decisive >= total - 2,
     `${decisive}/${total} decided`);
-  check('neither faction dominates', balanced.vanguard > 0 && balanced.legion > 0,
-    `vanguard ${balanced.vanguard} / legion ${balanced.legion}`);
+  check('every faction wins some of its matches',
+    FACTION_IDS.every((f) => wins[f] > 0), table);
+  check('no faction wins nearly everything',
+    FACTION_IDS.every((f) => wins[f] / games[f] < 0.85), table);
 }
 
 // ---------------------------------------------------------------- summary

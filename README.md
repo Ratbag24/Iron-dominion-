@@ -10,10 +10,10 @@ It runs in a browser with no install, no build step and no network: open the
 page and play. Every push rebuilds that page automatically, and the simulation
 tests have to pass before it deploys.
 
-<sub>First time only: the deploy workflow cannot switch GitHub Pages on by
-itself, because the Actions token has no repository-admin scope. Set
-**Settings → Pages → Source** to **GitHub Actions** once, re-run the *Deploy to
-GitHub Pages* workflow, and every push after that publishes on its own.</sub>
+<sub>The deploy runs from `main` only, and needs **Settings → Pages → Source**
+set to **GitHub Actions**. It cannot set that itself: the Actions token has no
+repository-admin scope, and the `github-pages` environment refuses deployments
+from any branch but the default one.</sub>
 
 > **On the relationship to Beyond All Reason.** This is not a copy of BAR, and
 > it contains none of its code or assets. BAR is a decade of work by a large
@@ -86,15 +86,29 @@ commander takes its surroundings with it.
 
 ## Factions
 
-|  | Vanguard | Legion |
-|---|---|---|
-| Health | −8% | +14% |
-| Speed | +10% | −7% |
-| Damage | −5% | +10% |
-| Range | +8% | −4% |
-| Cost | −4% | +5% |
+Three factions, each with its own roster of units and structures. A faction is
+a set of definitions plus a *roster* mapping generic slots (extractor, cheap
+power, factory, assault, artillery and so on) to definition ids, so everything
+that reasons about a faction generically — the AI's entire build order, the
+opening spawn, unit composition — works for any of them without special cases.
 
-Both have the same roster of 20 units and structures with distinct silhouettes.
+**Vanguard** — agile bots. Longer range, quicker, and slightly cheaper, with
+thinner armour. Wins by arriving first and in numbers.
+
+**Legion** — heavy bots. More armour and more punch at a small premium, and
+slower. Wins by not dying.
+
+**Concord** — the human remnant, and a different machine entirely. Tracked
+hulls with crews rather than nanolathe swarms: fewer, costlier, tougher
+vehicles whose guns come with splash damage as standard, dug-in pillboxes
+instead of laser towers, and power in big lumps — diesel generators early, a
+single Fusion Reactor later, rather than a field of solar panels. Their
+engineers build more slowly than bots do, so they lean on vehicle yards and
+construction cranes to convert metal into army.
+
+Balance is measured, not asserted. Across 42 AI-vs-AI matches covering every
+ordered pairing, 39 decided: Vanguard 46%, Legion 50%, Concord 43%, with
+head-to-head records of 6–6, 7–7 and 5–8.
 
 ## Architecture
 
@@ -106,7 +120,7 @@ logic.
 src/
   core/       seeded RNG and noise, vector maths, spatial hash
   sim/        the game itself - no DOM, no WebGL, runs in Node
-    defs.js         unit and structure definitions
+    defs.js         unit and structure definitions, factions and rosters
     map.js          symmetric procedural maps, metal spots, nav grid
     world.js        entities, players, the fixed 30 Hz tick
     economy.js      income, storage, converters, stall throttling

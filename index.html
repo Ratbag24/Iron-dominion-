@@ -360,16 +360,31 @@
         <label>YOUR FACTION</label>
         <div class="opts" id="opt-faction">
           <button class="opt active" data-value="vanguard">
-            <b>Vanguard</b><span>Mobile and efficient. Better range and speed, thinner armour.</span>
+            <b>Vanguard</b><span>Agile bots. Better range and speed, thinner armour. Swarms and outruns.</span>
           </button>
           <button class="opt" data-value="legion">
-            <b>Legion</b><span>Heavy and durable. More armour and punch, slower to move.</span>
+            <b>Legion</b><span>Heavy bots. More armour and punch, slower. Grinds forward.</span>
+          </button>
+          <button class="opt" data-value="concord">
+            <b>Concord</b><span>The human remnant. Crewed armour, splash damage, dug-in guns. Fewer, tougher machines.</span>
           </button>
         </div>
       </div>
 
       <div class="field">
-        <label>OPPONENT</label>
+        <label>ENEMY FACTION</label>
+        <div class="opts" id="opt-enemy">
+          <button class="opt active" data-value="auto">
+            <b>Opposing</b><span>Picks a faction that is not yours.</span>
+          </button>
+          <button class="opt" data-value="vanguard"><b>Vanguard</b><span>Agile bots.</span></button>
+          <button class="opt" data-value="legion"><b>Legion</b><span>Heavy bots.</span></button>
+          <button class="opt" data-value="concord"><b>Concord</b><span>Human armour.</span></button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>DIFFICULTY</label>
         <div class="opts" id="opt-difficulty">
           <button class="opt" data-value="easy">
             <b>Recruit</b><span>Slower economy, smaller attack waves.</span>
