@@ -45,7 +45,10 @@ const body = section(html, 'body')
 
 await mkdir(DIST, { recursive: true });
 
+const links = (html.match(/<link[^>]*rel="(?:stylesheet|preconnect)"[^>]*>/g) || []).join('\n');
+
 const head = `<title>Iron Dominion</title>
+${links}
 <meta name="description" content="A real-time strategy game in the Beyond All Reason tradition: dual metal and energy economy, nanolathe construction, reclaim, tech tiers and large-scale 3D combat.">
 <style>${css}</style>`;
 

@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Iron Dominion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
   :root {
     --bg: #05070a;
@@ -18,6 +21,9 @@
     --accent: #7fe9ff;
     --good: #63e08a;
     --bad: #ff6a52;
+
+    --ui: "Rajdhani", "Segoe UI Semibold", "Avenir Next Condensed", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
 
   * { box-sizing: border-box; }
@@ -25,7 +31,7 @@
   html, body {
     margin: 0; padding: 0; height: 100%; overflow: hidden;
     background: var(--bg); color: var(--text);
-    font-family: "Rajdhani", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-family: var(--ui);
     -webkit-font-smoothing: antialiased;
     user-select: none;
   }
@@ -54,7 +60,7 @@
   }
   .res-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; }
   .res-name { letter-spacing: 0.14em; font-weight: 700; font-size: 10px; color: var(--dim); }
-  .res-value { font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; }
+  .res-value { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; }
   .bar {
     position: relative; height: 9px; border: 1px solid var(--edge);
     background: #0b0f14; border-radius: 2px; overflow: hidden;
@@ -64,7 +70,7 @@
   #energy-fill { background: linear-gradient(180deg, #ffe07a, #d9a521); }
   .fill.stalling { animation: pulse 0.5s infinite alternate; }
   @keyframes pulse { from { filter: brightness(1); } to { filter: brightness(1.9); } }
-  .rate { font-size: 11px; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+  .rate { font-family: var(--mono); font-size: 10.5px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
   .rate.good { color: var(--good); }
   .rate.bad { color: var(--bad); }
 
@@ -72,7 +78,8 @@
 
   .chip {
     padding: 5px 10px; border: 1px solid var(--edge); background: rgba(10,14,20,0.8);
-    border-radius: 3px; font-size: 12px; letter-spacing: 0.08em; font-variant-numeric: tabular-nums;
+    border-radius: 3px; font-size: 11.5px; letter-spacing: 0.06em;
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
   }
   #speed-label.paused { color: var(--energy); }
   .tbtn {
@@ -133,7 +140,8 @@
   .hpbar.build .hpfill { background: linear-gradient(180deg,#8fe4ff,#2f8bb0); }
   .hpbar span {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    font-size: 10px; letter-spacing: 0.06em; text-shadow: 0 1px 2px #000;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.03em;
+    font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px #000;
   }
   .sel-stats { color: var(--dim); font-size: 11px; margin-bottom: 5px; line-height: 1.5; }
   .sel-desc { color: #9fb0c2; font-size: 11px; line-height: 1.45; margin-top: 5px; font-style: italic; }
@@ -182,7 +190,10 @@
     color: var(--accent); letter-spacing: 0.05em;
   }
   .build-btn .bname { font-size: 10px; letter-spacing: 0.06em; color: var(--dim); margin-top: -3px; }
-  .build-btn .cost { font-size: 9px; color: var(--dim); display: flex; gap: 3px; align-items: center; }
+  .build-btn .cost {
+    font-family: var(--mono); font-size: 8.5px; color: var(--dim);
+    display: flex; gap: 3px; align-items: center; font-variant-numeric: tabular-nums;
+  }
   .build-btn .cost i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
   .build-btn .cost i.m { background: var(--metal); margin-left: 2px; }
   .build-btn .cost i.e { background: var(--energy); margin-left: 4px; }
@@ -258,7 +269,7 @@
   .keys h4 { margin: 0 0 7px; font-size: 11px; letter-spacing: 0.16em; color: var(--accent); }
   .keys div > p { margin: 0 0 5px; display: flex; justify-content: space-between; gap: 12px; color: var(--dim); }
   .keys kbd {
-    background: #131c25; border: 1px solid var(--edge-bright); border-bottom-width: 2px;
+    font-family: var(--mono); background: #131c25; border: 1px solid var(--edge-bright); border-bottom-width: 2px;
     border-radius: 3px; padding: 1px 6px; font-family: inherit; font-size: 11px; color: var(--text);
     white-space: nowrap;
   }
@@ -269,6 +280,18 @@
     font-size: 13px; letter-spacing: 0.2em;
   }
   #loading.hidden { display: none; }
+
+  #small-screen {
+    display: none; position: absolute; inset: auto 0 0 0; z-index: 45;
+    padding: 10px 16px; text-align: center; font-size: 12px; line-height: 1.5;
+    background: rgba(10,14,20,0.96); border-top: 1px solid var(--edge);
+    color: var(--dim);
+  }
+  #small-screen b { color: var(--accent); }
+
+  @media (pointer: coarse), (max-width: 720px) {
+    #small-screen { display: block; }
+  }
 
   @media (max-width: 880px) {
     #selection-info { width: 190px; }
@@ -428,6 +451,11 @@
       </div>
       <button class="primary" id="btn-close-help" style="margin-top:20px">CLOSE</button>
     </div>
+  </div>
+
+  <div id="small-screen">
+    Iron Dominion is built for a <b>mouse and keyboard</b>. On a touch screen or a
+    narrow window you can watch the battle, but you will not be able to command it.
   </div>
 
   <div id="loading" class="hidden">GENERATING BATTLEFIELD</div>

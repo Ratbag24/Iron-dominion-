@@ -20,6 +20,8 @@ page and play.
 npm run dev          # serves on http://localhost:8000
 ```
 
+Needs a mouse and keyboard — it is a full RTS control scheme, not a touch game.
+
 Or build a single self-contained file you can open by double-clicking:
 
 ```sh
