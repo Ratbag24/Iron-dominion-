@@ -1,8 +1,12 @@
 # Builds the single-file game and publishes it to GitHub Pages.
 #
 # The simulation tests run first, so a broken build never reaches the live
-# site. Pages is switched on automatically by configure-pages the first time
-# this runs, so no repository settings need changing by hand.
+# site.
+#
+# Pages must already be switched on for the repository, with its source set to
+# GitHub Actions. The workflow deliberately does not try to enable it: the
+# Actions token has no repository-admin scope, so asking configure-pages to
+# create the site only produces "Resource not accessible by integration".
 
 name: Deploy to GitHub Pages
 
@@ -49,8 +53,6 @@ jobs:
           cp dist/iron-dominion.html _site/index.html
 
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
