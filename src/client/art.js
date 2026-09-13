@@ -1,8 +1,9 @@
-// Procedural unit and structure art.
+// Flat icon art for the interface.
 //
-// Everything is drawn with canvas paths - no image assets - so the whole game
-// is self-contained. Each draw function renders its unit centred on the origin
-// facing +X; the caller applies position and rotation.
+// The battlefield itself is rendered in 3D (see gfx/models.js); these 2D
+// silhouettes are drawn to small canvases for the build menu buttons and the
+// selection panel, where a flat icon reads far better than a tiny 3D render.
+// Each function draws its subject centred on the origin facing +X.
 
 const HULL = '#8d949e';
 const HULL_DARK = '#575d66';

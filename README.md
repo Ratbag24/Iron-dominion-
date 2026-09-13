@@ -109,6 +109,7 @@ src/
     fog.js          line of sight, radar, remembered structures
     ai.js           the skirmish AI
   client/     camera, input, HUD, minimap, procedural audio
+    art.js          flat silhouettes for build-menu and selection icons
     gfx/            Three.js scene: terrain, models, instanced rendering
 vendor/       three.js r160 (MIT), vendored so nothing is fetched at runtime
 ```
