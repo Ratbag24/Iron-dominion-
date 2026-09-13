@@ -61,6 +61,13 @@ static func all_ids() -> Array:
 	load_data()
 	return _defs.keys()
 
+## The unmodified definition, with no faction applied. Used where something
+## has to be judged by what it does rather than by who built it.
+static func base_def(def_id: String) -> Dictionary:
+	load_data()
+	return _defs.get(def_id, {})
+
+
 ## A definition with its owning faction's modifiers baked in.
 static func get_def(def_id: String, faction_id: String) -> Dictionary:
 	load_data()
