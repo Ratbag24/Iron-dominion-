@@ -221,6 +221,24 @@ func water_level() -> float:
 	return _map.water_line * HEIGHT_SCALE
 
 
+## A small image of the whole map, for the minimap. Brightened a little,
+## because the ground palette is tuned for a lit 3D surface and reads as mud
+## when it is shown flat.
+func minimap_image(size: int = 192) -> ImageTexture:
+	var img := Image.create(size, size, false, Image.FORMAT_RGB8)
+	for y in range(size):
+		var cy := mini(_map.rows - 1, int(float(y) / float(size) * _map.rows))
+		for x in range(size):
+			var cx := mini(_map.cols - 1, int(float(x) / float(size) * _map.cols))
+			var c := _terrain_colour(cx, cy)
+			img.set_pixel(x, y, Color(
+				minf(c.r * 1.45 + 0.03, 1.0),
+				minf(c.g * 1.45 + 0.03, 1.0),
+				minf(c.b * 1.45 + 0.03, 1.0)
+			))
+	return ImageTexture.create_from_image(img)
+
+
 # ------------------------------------------------------ detail normal map
 
 ## A seamless procedural normal map for the ground.

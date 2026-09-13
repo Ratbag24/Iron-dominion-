@@ -10,6 +10,13 @@ extends Node3D
 
 const NANOFRAME_COLOUR := Color(0.35, 0.62, 0.85)
 
+## Wrecks keep their shape but lose their allegiance.
+const WRECK_COLOURS := {
+	"primary": Color(0.26, 0.25, 0.24),
+	"dark": Color(0.15, 0.145, 0.14),
+	"light": Color(0.36, 0.35, 0.33),
+}
+
 var world: IdWorld
 var terrain: IdTerrainBuilder
 
@@ -24,6 +31,7 @@ var _missing: Dictionary = {}     ## def ids we have already warned about
 var _team_colours: Array[Dictionary] = []
 var _blips: Dictionary = {}       ## entity id -> Node3D marker
 var _blip_mesh: Mesh = null
+var _wrecks: Dictionary = {}      ## wreck id -> Node3D
 
 
 func setup(w: IdWorld, t: IdTerrainBuilder, viewer_index: int = 0) -> void:
@@ -76,6 +84,7 @@ func sync() -> void:
 			node.scale = Vector3.ONE * maxf(0.35, e.build_progress)
 
 	_sync_blips()
+	_sync_wrecks()
 
 	var stale: Array = []
 	for id in _nodes:
@@ -87,6 +96,50 @@ func sync() -> void:
 			node.queue_free()
 		_nodes.erase(id)
 		_turrets.erase(id)
+
+
+## Wrecks are the dead unit's own model, darkened and sunk into the ground.
+## They are worth metal, so the player has to be able to see them; a wreck the
+## simulation is tracking but nothing draws is reclaim income nobody claims.
+func _sync_wrecks() -> void:
+	var fog: IdFogMap = world.fog[viewer] if viewer >= 0 else null
+	var wanted: Dictionary = {}
+	for w in world.wrecks:
+		if float(w["metal_left"]) <= 0.0:
+			continue
+		if fog != null and not fog.is_explored(w["x"], w["y"]):
+			continue
+		wanted[w["id"]] = w
+
+	for id in wanted:
+		if _wrecks.has(id):
+			continue
+		var w: Dictionary = wanted[id]
+		var scene: PackedScene = _scene_for(w["def_id"])
+		if scene == null:
+			continue
+		var inst: Node3D = scene.instantiate()
+		IdTeamColour.apply(inst, WRECK_COLOURS)
+		add_child(inst)
+		inst.position = Vector3(
+			w["x"], terrain.height_at(w["x"], w["y"]) - float(w["radius"]) * 0.25, w["y"]
+		)
+		inst.rotation.y = -float(w["heading"])
+		# Tipped over, so a wreck reads as debris at a glance rather than as a
+		# unit that has stopped moving.
+		inst.rotation.x = 0.22
+		inst.scale = Vector3(1.0, 0.55, 1.0)
+		_wrecks[id] = inst
+
+	var gone: Array = []
+	for id in _wrecks:
+		if not wanted.has(id):
+			gone.append(id)
+	for id in gone:
+		var node: Node3D = _wrecks[id]
+		if is_instance_valid(node):
+			node.queue_free()
+		_wrecks.erase(id)
 
 
 ## Radar contacts: a marker where something is moving, with no idea what.
@@ -188,6 +241,11 @@ func clear() -> void:
 		var blip: Node3D = _blips[id]
 		if is_instance_valid(blip):
 			blip.queue_free()
+	for id in _wrecks:
+		var node: Node3D = _wrecks[id]
+		if is_instance_valid(node):
+			node.queue_free()
 	_nodes.clear()
 	_turrets.clear()
 	_blips.clear()
+	_wrecks.clear()

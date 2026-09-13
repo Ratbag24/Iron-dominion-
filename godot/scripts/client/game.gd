@@ -89,7 +89,7 @@ func _ready() -> void:
 		hud = IdHud.new()
 		hud.name = "Hud"
 		add_child(hud)
-		hud.setup(world, selection, self)
+		hud.setup(world, selection, self, terrain)
 		# Start with the commander picked, so the first click has something to
 		# build with rather than an empty palette.
 		selection.select_ids([me.commander_id], false)

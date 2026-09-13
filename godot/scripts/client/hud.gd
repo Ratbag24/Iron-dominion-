@@ -25,13 +25,20 @@ var _top: Label
 var _info: Label
 var _palette: HFlowContainer
 var _palette_ids: Array[String] = []
+var _minimap: IdMinimap
+var _banner: Label
+var _banner_panel: PanelContainer
 
 
-func setup(w: IdWorld, sel: IdSelection, owner_game: Node) -> void:
+func setup(
+	w: IdWorld, sel: IdSelection, owner_game: Node, terrain: IdTerrainBuilder
+) -> void:
 	world = w
 	selection = sel
 	game = owner_game
 	_build()
+	_build_minimap(terrain)
+	_build_banner()
 
 
 func _build() -> void:
@@ -43,7 +50,8 @@ func _build() -> void:
 	add_child(_overlay)
 
 	_top = _panelled_label(Control.PRESET_TOP_LEFT, Vector2(14, 12), 15)
-	_info = _panelled_label(Control.PRESET_BOTTOM_LEFT, Vector2(14, -14), 13)
+	# Above the minimap, which occupies the bottom-left corner.
+	_info = _panelled_label(Control.PRESET_BOTTOM_LEFT, Vector2(14, -318), 13)
 
 	var palette_panel := PanelContainer.new()
 	palette_panel.add_theme_stylebox_override("panel", _panel_style())
@@ -90,6 +98,58 @@ func _panelled_label(preset: int, offset: Vector2, font_size: int) -> Label:
 	# An empty panel would otherwise sit in the corner as a bare box.
 	l.visibility_changed.connect(func(): panel.visible = l.visible)
 	return l
+
+
+func _build_minimap(terrain: IdTerrainBuilder) -> void:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _panel_style())
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT, true)
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	panel.offset_left = 14
+	panel.offset_right = 14
+	panel.offset_top = -96
+	panel.offset_bottom = -96
+	add_child(panel)
+
+	_minimap = IdMinimap.new()
+	_minimap.setup(world, terrain, selection.cam, selection.player_index)
+	panel.add_child(_minimap)
+
+
+## The end-of-match message. Hidden until there is one.
+func _build_banner() -> void:
+	_banner_panel = PanelContainer.new()
+	_banner_panel.add_theme_stylebox_override("panel", _panel_style())
+	_banner_panel.set_anchors_preset(Control.PRESET_CENTER_TOP, true)
+	_banner_panel.offset_top = 90
+	_banner_panel.offset_bottom = 90
+	_banner_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_banner_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_banner_panel.visible = false
+	add_child(_banner_panel)
+
+	_banner = Label.new()
+	_banner.add_theme_font_size_override("font_size", 30)
+	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_banner_panel.add_child(_banner)
+
+
+func _refresh_banner() -> void:
+	if not world.game_over:
+		_banner_panel.visible = false
+		return
+	_banner_panel.visible = true
+	var me: IdPlayer = world.players[selection.player_index]
+	if world.winner == me.team:
+		_banner.text = "VICTORY"
+		_banner.add_theme_color_override("font_color", OK)
+	elif world.winner < 0:
+		_banner.text = "DRAW"
+		_banner.add_theme_color_override("font_color", TEXT)
+	else:
+		_banner.text = "DEFEAT"
+		_banner.add_theme_color_override("font_color", STALL)
 
 
 func _panel_style() -> StyleBoxFlat:
@@ -142,7 +202,9 @@ func refresh() -> void:
 
 	_refresh_info()
 	_refresh_palette()
+	_refresh_banner()
 	_overlay.queue_redraw()
+	_minimap.queue_redraw()
 
 
 func _clock(t: float) -> String:

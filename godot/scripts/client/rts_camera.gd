@@ -53,6 +53,18 @@ func _apply() -> void:
 	look_at(focus, Vector3.UP)
 
 
+## Jump the view to a world position, keeping the current zoom and angle.
+func focus_on(target: Vector2) -> void:
+	focus = Vector3(
+		clampf(target.x, 0.0, map_width),
+		0.0,
+		clampf(target.y, 0.0, map_height)
+	)
+	if terrain != null:
+		focus.y = terrain.height_at(focus.x, focus.z)
+	_apply()
+
+
 func pan(dx: float, dz: float) -> void:
 	# Pan along the camera's own axes so "up" is always away from the viewer,
 	# whatever the yaw.
