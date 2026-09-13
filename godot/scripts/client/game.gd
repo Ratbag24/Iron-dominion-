@@ -17,6 +17,8 @@ var world: IdWorld
 var terrain: IdTerrainBuilder
 var units: IdUnitView
 var cam: IdRtsCamera
+var selection: IdSelection
+var hud: IdHud
 
 var running: bool = true
 var speed: float = 1.0
@@ -66,6 +68,18 @@ func _ready() -> void:
 	var me: IdPlayer = world.players[0]
 	cam.setup(terrain, Vector2(me.start_x, me.start_y))
 	cam.make_current()
+
+	selection = IdSelection.new()
+	selection.setup(world, cam, 0)
+
+	if not _autoplay:
+		hud = IdHud.new()
+		hud.name = "Hud"
+		add_child(hud)
+		hud.setup(world, selection, self)
+		# Start with the commander picked, so the first click has something to
+		# build with rather than an empty palette.
+		selection.select_ids([me.commander_id], false)
 
 	_parse_cmdline()
 	units.sync()
@@ -120,20 +134,60 @@ func _process(dt: float) -> void:
 	var viewport: Vector2 = get_viewport().get_visible_rect().size
 	cam.update(dt, viewport, get_viewport().get_mouse_position())
 
+	if hud != null:
+		selection.prune()
+		hud.refresh()
+
 
 func _unhandled_input(event: InputEvent) -> void:
+	var viewport: Vector2 = get_viewport().get_visible_rect().size
+
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		# Hold the modifier for a right-drag rotate, so a plain right-click
+		# stays an order.
+		if key.keycode == KEY_ALT:
+			cam.set_rotating(key.pressed)
+		if key.pressed and not key.echo and _handle_key(key):
+			return
+
+	if hud != null and selection.handle_input(event, viewport):
+		return
 	if cam.handle_input(event):
 		return
-	if event is InputEventKey and event.pressed and not event.echo:
-		match (event as InputEventKey).keycode:
-			KEY_SPACE:
-				running = not running
-			KEY_EQUAL, KEY_KP_ADD:
-				speed = minf(speed * 2.0, 8.0)
-			KEY_MINUS, KEY_KP_SUBTRACT:
-				speed = maxf(speed * 0.5, 0.25)
-			KEY_ESCAPE:
-				get_tree().quit()
+
+
+func _handle_key(key: InputEventKey) -> bool:
+	match key.keycode:
+		KEY_SPACE:
+			running = not running
+			return true
+		KEY_EQUAL, KEY_KP_ADD:
+			speed = minf(speed * 2.0, 8.0)
+			return true
+		KEY_MINUS, KEY_KP_SUBTRACT:
+			speed = maxf(speed * 0.5, 0.25)
+			return true
+		KEY_ESCAPE:
+			if selection != null and selection.build_def != "":
+				selection.build_def = ""
+				return true
+			get_tree().quit()
+			return true
+		KEY_H:
+			# Halt. Not S, which pans the camera.
+			if selection == null:
+				return false
+			for e in selection.selected_entities():
+				e.orders.clear()
+				e.has_move_goal = false
+				e.path = []
+			return true
+
+	# Number keys pick from the build palette.
+	if hud != null and key.keycode >= KEY_1 and key.keycode <= KEY_9:
+		return hud.press_slot(key.keycode - KEY_1)
+	return false
 
 
 ## Per-frame diagnostics, for the HUD and the automated checks.
