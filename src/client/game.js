@@ -161,7 +161,7 @@ export class Game {
       if (!e.alive || e.player !== this.playerIndex) continue;
       if (now - e.lastDamageTime > 0.6) continue;
       // The commander matters most, then buildings, then everything else.
-      const score = e.defId === 'commander' ? 100 : e.isBuilding ? 50 : 10;
+      const score = e.def.isCommander ? 100 : e.isBuilding ? 50 : 10;
       if (score > worstScore) { worstScore = score; worst = e; }
     }
     if (!worst) return;
@@ -171,7 +171,7 @@ export class Game {
     this.lastAttackX = worst.x;
     this.lastAttackY = worst.y;
     this.flashMessage(
-      worst.defId === 'commander' ? 'Commander under attack!'
+      worst.def.isCommander ? 'Commander under attack!'
         : worst.isBuilding ? `${worst.def.name} under attack` : 'Units under attack'
     );
     this.audio.play('alert');
@@ -375,7 +375,7 @@ export class Game {
     const sel = this.selection.filter((e) => e.player === this.playerIndex);
     if (!sel.length) return;
     for (const e of sel) {
-      if (e.defId === 'commander') continue; // too easy to lose by accident
+      if (e.def.isCommander) continue; // too easy to lose by accident
       this.world.kill(e, null);
     }
     this.flashMessage('Self-destruct');

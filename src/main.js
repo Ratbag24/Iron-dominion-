@@ -4,9 +4,19 @@ import { Game } from './client/game.js';
 
 const state = {
   faction: 'vanguard',
+  enemy: 'auto',
   difficulty: 'normal',
   seed: 1,
 };
+
+const FACTION_ORDER = ['vanguard', 'legion', 'concord'];
+
+/** "Opposing" means any faction other than the player's, chosen at random. */
+function resolveEnemyFaction() {
+  if (state.enemy !== 'auto') return state.enemy;
+  const others = FACTION_ORDER.filter((f) => f !== state.faction);
+  return others[Math.floor(Math.random() * others.length)];
+}
 
 let game = null;
 
@@ -49,7 +59,7 @@ function startGame() {
         {
           seed: state.seed,
           faction: state.faction,
-          enemyFaction: state.faction === 'vanguard' ? 'legion' : 'vanguard',
+          enemyFaction: resolveEnemyFaction(),
           difficulty: state.difficulty,
         }
       );
@@ -67,6 +77,7 @@ function startGame() {
 
 function init() {
   bindOptionGroup('opt-faction', 'faction');
+  bindOptionGroup('opt-enemy', 'enemy');
   bindOptionGroup('opt-difficulty', 'difficulty');
 
   document.getElementById('btn-random-seed').onclick = () => {

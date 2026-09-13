@@ -92,7 +92,7 @@ export class Minimap {
       const visible = team === myTeam || fog.isVisible(e.x, e.y);
       if (!visible) continue;
       ctx.fillStyle = world.players[e.player].color.primary;
-      const r = e.isBuilding ? Math.max(2, e.def.footprintPx * scale * 0.5) : (e.defId === 'commander' ? 3.2 : 1.9);
+      const r = e.isBuilding ? Math.max(2, e.def.footprintPx * scale * 0.5) : (e.def.isCommander ? 3.2 : 1.9);
       ctx.fillRect(e.x * scale - r, e.y * scale - r, r * 2, r * 2);
     }
 

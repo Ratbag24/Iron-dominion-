@@ -5,7 +5,7 @@
 // as the match goes on. It has no extra vision and pays the same costs; the
 // only handicap is an income multiplier chosen by the difficulty setting.
 
-import { getDef } from './defs.js';
+import { getDef, rosterOf, DEFS } from './defs.js';
 import { canBuildHere } from './orders.js';
 import { dist } from '../core/math.js';
 
@@ -30,6 +30,10 @@ export class AIPlayer {
     this.player = player;
     this.cfg = LEVELS[player.aiLevel] || LEVELS.normal;
     player.incomeMultiplier = this.cfg.income;
+
+    // Everything below is written against roster slots, never definition ids,
+    // so the same build order drives any faction.
+    this.R = rosterOf(player.faction);
 
     this.baseX = player.startX;
     this.baseY = player.startY;
@@ -76,7 +80,7 @@ export class AIPlayer {
       }
       if (e.def.factory) factories.push(e);
       else if (e.def.buildPower && !e.def.assistOnly) builders.push(e);
-      if (e.weapons.length > 0 && e.def.speed && e.defId !== 'commander') army.push(e);
+      if (e.weapons.length > 0 && e.def.speed && !e.def.isCommander) army.push(e);
     }
     this.counts = counts;
 
@@ -101,10 +105,13 @@ export class AIPlayer {
       if (b.orders.length > 0) {
         const order = b.orders[0];
         const stalled = this.player.energyRatio < 0.25 && this.energyStallTime > 2;
-        if (stalled && order.type === 'build' && order.defId !== 'solar') {
-          const spot = this.findBuildSpot('solar', b);
+        if (stalled && order.type === 'build' && order.defId !== this.R.energy) {
+          const spot = this.findBuildSpot(this.R.energy, b);
           if (spot) {
-            b.orders.unshift({ type: 'build', defId: 'solar', x: spot.x, y: spot.y, cx: spot.cx, cy: spot.cy });
+            b.orders.unshift({
+              type: 'build', defId: this.R.energy,
+              x: spot.x, y: spot.y, cx: spot.cx, cy: spot.cy,
+            });
             this.energyStallTime = 0;
           }
         }
@@ -134,16 +141,17 @@ export class AIPlayer {
     const w = this.world;
     const p = this.player;
     const time = w.time;
-    const n = (id) => (counts[id] || 0) + (counts[id + '_wip'] || 0);
+    const n = (id) => (id ? (counts[id] || 0) + (counts[id + '_wip'] || 0) : 0);
     const out = [];
     const add = (id) => { if (id && !out.includes(id)) out.push(id); };
 
     // Never start new work while badly metal-starved; finish what we have.
     if (p.metalRatio < 0.35 && p.metal < 60) return out;
 
-    const mexes = n('mex');
+    const R = this.R;
+    const mexes = n(R.mex);
     const energyIncome = p.energyIncome;
-    const factories = n('botlab') + n('advbotlab');
+    const factories = n(R.factory) + n(R.factoryT2);
     const hasSpot = !!this.findMetalSpot(builder);
 
     // Energy has to stay ahead of what our build power can spend, but not by
@@ -151,30 +159,43 @@ export class AIPlayer {
     const energyTarget = 60 + p.buildPowerUsed * 0.35;
 
     // Running the bank dry stops everything, so energy comes first whenever
-    // we are actually short of it. Solar costs no energy to build.
-    if (p.energy < p.energyStorage * 0.3 || energyIncome < 24) add('solar');
+    // we are actually short of it. The cheap plant costs no energy to build,
+    // which is what makes it the way out of a stall.
+    if (p.energy < p.energyStorage * 0.3 || energyIncome < 24) add(R.energy);
 
-    if (mexes < 4 && hasSpot) add('mex');
-    if (energyIncome < 42 && n('solar') + n('wind') < 6) add(energyIncome < 30 ? 'solar' : 'wind');
-    if (factories === 0) add('botlab');
-    if (hasSpot) add('mex');
-    if (this.energyStallTime > 1.5 || energyIncome < energyTarget) add('solar');
+    if (mexes < 4 && hasSpot) add(R.mex);
+    if (energyIncome < 42 && n(R.energy) + n(R.energyAlt) < 6) {
+      add(energyIncome < 30 ? R.energy : (R.energyAlt || R.energy));
+    }
+    if (factories === 0) add(R.factory);
+    if (hasSpot) add(R.mex);
 
-    // More production capacity as the economy grows: extra labs, and nano
-    // turrets beside them so queued units actually come out quickly.
+    if (this.energyStallTime > 1.5 || energyIncome < energyTarget) {
+      // A big reactor is a mid-game commitment, not an opening move: it costs
+      // as much metal as a dozen tanks, so it only makes sense once there is
+      // a spread of cheap plants already up and the income to absorb the lump.
+      const bigReady = R.energyBig
+        && p.metalIncome > 26
+        && n(R.energy) >= 4
+        && n(R.energyBig) < 1 + Math.floor(p.metalIncome / 45);
+      add(bigReady ? R.energyBig : R.energy);
+    }
+
+    // More production capacity as the economy grows: extra factories, and
+    // assist turrets beside them so queued units actually come out quickly.
     const factoryTarget = Math.min(4, 1 + Math.floor(p.metalIncome / 14));
-    if (factories < factoryTarget) add('botlab');
+    if (factories < factoryTarget) add(R.factory);
     const nanoTarget = Math.min(8, Math.floor(p.metalIncome / 5));
-    if (factories > 0 && n('nano') < nanoTarget) add('nano');
+    if (factories > 0 && n(R.nano) < nanoTarget) add(R.nano);
 
     const wantDefence = time > this.cfg.defenceTime || w.time < this.defendUntil;
-    if (wantDefence && n('llt') < 2 + Math.floor(time / 240)) add('llt');
-    if (time > 180 && n('radar') < 1) add('radar');
-    if (time > this.cfg.techTime && n('advbotlab') === 0 && p.metalIncome > 9) add('advbotlab');
-    if (this.metalWasteTime > 3 && n('mstore') < 2) add('mstore');
-    if (p.energy > p.energyStorage * 0.9 && p.metalIncome < 20 && n('converter') < 6) add('converter');
-    if (n('estore') < 2 && energyIncome > 120) add('estore');
-    if (time > 300 && n('hlt') < 2 && n('advbotlab') > 0) add('hlt');
+    if (wantDefence && n(R.defence) < 2 + Math.floor(time / 240)) add(R.defence);
+    if (time > 180 && n(R.radar) < 1) add(R.radar);
+    if (time > this.cfg.techTime && n(R.factoryT2) === 0 && p.metalIncome > 9) add(R.factoryT2);
+    if (this.metalWasteTime > 3 && n(R.mstore) < 2) add(R.mstore);
+    if (p.energy > p.energyStorage * 0.9 && p.metalIncome < 20 && n(R.converter) < 6) add(R.converter);
+    if (n(R.estore) < 2 && energyIncome > 120) add(R.estore);
+    if (time > 300 && n(R.defenceT2) < 2 && n(R.factoryT2) > 0) add(R.defenceT2);
 
     // Deliberately no catch-all fallback: a builder with nothing worth
     // building will assist the nearest factory instead, which turns spare
@@ -190,8 +211,8 @@ export class AIPlayer {
   findMetalSpot(builder) {
     const w = this.world;
     const map = w.map;
-    const def = getDef('mex', this.player.faction);
-    const maxRange = builder.defId === 'commander' ? 900 : 2400;
+    const def = getDef(this.R.mex, this.player.faction);
+    const maxRange = builder.def.isCommander ? 900 : 2400;
 
     const candidates = [];
     for (const s of map.metalSpots) {
@@ -229,16 +250,17 @@ export class AIPlayer {
     let originY = this.baseY;
     let minR = 110;
     let maxR = 520;
-    if (defId === 'llt' || defId === 'hlt') {
+    const R = this.R;
+    if (defId === R.defence || defId === R.defenceT2) {
       const a = Math.atan2(this.enemyY - this.baseY, this.enemyX - this.baseX);
       originX = this.baseX + Math.cos(a) * 300;
       originY = this.baseY + Math.sin(a) * 300;
       minR = 0;
       maxR = 320;
-    } else if (defId === 'radar') {
+    } else if (defId === R.radar) {
       minR = 200;
       maxR = 600;
-    } else if (defId === 'nano') {
+    } else if (defId === R.nano) {
       // Park nano turrets next to a factory so they speed up unit production.
       const lab = this.world.unitsOf(this.player.index)
         .find((e) => e.def.factory && !e.underConstruction);
@@ -246,7 +268,7 @@ export class AIPlayer {
         originX = lab.x;
         originY = lab.y;
         minR = lab.def.footprintPx * 0.6 + 30;
-        maxR = (getDef('nano', this.player.faction).buildRange || 300) * 0.8;
+        maxR = (getDef(R.nano, this.player.faction).buildRange || 300) * 0.8;
       }
     }
 
@@ -280,18 +302,19 @@ export class AIPlayer {
       // Do not pile up a queue we cannot pay for.
       if (p.metalRatio < 0.4 && queued >= 1) continue;
 
-      const isT2 = f.defId === 'advbotlab';
+      const R = this.R;
+      const isT2 = f.defId === R.factoryT2;
       let pick;
 
       if (isT2) {
-        if (n('adv_conbot') < 2) pick = 'adv_conbot';
-        else pick = this.world.rng() < 0.68 ? 'heavy' : 'siege';
+        if (n(R.builderT2) < 2) pick = R.builderT2;
+        else pick = this.world.rng() < 0.68 ? R.heavy : R.artillery;
       } else {
-        const builderCount = n('conbot') + n('adv_conbot');
-        if (builderCount < this.cfg.builders) pick = 'conbot';
+        const builderCount = n(R.builder) + n(R.builderT2);
+        if (builderCount < this.cfg.builders) pick = R.builder;
         else {
           const r = this.world.rng();
-          pick = r < 0.5 ? 'rifle' : r < 0.82 ? 'rocket' : 'scout';
+          pick = r < 0.5 ? R.assault : r < 0.82 ? R.skirmisher : R.raider;
         }
       }
 
@@ -386,9 +409,14 @@ export class AIPlayer {
       if (w.players[mem.player].team === this.player.team) continue;
       const d = dist(mem.x, mem.y, this.baseX, this.baseY);
       let score = -d;
-      if (mem.defId === 'mex') score += 400;
-      if (mem.defId === 'botlab' || mem.defId === 'advbotlab') score += 900;
-      if (mem.defId === 'llt' || mem.defId === 'hlt') score -= 500;
+      // Judge remembered structures by what they do, not by which faction
+      // built them - the enemy may not share our roster.
+      const memDef = DEFS[mem.defId];
+      if (memDef) {
+        if (memDef.needsMetalSpot) score += 400;
+        if (memDef.factory) score += 900;
+        if (memDef.weapons && memDef.weapons.length) score -= 500;
+      }
       if (score > bestScore) { bestScore = score; best = mem; }
     }
     if (best) return { x: best.x, y: best.y };

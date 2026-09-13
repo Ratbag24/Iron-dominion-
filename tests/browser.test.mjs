@@ -91,8 +91,13 @@ try {
   console.log('-------');
   await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle', timeout: 60000 });
   check('start menu renders', await page.isVisible('#btn-start'));
+  check('all three factions are offered',
+    (await page.$$('#opt-faction .opt')).length === 3);
   await shot('01-menu.png');
 
+  // Play the human faction, so the test exercises the newest roster.
+  await page.click('#opt-faction .opt[data-value="concord"]');
+  await page.click('#opt-enemy .opt[data-value="vanguard"]');
   await page.click('#btn-start');
   await page.waitForFunction(() => window.game && window.game.world && window.game.world.tickCount > 10, null, { timeout: 60000 });
   await page.waitForTimeout(600);
@@ -133,6 +138,7 @@ try {
     c.reset();
     c.centerOn(com.x, com.y);
     return {
+      expectedCommander: g.player.roster.commander,
       before: before && [Math.round(before.x), Math.round(before.y)],
       after: after && [Math.round(after.x), Math.round(after.y)],
       drift: before && after ? Math.round(Math.hypot(before.x - after.x, before.y - after.y)) : -1,
@@ -141,7 +147,8 @@ try {
   });
   check('ground pick lands on the camera target', !!cam.before, JSON.stringify(cam.before));
   check('zoom keeps the point under the cursor', cam.drift >= 0 && cam.drift < 40, `drifted ${cam.drift} units`);
-  check('units can be picked in screen space', cam.picked === 'commander', String(cam.picked));
+  check('units can be picked in screen space', cam.picked === cam.expectedCommander,
+    `picked ${cam.picked}, expected ${cam.expectedCommander}`);
 
   console.log('\nBuilding a base');
   console.log('---------------');
@@ -162,14 +169,16 @@ try {
     };
 
     // Two extractors on real metal spots, then energy, then a factory.
+    // Build through roster slots so the test is faction-agnostic.
+    const R = g.player.roster;
     const spots = map.metalSpots
       .filter((s) => !s.taken)
       .sort((a, b) => Math.hypot(a.x - com.x, a.y - com.y) - Math.hypot(b.x - com.x, b.y - com.y))
       .slice(0, 2);
-    for (const s of spots) place('mex', s.x, s.y);
+    for (const s of spots) place(R.mex, s.x, s.y);
 
-    for (const [dx, dy] of [[130, -110], [-140, -110], [150, 120]]) place('solar', com.x + dx, com.y + dy);
-    place('botlab', com.x - 30, com.y + 190);
+    for (const [dx, dy] of [[130, -110], [-140, -110], [150, 120]]) place(R.energy, com.x + dx, com.y + dy);
+    place(R.factory, com.x - 30, com.y + 190);
     return out;
   });
   check('build orders were accepted', orders.every((o) => o.endsWith(':ok')), orders.join(' '));
@@ -177,50 +186,63 @@ try {
   await page.evaluate(() => window.game.setSpeed(4));
   await page.waitForFunction(() => {
     const g = window.game;
-    return g.world.unitsOf(0, 'botlab').some((b) => !b.underConstruction);
+    return g.world.unitsOf(0, g.player.roster.factory).some((b) => !b.underConstruction);
   }, null, { timeout: 180000 });
 
   const built = await page.evaluate(() => {
     const g = window.game;
+    const R = g.player.roster;
     const own = g.world.unitsOf(0);
     const by = {};
     for (const e of own) if (!e.underConstruction) by[e.defId] = (by[e.defId] || 0) + 1;
-    return { by, metalIncome: +g.player.metalIncome.toFixed(1), energyIncome: +g.player.energyIncome.toFixed(0) };
+    return {
+      faction: g.player.faction, R,
+      mex: by[R.mex] || 0, energy: by[R.energy] || 0, factory: by[R.factory] || 0,
+      metalIncome: +g.player.metalIncome.toFixed(1),
+      energyIncome: +g.player.energyIncome.toFixed(0),
+    };
   });
-  check('extractors finished and produce metal', (built.by.mex || 0) >= 2 && built.metalIncome > 4,
-    `${built.by.mex || 0} extractors, +${built.metalIncome} metal/s`);
-  check('power plants finished', (built.by.solar || 0) >= 3, `+${built.energyIncome} energy/s`);
-  check('factory finished', (built.by.botlab || 0) >= 1);
+  check('extractors finished and produce metal', built.mex >= 2 && built.metalIncome > 4,
+    `${built.faction}: ${built.mex} x ${built.R.mex}, +${built.metalIncome} metal/s`);
+  check('power plants finished', built.energy >= 3, `+${built.energyIncome} energy/s`);
+  check('factory finished', built.factory >= 1, built.R.factory);
   await shot('03-base.png');
 
   console.log('\nProduction and combat');
   console.log('---------------------');
   await page.evaluate(() => {
     const g = window.game;
-    const lab = g.world.unitsOf(0, 'botlab')[0];
+    const R = g.player.roster;
+    const lab = g.world.unitsOf(0, R.factory)[0];
     g.selectSingle(lab, false);
-    g.chooseBuildOption('conbot');
-    for (let i = 0; i < 6; i++) g.chooseBuildOption('rifle');
+    g.chooseBuildOption(R.builder);
+    for (let i = 0; i < 6; i++) g.chooseBuildOption(R.assault);
   });
-  await page.waitForFunction(() => window.game.world.unitsOf(0, 'rifle').length >= 3, null, { timeout: 180000 });
+  await page.waitForFunction(
+    () => window.game.world.unitsOf(0, window.game.player.roster.assault).length >= 3,
+    null, { timeout: 180000 });
 
   const army = await page.evaluate(() => {
     const g = window.game;
-    const rifles = g.world.unitsOf(0, 'rifle');
+    const rifles = g.world.unitsOf(0, g.player.roster.assault);
     // Send them at the enemy and make sure they receive the order.
     for (const r of rifles) { r.orders.length = 0; r.orders.push({ type: 'attackMove', x: g.world.players[1].startX, y: g.world.players[1].startY }); }
     g.selection = rifles.slice();
     for (const r of rifles) r.selected = true;
     g.onSelectionChanged();
-    return { count: rifles.length, ordered: rifles.every((r) => r.orders.length > 0) };
+    return {
+      count: rifles.length,
+      defId: g.player.roster.assault,
+      ordered: rifles.every((r) => r.orders.length > 0),
+    };
   });
-  check('factory produced units', army.count >= 3, army.count + ' assault bots');
+  check('factory produced units', army.count >= 3, `${army.count} x ${army.defId}`);
   check('units accept attack-move orders', army.ordered);
 
   await page.waitForTimeout(4000);
   const moved = await page.evaluate(() => {
     const g = window.game;
-    const rifles = g.world.unitsOf(0, 'rifle');
+    const rifles = g.world.unitsOf(0, g.player.roster.assault);
     return rifles.filter((r) => r.speed > 1).length;
   });
   check('ordered units are actually moving', moved > 0, moved + ' under way');

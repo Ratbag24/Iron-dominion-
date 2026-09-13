@@ -313,6 +313,186 @@ function drawRadar(ctx, e, c, t) {
   ctx.restore();
 }
 
+
+// ------------------------------------------------------- silhouette shapes
+// Definitions may name a `silhouette` instead of getting a bespoke drawing.
+// New factions then get sensible icons without a hand-drawn entry each, and
+// the shapes here are deliberately vehicular so Concord does not read as bots.
+
+function trackedBody(ctx, r, c, len, wide) {
+  ctx.fillStyle = '#31353b';
+  ctx.fillRect(-len * r, -wide * r, len * 2 * r, wide * 0.42 * r);
+  ctx.fillRect(-len * r, wide * 0.58 * r, len * 2 * r, wide * 0.42 * r);
+  poly(ctx, [
+    [len * 0.9 * r, -wide * 0.55 * r], [len * 0.9 * r, wide * 0.55 * r],
+    [-len * 0.95 * r, wide * 0.6 * r], [-len * 0.95 * r, -wide * 0.6 * r],
+  ], c.primary, TRIM, r * 0.13);
+}
+
+function barrel(ctx, r, length, width, fill) {
+  rect(ctx, r * 0.1, -width * 0.5, length, width, fill || HULL_LIGHT, TRIM, r * 0.07);
+}
+
+const SHAPES = {
+  command(ctx, e, c) {
+    const r = e.radius;
+    trackedBody(ctx, r, c, 0.95, 0.85);
+    rect(ctx, -r * 0.5, -r * 0.42, r * 0.8, r * 0.84, c.dark, TRIM, r * 0.1);
+    circle(ctx, r * 0.05, 0, r * 0.3, HULL, TRIM, r * 0.09);
+    barrel(ctx, r, r * 1.15, r * 0.22);
+  },
+  engineer(ctx, e, c) {
+    const r = e.radius;
+    trackedBody(ctx, r, c, 0.85, 0.78);
+    rect(ctx, -r * 0.45, -r * 0.38, r * 0.6, r * 0.76, HULL, TRIM, r * 0.09);
+    barrel(ctx, r, r * 1.0, r * 0.16);
+    circle(ctx, r * 1.15, 0, r * 0.17, '#9fe8ff', TRIM, r * 0.07);
+  },
+  jeep(ctx, e, c) {
+    const r = e.radius;
+    ctx.fillStyle = '#31353b';
+    for (const [x, y] of [[0.55, -0.62], [0.55, 0.62], [-0.55, -0.62], [-0.55, 0.62]]) {
+      circle(ctx, x * r, y * r, r * 0.26, '#31353b', null);
+    }
+    poly(ctx, [
+      [r * 0.95, -r * 0.42], [r * 0.95, r * 0.42],
+      [-r * 0.85, r * 0.5], [-r * 0.85, -r * 0.5],
+    ], c.primary, TRIM, r * 0.13);
+    rect(ctx, -r * 0.4, -r * 0.34, r * 0.5, r * 0.68, c.dark, null);
+    barrel(ctx, r, r * 0.7, r * 0.12);
+  },
+  tank(ctx, e, c) {
+    const r = e.radius;
+    trackedBody(ctx, r, c, 1.0, 0.88);
+    poly(ctx, [
+      [r * 0.62, -r * 0.34], [r * 0.62, r * 0.34],
+      [-r * 0.45, r * 0.42], [-r * 0.45, -r * 0.42],
+    ], c.dark, TRIM, r * 0.1);
+    barrel(ctx, r, r * 1.25, r * 0.18);
+  },
+  heavytank(ctx, e, c) {
+    const r = e.radius;
+    trackedBody(ctx, r, c, 1.05, 1.0);
+    poly(ctx, [
+      [r * 0.68, -r * 0.44], [r * 0.68, r * 0.44],
+      [-r * 0.55, r * 0.5], [-r * 0.55, -r * 0.5],
+    ], c.dark, TRIM, r * 0.11);
+    rect(ctx, r * 0.1, -r * 0.44, r * 1.25, r * 0.17, HULL_LIGHT, TRIM, r * 0.06);
+    rect(ctx, r * 0.1, r * 0.27, r * 1.25, r * 0.17, HULL_LIGHT, TRIM, r * 0.06);
+  },
+  missile(ctx, e, c) {
+    const r = e.radius;
+    trackedBody(ctx, r, c, 0.9, 0.82);
+    rect(ctx, -r * 0.5, -r * 0.5, r * 0.95, r * 1.0, HULL, TRIM, r * 0.09);
+    for (const dy of [-0.3, 0, 0.3]) {
+      poly(ctx, [
+        [r * 0.45, (dy - 0.09) * r], [r * 0.78, dy * r], [r * 0.45, (dy + 0.09) * r],
+      ], '#ff9a5b', null);
+    }
+  },
+  howitzer(ctx, e, c) {
+    const r = e.radius;
+    trackedBody(ctx, r, c, 0.85, 0.8);
+    rect(ctx, -r * 0.45, -r * 0.36, r * 0.6, r * 0.72, c.dark, TRIM, r * 0.09);
+    barrel(ctx, r, r * 1.75, r * 0.16);
+  },
+  derrick(ctx, e, c) {
+    const s = e.def.footprintPx;
+    baseSlab(ctx, s, c);
+    ctx.strokeStyle = HULL;
+    ctx.lineWidth = s * 0.05;
+    ctx.beginPath();
+    for (const [dx, dy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      ctx.moveTo(dx * s * 0.3, dy * s * 0.3);
+      ctx.lineTo(0, 0);
+    }
+    ctx.stroke();
+    rect(ctx, -s * 0.32, -s * 0.05, s * 0.64, s * 0.1, c.light, TRIM, s * 0.03);
+    circle(ctx, 0, 0, s * 0.1, HULL_LIGHT, TRIM, s * 0.03);
+  },
+  generator(ctx, e, c) {
+    const s = e.def.footprintPx;
+    baseSlab(ctx, s, c);
+    rect(ctx, -s * 0.33, -s * 0.28, s * 0.66, s * 0.56, HULL, TRIM, s * 0.04);
+    rect(ctx, -s * 0.33, -s * 0.28, s * 0.66, s * 0.1, c.primary, null);
+    ctx.strokeStyle = '#22262b';
+    ctx.lineWidth = s * 0.035;
+    for (let i = 0; i < 4; i++) {
+      const x = -s * 0.24 + i * s * 0.16;
+      ctx.beginPath(); ctx.moveTo(x, -s * 0.12); ctx.lineTo(x, s * 0.24); ctx.stroke();
+    }
+    circle(ctx, -s * 0.38, -s * 0.2, s * 0.06, HULL_DARK, TRIM, s * 0.02);
+    circle(ctx, -s * 0.38, s * 0.2, s * 0.06, HULL_DARK, TRIM, s * 0.02);
+  },
+  reactor(ctx, e, c) {
+    const s = e.def.footprintPx;
+    baseSlab(ctx, s, c);
+    circle(ctx, 0, 0, s * 0.3, c.primary, TRIM, s * 0.045);
+    circle(ctx, 0, 0, s * 0.17, '#8ef6ff', null);
+    for (const [dx, dy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      circle(ctx, dx * s * 0.34, dy * s * 0.34, s * 0.1, HULL_LIGHT, TRIM, s * 0.03);
+    }
+  },
+  refinery(ctx, e, c) {
+    const s = e.def.footprintPx;
+    baseSlab(ctx, s, c);
+    circle(ctx, -s * 0.14, 0, s * 0.22, HULL, TRIM, s * 0.04);
+    circle(ctx, s * 0.2, s * 0.16, s * 0.14, HULL_LIGHT, TRIM, s * 0.035);
+    circle(ctx, -s * 0.14, 0, s * 0.1, '#ffd76a', null);
+    rect(ctx, -s * 0.3, -s * 0.26, s * 0.5, s * 0.06, HULL_DARK, null);
+  },
+  yard(ctx, e, c) {
+    const s = e.def.footprintPx;
+    const h = s * 0.5;
+    rect(ctx, -h, -h, s, s, '#3a3f47', TRIM, s * 0.04);
+    rect(ctx, -h * 0.9, -h * 0.9, s * 0.9, s * 0.9, '#4d535d', null);
+    rect(ctx, -h * 0.66, h * 0.36, s * 0.66, h * 0.5, '#1b1f24', c.primary, s * 0.035);
+    ctx.strokeStyle = c.primary;
+    ctx.lineWidth = s * 0.05;
+    ctx.beginPath();
+    ctx.moveTo(-h * 0.72, -h * 0.3); ctx.lineTo(h * 0.72, -h * 0.3);
+    ctx.moveTo(-h * 0.72, h * 0.06); ctx.lineTo(h * 0.72, h * 0.06);
+    ctx.stroke();
+  },
+  crane(ctx, e, c) {
+    const s = e.def.footprintPx;
+    baseSlab(ctx, s, c, 0.3);
+    rect(ctx, -s * 0.1, -s * 0.1, s * 0.2, s * 0.2, HULL, TRIM, s * 0.05);
+    rect(ctx, 0, -s * 0.05, s * 0.55, s * 0.1, HULL_LIGHT, TRIM, s * 0.04);
+    circle(ctx, s * 0.55, 0, s * 0.09, '#9fe8ff', TRIM, s * 0.03);
+  },
+  bunker(ctx, e, c) {
+    const s = e.def.footprintPx;
+    baseSlab(ctx, s, c, 0.3);
+    poly(ctx, [
+      [-s * 0.33, -s * 0.33], [s * 0.33, -s * 0.26],
+      [s * 0.33, s * 0.26], [-s * 0.33, s * 0.33],
+    ], '#5b6068', TRIM, s * 0.05);
+    rect(ctx, 0, -s * 0.08, s * 0.5, s * 0.16, HULL_LIGHT, TRIM, s * 0.04);
+  },
+  mast(ctx, e, c) {
+    const s = e.def.footprintPx;
+    baseSlab(ctx, s, c, 0.3);
+    ctx.strokeStyle = HULL;
+    ctx.lineWidth = s * 0.04;
+    ctx.strokeRect(-s * 0.12, -s * 0.12, s * 0.24, s * 0.24);
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.12, -s * 0.12); ctx.lineTo(s * 0.12, s * 0.12);
+    ctx.moveTo(s * 0.12, -s * 0.12); ctx.lineTo(-s * 0.12, s * 0.12);
+    ctx.stroke();
+    poly(ctx, [
+      [s * 0.08, -s * 0.3], [s * 0.42, -s * 0.1],
+      [s * 0.42, s * 0.1], [s * 0.08, s * 0.3],
+    ], c.primary, TRIM, s * 0.035);
+  },
+  tank_store(ctx, e, c) {
+    const s = e.def.footprintPx;
+    baseSlab(ctx, s, c);
+    circle(ctx, 0, -s * 0.17, s * 0.2, '#9aa3ad', TRIM, s * 0.04);
+    circle(ctx, 0, s * 0.17, s * 0.2, '#9aa3ad', TRIM, s * 0.04);
+  },
+};
+
 // --------------------------------------------------------------- dispatch
 
 const DRAW = {
@@ -338,9 +518,14 @@ const DRAW = {
   radar: drawRadar,
 };
 
-/** Draw an entity. Caller has already translated and rotated into place. */
+/**
+ * Draw an entity. Caller has already translated and rotated into place.
+ * A bespoke drawing wins; otherwise the definition's silhouette picks a shape.
+ */
 export function drawEntity(ctx, e, colors, time, world) {
-  const fn = DRAW[e.defId];
+  let key = e.def && e.def.silhouette;
+  if (key === 'tank' && e.isBuilding) key = 'tank_store';
+  const fn = DRAW[e.defId] || SHAPES[key];
   if (fn) fn(ctx, e, colors, time, world);
   else circle(ctx, 0, 0, e.radius, colors.primary, TRIM, 2);
 }

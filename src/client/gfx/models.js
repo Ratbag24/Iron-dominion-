@@ -283,6 +283,286 @@ function radar(s, c) {
   };
 }
 
+
+// ----------------------------------------------------------------- concord
+// Crewed machines: tracks, sloped plate, boxy superstructure. Deliberately
+// heavier and flatter than the bot silhouettes so the two read apart at a
+// glance from directly above.
+
+const TRACK = '#31353b';
+
+/** Two track units either side of a hull, facing +X. */
+function tracks(len, width, height, gauge) {
+  return [
+    box(len, height, width, TRACK, { z: -gauge, y: height * 0.5 }),
+    box(len, height, width, TRACK, { z: gauge, y: height * 0.5 }),
+    box(len * 0.94, height * 0.35, width * 0.5, '#4a4f57', { z: -gauge, y: height * 0.62 }),
+    box(len * 0.94, height * 0.35, width * 0.5, '#4a4f57', { z: gauge, y: height * 0.62 }),
+  ];
+}
+
+function conCommander(r, c) {
+  const parts = tracks(r * 2.3, r * 0.5, r * 0.6, r * 0.72);
+  parts.push(box(r * 2.0, r * 0.42, r * 1.5, c.primary, { y: r * 0.8 }));
+  parts.push(box(r * 1.3, r * 0.5, r * 1.2, c.primary, { x: -r * 0.15, y: r * 1.2 }));
+  parts.push(box(r * 0.5, r * 0.3, r * 1.0, HULL, { x: -r * 0.75, y: r * 1.5 }));
+  parts.push(cylinder(r * 0.07, r * 0.07, r * 1.1, HULL_LIGHT, { x: -r * 0.85, y: r * 2.0 }, 6));
+  parts.push(sphere(r * 0.16, GLOW, { x: -r * 0.85, y: r * 2.55 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      box(r * 0.95, r * 0.42, r * 1.0, c.dark, {}),
+      box(r * 1.5, r * 0.22, r * 0.22, HULL_LIGHT, { x: r * 0.95 }),
+      cylinder(r * 0.17, r * 0.17, r * 0.3, HULL, { x: r * 1.75, rz: Math.PI / 2 }, 8),
+    ]),
+    turretY: r * 1.5,
+  };
+}
+
+function conEngineer(r, c) {
+  const parts = tracks(r * 1.9, r * 0.44, r * 0.5, r * 0.6);
+  parts.push(box(r * 1.6, r * 0.4, r * 1.15, c.primary, { y: r * 0.68 }));
+  parts.push(box(r * 0.7, r * 0.42, r * 0.85, HULL, { x: -r * 0.4, y: r * 1.08 }));
+  parts.push(box(r * 0.3, r * 0.2, r * 0.95, '#2a2e34', { x: r * 0.55, y: r * 0.98 }));
+  return {
+    body: merge(parts),
+    // The jib swings to face whatever it is working on.
+    turret: merge([
+      box(r * 0.4, r * 0.3, r * 0.4, HULL, {}),
+      box(r * 1.5, r * 0.14, r * 0.14, HULL_LIGHT, { x: r * 0.8, rz: -0.22 }),
+      sphere(r * 0.16, GLOW, { x: r * 1.55, y: r * 0.34 }),
+    ]),
+    turretY: r * 1.05,
+  };
+}
+
+function conJeep(r, c) {
+  const parts = [];
+  const wheel = (x, z) => cylinder(r * 0.3, r * 0.3, r * 0.22, TRACK, { x, z, y: r * 0.3, rx: Math.PI / 2 }, 8);
+  parts.push(wheel(r * 0.62, -r * 0.6), wheel(r * 0.62, r * 0.6));
+  parts.push(wheel(-r * 0.62, -r * 0.6), wheel(-r * 0.62, r * 0.6));
+  parts.push(box(r * 1.8, r * 0.34, r * 0.95, c.primary, { y: r * 0.6 }));
+  parts.push(box(r * 0.7, r * 0.3, r * 0.8, c.dark, { x: -r * 0.2, y: r * 0.92 }));
+  parts.push(box(r * 0.5, r * 0.1, r * 0.9, HULL_LIGHT, { x: r * 0.75, y: r * 0.8 }));
+  return {
+    body: merge(parts),
+    turret: merge([box(r * 0.8, r * 0.12, r * 0.12, HULL_LIGHT, { x: r * 0.4 })]),
+    turretY: r * 1.1,
+  };
+}
+
+function conTank(r, c) {
+  const parts = tracks(r * 2.1, r * 0.5, r * 0.56, r * 0.66);
+  // Sloped glacis plate reads as armour from above.
+  parts.push(box(r * 1.75, r * 0.4, r * 1.3, c.primary, { y: r * 0.76 }));
+  parts.push(box(r * 0.6, r * 0.3, r * 1.25, c.primary, { x: r * 0.95, y: r * 0.72, rz: -0.3 }));
+  parts.push(box(r * 0.9, r * 0.12, r * 1.35, HULL_DARK, { x: -r * 0.4, y: r * 0.97 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      box(r * 1.1, r * 0.4, r * 1.0, c.dark, {}),
+      box(r * 0.5, r * 0.28, r * 0.8, c.primary, { x: r * 0.5 }),
+      box(r * 1.5, r * 0.18, r * 0.18, HULL_LIGHT, { x: r * 1.2 }),
+      cylinder(r * 0.14, r * 0.14, r * 0.26, HULL, { x: r * 1.92, rz: Math.PI / 2 }, 8),
+      box(r * 0.5, r * 0.12, r * 0.12, HULL, { x: -r * 0.1, z: r * 0.55, y: r * 0.24 }),
+    ]),
+    turretY: r * 1.0,
+  };
+}
+
+function conMissile(r, c) {
+  const parts = tracks(r * 1.95, r * 0.46, r * 0.52, r * 0.62);
+  parts.push(box(r * 1.6, r * 0.4, r * 1.2, c.primary, { y: r * 0.72 }));
+  parts.push(box(r * 0.6, r * 0.34, r * 0.9, c.dark, { x: r * 0.55, y: r * 1.05 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      box(r * 0.95, r * 0.5, r * 1.15, HULL, { x: -r * 0.2, rz: -0.16 }),
+      ...[-1, 0, 1].map((k) => cone(r * 0.13, r * 0.3, '#ff9a5b', {
+        x: r * 0.42, z: k * r * 0.34, y: r * 0.14, rz: -Math.PI / 2 - 0.16,
+      }, 5)),
+    ]),
+    turretY: r * 1.1,
+  };
+}
+
+function conHeavyTank(r, c) {
+  const parts = tracks(r * 2.4, r * 0.62, r * 0.66, r * 0.8);
+  parts.push(box(r * 2.0, r * 0.5, r * 1.6, c.primary, { y: r * 0.88 }));
+  parts.push(box(r * 0.7, r * 0.36, r * 1.5, c.primary, { x: r * 1.05, y: r * 0.84, rz: -0.28 }));
+  parts.push(box(r * 1.1, r * 0.14, r * 1.7, HULL_DARK, { x: -r * 0.3, y: r * 1.15 }));
+  parts.push(sphere(r * 0.2, GLOW, { x: -r * 0.8, y: r * 1.24 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      box(r * 1.3, r * 0.5, r * 1.3, c.dark, {}),
+      box(r * 1.6, r * 0.2, r * 0.2, HULL_LIGHT, { x: r * 1.3, z: -r * 0.32 }),
+      box(r * 1.6, r * 0.2, r * 0.2, HULL_LIGHT, { x: r * 1.3, z: r * 0.32 }),
+      box(r * 0.4, r * 0.26, r * 0.9, HULL, { x: -r * 0.55 }),
+    ]),
+    turretY: r * 1.2,
+  };
+}
+
+function conHowitzer(r, c) {
+  const parts = tracks(r * 2.0, r * 0.5, r * 0.54, r * 0.68);
+  parts.push(box(r * 1.7, r * 0.38, r * 1.25, c.primary, { y: r * 0.74 }));
+  // Recoil spades dug in at the back.
+  parts.push(box(r * 0.5, r * 0.16, r * 0.3, HULL_DARK, { x: -r * 1.0, z: -r * 0.5, y: r * 0.3, rz: 0.4 }));
+  parts.push(box(r * 0.5, r * 0.16, r * 0.3, HULL_DARK, { x: -r * 1.0, z: r * 0.5, y: r * 0.3, rz: 0.4 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      box(r * 0.9, r * 0.42, r * 1.0, c.dark, {}),
+      box(r * 2.4, r * 0.2, r * 0.2, HULL_LIGHT, { x: r * 1.3, rz: 0.12 }),
+      cylinder(r * 0.19, r * 0.16, r * 0.34, HULL, { x: r * 2.5, y: r * 0.3, rz: Math.PI / 2 }, 8),
+    ]),
+    turretY: r * 1.02,
+  };
+}
+
+function conDerrick(s, c) {
+  const parts = foundation(s, c);
+  // Four legs meeting at a head, with a walking beam that rocks as it pumps.
+  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    parts.push(box(s * 0.09, s * 0.95, s * 0.09, HULL, {
+      x: dx * s * 0.21, z: dz * s * 0.21, y: s * 0.5, rx: dz * 0.16, rz: -dx * 0.16,
+    }));
+  }
+  parts.push(box(s * 0.3, s * 0.12, s * 0.3, HULL_LIGHT, { y: s * 1.0 }));
+  return {
+    body: merge(parts),
+    spinner: merge([
+      box(s * 0.8, s * 0.1, s * 0.12, c.light, {}),
+      box(s * 0.14, s * 0.3, s * 0.14, HULL_DARK, { x: s * 0.36, y: -s * 0.18 }),
+    ]),
+    spinnerAxis: 'x',
+    spinnerY: s * 1.08,
+    spinSpeed: 1.5,
+  };
+}
+
+function conDiesel(s, c) {
+  const parts = foundation(s, c);
+  parts.push(box(s * 0.78, s * 0.46, s * 0.66, HULL, { y: s * 0.33 }));
+  parts.push(box(s * 0.8, s * 0.1, s * 0.7, c.primary, { y: s * 0.58 }));
+  // Radiator grille and exhaust stacks.
+  parts.push(box(s * 0.06, s * 0.3, s * 0.56, '#22262b', { x: s * 0.4, y: s * 0.33 }));
+  for (const dz of [-0.22, 0.22]) {
+    parts.push(cylinder(s * 0.07, s * 0.08, s * 0.5, HULL_DARK, { x: -s * 0.28, z: dz * s, y: s * 0.78 }, 6));
+  }
+  return { body: merge(parts) };
+}
+
+function conFusion(s, c) {
+  const parts = foundation(s, c, 3);
+  parts.push(cylinder(s * 0.3, s * 0.36, s * 0.4, HULL, { y: s * 0.28 }, 12));
+  parts.push(sphere(s * 0.3, c.primary, { y: s * 0.58 }, 12));
+  parts.push(sphere(s * 0.19, GLOW, { y: s * 0.58 }, 10));
+  // Cooling towers at the corners.
+  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    parts.push(cylinder(s * 0.1, s * 0.14, s * 0.54, HULL_LIGHT, {
+      x: dx * s * 0.34, z: dz * s * 0.34, y: s * 0.32,
+    }, 8));
+  }
+  parts.push(box(s * 0.86, s * 0.06, s * 0.1, c.dark, { y: s * 0.1 }));
+  parts.push(box(s * 0.1, s * 0.06, s * 0.86, c.dark, { y: s * 0.1 }));
+  return { body: merge(parts) };
+}
+
+function conRefinery(s, c) {
+  const parts = foundation(s, c);
+  parts.push(cylinder(s * 0.22, s * 0.24, s * 0.7, HULL, { x: -s * 0.16, y: s * 0.42 }, 10));
+  parts.push(cylinder(s * 0.15, s * 0.16, s * 0.5, HULL_LIGHT, { x: s * 0.22, z: s * 0.18, y: s * 0.32 }, 8));
+  parts.push(cylinder(s * 0.12, s * 0.12, s * 0.1, '#ffd76a', { x: -s * 0.16, y: s * 0.8 }, 10));
+  parts.push(box(s * 0.5, s * 0.07, s * 0.07, HULL_DARK, { x: s * 0.04, z: -s * 0.2, y: s * 0.5 }));
+  return { body: merge(parts) };
+}
+
+function conTankStore(s, c, metalKind) {
+  const parts = foundation(s, c);
+  const tint = metalKind ? '#9aa3ad' : '#d8b24a';
+  parts.push(cylinder(s * 0.3, s * 0.3, s * 0.62, tint, { z: -s * 0.18, y: s * 0.44 }, 12));
+  parts.push(cylinder(s * 0.3, s * 0.3, s * 0.62, tint, { z: s * 0.18, y: s * 0.44 }, 12));
+  parts.push(box(s * 0.06, s * 0.06, s * 0.4, HULL_DARK, { y: s * 0.7 }));
+  return { body: merge(parts) };
+}
+
+function conYard(s, c, advanced) {
+  const h = advanced ? 3.0 : 2.6;
+  const parts = foundation(s, c, h);
+  const wallH = s * (advanced ? 0.42 : 0.36);
+  // A shed with a roller door on +Z, the side vehicles drive out of.
+  parts.push(box(s * 0.9, wallH, s * 0.1, c.primary, { z: -s * 0.4, y: wallH * 0.5 + h }));
+  parts.push(box(s * 0.1, wallH, s * 0.8, c.primary, { x: s * 0.4, y: wallH * 0.5 + h }));
+  parts.push(box(s * 0.1, wallH, s * 0.8, c.primary, { x: -s * 0.4, y: wallH * 0.5 + h }));
+  parts.push(box(s * 0.9, s * 0.08, s * 0.9, HULL_DARK, { y: wallH + h }));
+  parts.push(box(s * 0.66, wallH * 0.7, s * 0.06, '#1b1f24', { z: s * 0.4, y: wallH * 0.35 + h }));
+  parts.push(box(s * 0.9, s * 0.07, s * 0.12, c.light, { z: s * 0.4, y: wallH + h }));
+  // Hardstanding apron the vehicles roll onto.
+  parts.push(box(s * 0.7, s * 0.04, s * 0.3, '#2c3036', { z: s * 0.62, y: h }));
+  if (advanced) {
+    parts.push(box(s * 0.5, s * 0.14, s * 0.5, c.light, { y: wallH + h + s * 0.08 }));
+    parts.push(cylinder(s * 0.08, s * 0.1, s * 0.5, HULL_LIGHT, { x: s * 0.3, z: -s * 0.3, y: wallH + h + s * 0.28 }, 8));
+    parts.push(sphere(s * 0.1, GLOW, { y: wallH + h + s * 0.2 }));
+  }
+  return { body: merge(parts) };
+}
+
+function conCrane(s, c) {
+  const parts = foundation(s, c, 2);
+  parts.push(box(s * 0.16, s * 0.9, s * 0.16, HULL, { y: s * 0.48 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      box(s * 0.24, s * 0.16, s * 0.24, HULL_LIGHT, {}),
+      box(s * 0.8, s * 0.08, s * 0.08, HULL_LIGHT, { x: s * 0.4, rz: -0.14 }),
+      box(s * 0.24, s * 0.08, s * 0.08, HULL_DARK, { x: -s * 0.16 }),
+      sphere(s * 0.1, GLOW, { x: s * 0.78, y: s * 0.1 }),
+    ]),
+    turretY: s * 0.98,
+  };
+}
+
+function conBunker(s, c, big) {
+  const parts = foundation(s, c, big ? 2.4 : 2.0);
+  // Sloped concrete casemate rather than an open turret ring.
+  parts.push(box(s * 0.7, s * (big ? 0.34 : 0.28), s * 0.7, '#5b6068', { y: s * (big ? 0.2 : 0.17) }));
+  parts.push(box(s * 0.56, s * 0.1, s * 0.56, c.primary, { y: s * (big ? 0.4 : 0.33) }));
+  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    parts.push(box(s * 0.12, s * 0.16, s * 0.12, '#494e56', { x: dx * s * 0.38, z: dz * s * 0.38, y: s * 0.1 }));
+  }
+  return {
+    body: merge(parts),
+    turret: merge([
+      box(s * 0.36, s * 0.26, s * 0.5, HULL, {}),
+      box(s * (big ? 0.9 : 0.75), s * (big ? 0.17 : 0.12), s * (big ? 0.17 : 0.12), HULL_LIGHT, { x: s * (big ? 0.6 : 0.5) }),
+      ...(big ? [cylinder(s * 0.13, s * 0.11, s * 0.24, HULL, { x: s * 1.06, rz: Math.PI / 2 }, 8)] : []),
+    ]),
+    turretY: s * (big ? 0.46 : 0.38),
+  };
+}
+
+function conRadar(s, c) {
+  const parts = foundation(s, c, 2);
+  // Lattice mast rather than a single pole.
+  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    parts.push(box(s * 0.05, s * 0.85, s * 0.05, HULL, { x: dx * s * 0.11, z: dz * s * 0.11, y: s * 0.45 }));
+  }
+  parts.push(box(s * 0.3, s * 0.05, s * 0.3, HULL_LIGHT, { y: s * 0.5 }));
+  parts.push(box(s * 0.3, s * 0.05, s * 0.3, HULL_LIGHT, { y: s * 0.86 }));
+  return {
+    body: merge(parts),
+    spinner: merge([
+      box(s * 0.1, s * 0.44, s * 0.62, c.primary, { rz: 0.3 }),
+      box(s * 0.16, s * 0.06, s * 0.06, HULL_LIGHT, { x: -s * 0.12 }),
+    ]),
+    spinnerAxis: 'y',
+    spinnerY: s * 1.02,
+    spinSpeed: 1.3,
+  };
+}
+
 // ---------------------------------------------------------------- dispatch
 
 const BUILDERS = {
@@ -306,6 +586,27 @@ const BUILDERS = {
   llt: (d, c) => turret(d.footprintPx, c, false),
   hlt: (d, c) => turret(d.footprintPx, c, true),
   radar: (d, c) => radar(d.footprintPx, c),
+
+  con_commander: (d, c) => conCommander(d.radius, c),
+  con_engineer: (d, c) => conEngineer(d.radius, c),
+  con_engineer2: (d, c) => conEngineer(d.radius, c),
+  con_jeep: (d, c) => conJeep(d.radius, c),
+  con_tank: (d, c) => conTank(d.radius, c),
+  con_missile: (d, c) => conMissile(d.radius, c),
+  con_heavytank: (d, c) => conHeavyTank(d.radius, c),
+  con_howitzer: (d, c) => conHowitzer(d.radius, c),
+  con_derrick: (d, c) => conDerrick(d.footprintPx, c),
+  con_diesel: (d, c) => conDiesel(d.footprintPx, c),
+  con_fusion: (d, c) => conFusion(d.footprintPx, c),
+  con_refinery: (d, c) => conRefinery(d.footprintPx, c),
+  con_silo: (d, c) => conTankStore(d.footprintPx, c, true),
+  con_battery: (d, c) => conTankStore(d.footprintPx, c, false),
+  con_yard: (d, c) => conYard(d.footprintPx, c, false),
+  con_works: (d, c) => conYard(d.footprintPx, c, true),
+  con_crane: (d, c) => conCrane(d.footprintPx, c),
+  con_pillbox: (d, c) => conBunker(d.footprintPx, c, false),
+  con_bastion: (d, c) => conBunker(d.footprintPx, c, true),
+  con_radar: (d, c) => conRadar(d.footprintPx, c),
 };
 
 const cache = new Map();

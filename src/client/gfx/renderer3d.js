@@ -331,7 +331,7 @@ export class Renderer3D {
         }
         if (model.spinner) {
           const sp = this._poolFor(e.defId + '|' + e.player + '|s', model.spinner, this.bodyMaterial);
-          const spin = this.time * model.spinSpeed * (e.defId === 'wind' ? 0.4 + world.windStrength * 2 : 1);
+          const spin = this.time * model.spinSpeed * (e.def.windPowered ? 0.4 + world.windStrength * 2 : 1);
           if (model.spinnerAxis === 'x') {
             this._pos.set(e.x + Math.cos(rotY) * model.spinnerX, ground + model.spinnerY, e.y - Math.sin(rotY) * model.spinnerX);
             this._euler.set(spin, rotY, 0, 'YXZ');
