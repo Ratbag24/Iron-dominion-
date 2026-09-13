@@ -1,0 +1,13 @@
+{
+  "name": "iron-dominion",
+  "version": "0.1.0",
+  "description": "Iron Dominion - a real-time strategy game in the Beyond All Reason tradition: dual-resource economy, nanolathe construction, reclaim, tech tiers and large-scale combat.",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "test": "node tests/headless.test.mjs",
+    "build": "node tools/build.mjs"
+  },
+  "license": "MIT",
+  "private": true
+}
