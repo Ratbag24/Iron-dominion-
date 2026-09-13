@@ -1,0 +1,67 @@
+# Builds the single-file game and publishes it to GitHub Pages.
+#
+# The simulation tests run first, so a broken build never reaches the live
+# site. Pages is switched on automatically by configure-pages the first time
+# this runs, so no repository settings need changing by hand.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - claude/beyond-all-reason-copy-bll8px
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run simulation tests
+        run: npm run test:sim
+
+      - name: Build the single-file game
+        run: npm run build
+
+      - name: Assemble the site
+        run: |
+          mkdir -p _site
+          cp dist/iron-dominion.html _site/index.html
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
