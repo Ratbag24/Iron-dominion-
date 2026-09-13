@@ -15,8 +15,29 @@ being rebuilt as a native game.
 | Unit and faction data shared with the reference build | done |
 | Seeded RNG and value noise, bit-exact with the reference | done |
 | Map generation, verified identical to the reference | done |
+| Terrain mesh, water, sky, lighting, team-tinted models on the ground | done |
 | Pathfinding, world tick, economy, combat, AI | to do |
-| Rendering, camera, HUD | to do |
+| Camera controls, selection, HUD | to do |
+
+## Running it
+
+Open the project and press play, or from the command line:
+
+```sh
+godot --path godot
+```
+
+The scene generates a map, builds the ground from it and stands a line-up of
+both factions on it. The simulation is still being ported, so nothing moves
+yet — this exists to prove the map generator, the exported assets and the
+render path line up.
+
+To capture a frame without a display (CI, or a headless box):
+
+```sh
+xvfb-run -a godot --path godot --rendering-method gl_compatibility \
+  --rendering-driver opengl3 -- --shot=/tmp/shot.png
+```
 
 ## Editing models
 
