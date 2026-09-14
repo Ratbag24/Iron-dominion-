@@ -80,6 +80,7 @@ func _init(opts: Dictionary = {}) -> void:
 	for i in range(specs.size()):
 		players.append(IdPlayer.new(i, specs[i]))
 		fog.append(IdFogMap.new(map))
+	_assign_colours()
 
 	# Start positions must exist before the AI reads them.
 	_spawn_start(opts)
@@ -87,6 +88,22 @@ func _init(opts: Dictionary = {}) -> void:
 	ais.resize(players.size())
 	for i in range(players.size()):
 		ais[i] = IdAI.new(self, players[i]) if players[i].is_ai else null
+
+
+## Give each player a colour from its team's family, so allies read as allies.
+## Only the world knows how the teams fell out, so only the world can do this.
+func _assign_colours() -> void:
+	var seen: Dictionary = {}
+	var order: Array = []
+	for p in players:
+		if not seen.has(p.team):
+			seen[p.team] = order.size()
+			order.append(p.team)
+	var slots: Dictionary = {}
+	for p in players:
+		var slot: int = int(slots.get(p.team, 0))
+		slots[p.team] = slot + 1
+		p.color = IdPlayer.colour_for(int(seen[p.team]), slot)
 
 
 func _spawn_start(opts: Dictionary) -> void:

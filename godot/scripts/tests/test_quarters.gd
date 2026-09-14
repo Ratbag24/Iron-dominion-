@@ -114,6 +114,11 @@ func _init() -> void:
 		"the world built a four-start map")
 	check(world.entities.size() == 4, "four commanders spawned",
 		"%d" % world.entities.size())
+	var ffa_colours: Array = []
+	for p in world.players:
+		ffa_colours.append(p.color["name"])
+	check(ffa_colours.size() == 4 and ffa_colours == ["Blue", "Red", "Green", "Violet"],
+		"a free-for-all keeps four distinct colours", str(ffa_colours))
 
 	var seen: Dictionary = {}
 	for e in world.entities:
@@ -152,6 +157,16 @@ func _init() -> void:
 		"the first two are allies")
 	check(allied.players[0].team != allied.players[2].team,
 		"and the other two are not")
+
+	print("  colours: %s" % str(
+		[allied.players[0].color["name"], allied.players[1].color["name"],
+		 allied.players[2].color["name"], allied.players[3].color["name"]]
+	))
+	check(allied.players[0].color["primary"] != allied.players[1].color["primary"],
+		"allies are told apart from each other")
+	check(allied.players[0].color != allied.players[2].color
+			and allied.players[1].color != allied.players[3].color,
+		"and from the other team")
 
 	# Allies must not shoot each other, and must share what they can see.
 	var a: IdEntity = allied.get_entity(allied.players[0].commander_id)

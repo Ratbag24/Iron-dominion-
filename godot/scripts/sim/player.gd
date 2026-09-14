@@ -4,12 +4,36 @@ extends RefCounted
 ## One side in a match: resources, income rates, and the stall ratios that
 ## throttle everything spending them.
 
-const COLORS: Array[Dictionary] = [
-	{"primary": "#4aa3ff", "dark": "#1b4f86", "light": "#a8d3ff", "name": "Blue"},
-	{"primary": "#ff5a4a", "dark": "#8c2a1e", "light": "#ffb2a8", "name": "Red"},
-	{"primary": "#5ddc7a", "dark": "#1f6b36", "light": "#b6f2c6", "name": "Green"},
-	{"primary": "#d98cff", "dark": "#6a2f8c", "light": "#ecc6ff", "name": "Violet"},
+## Colours are grouped by team, not handed out in a flat row.
+##
+## A player has to be able to tell an ally from an enemy at a glance, and two
+## allies apart when they need to. Each team takes a family, and the players on
+## it take shades within that family - so on a team map you and your ally are
+## both blue, and the other side is both red.
+const TEAM_COLORS: Array = [
+	[
+		{"primary": "#4aa3ff", "dark": "#1b4f86", "light": "#a8d3ff", "name": "Blue"},
+		{"primary": "#49e2e8", "dark": "#18656b", "light": "#a9f3f6", "name": "Cyan"},
+	],
+	[
+		{"primary": "#ff5a4a", "dark": "#8c2a1e", "light": "#ffb2a8", "name": "Red"},
+		{"primary": "#ffab3d", "dark": "#8a5410", "light": "#ffd9a3", "name": "Amber"},
+	],
+	[
+		{"primary": "#5ddc7a", "dark": "#1f6b36", "light": "#b6f2c6", "name": "Green"},
+		{"primary": "#b7e34a", "dark": "#5c7419", "light": "#e2f5a8", "name": "Lime"},
+	],
+	[
+		{"primary": "#d98cff", "dark": "#6a2f8c", "light": "#ecc6ff", "name": "Violet"},
+		{"primary": "#ff7ec4", "dark": "#8c2a60", "light": "#ffc2e2", "name": "Rose"},
+	],
 ]
+
+
+## The colour for the `slot`-th player on `team_index`.
+static func colour_for(team_index: int, slot: int) -> Dictionary:
+	var family: Array = TEAM_COLORS[team_index % TEAM_COLORS.size()]
+	return family[slot % family.size()]
 
 var index: int = 0
 var name: String = ""
@@ -65,7 +89,9 @@ func _init(player_index: int, opts: Dictionary) -> void:
 	team = int(opts.get("team", player_index))
 	is_ai = bool(opts.get("is_ai", false))
 	ai_level = opts.get("ai_level", "normal")
-	color = COLORS[player_index % COLORS.size()]
+	# A provisional colour, in case nothing ever assigns a proper one; the
+	# world replaces it once it knows how the teams fell out.
+	color = colour_for(team, 0)
 
 
 func faction_def() -> Dictionary:
