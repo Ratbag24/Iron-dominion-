@@ -104,12 +104,48 @@
         "heavy": "con_heavytank",
         "artillery": "con_howitzer"
       }
+    },
+    "blight": {
+      "id": "blight",
+      "name": "Blight",
+      "blurb": "A hive. Thick-skinned and short-ranged: it walks through your fire, and its teeth keep what they kill.",
+      "mods": {
+        "hp": 1.34,
+        "speed": 1.12,
+        "damage": 1,
+        "range": 0.95,
+        "cost": 1
+      },
+      "roster": {
+        "commander": "bl_hive",
+        "builder": "bl_tender",
+        "builderT2": "bl_tender2",
+        "factory": "bl_pit",
+        "factoryT2": "bl_deeppit",
+        "mex": "bl_tap",
+        "energy": "bl_vent",
+        "energyAlt": null,
+        "energyBig": "bl_bloom",
+        "converter": "bl_gut",
+        "mstore": "bl_sac",
+        "estore": "bl_bladder",
+        "nano": "bl_spire",
+        "defence": "bl_thorn",
+        "defenceT2": "bl_maw",
+        "radar": "bl_antenna",
+        "raider": "bl_skitter",
+        "assault": "bl_husk",
+        "skirmisher": "bl_spitter",
+        "heavy": "bl_brute",
+        "artillery": "bl_lobber"
+      }
     }
   },
   "order": [
     "vanguard",
     "legion",
-    "concord"
+    "concord",
+    "blight"
   ],
   "hotkeys": {
     "mex": "Q",
@@ -149,6 +185,25 @@
     "con_missile": "Y",
     "con_engineer2": "Q",
     "con_heavytank": "T",
-    "con_howitzer": "Y"
+    "con_howitzer": "Y",
+    "bl_tap": "Q",
+    "bl_vent": "W",
+    "bl_bloom": "T",
+    "bl_gut": "Y",
+    "bl_bladder": "U",
+    "bl_sac": "I",
+    "bl_pit": "Z",
+    "bl_deeppit": "X",
+    "bl_spire": "C",
+    "bl_thorn": "V",
+    "bl_maw": "B",
+    "bl_antenna": "N",
+    "bl_tender": "Q",
+    "bl_skitter": "W",
+    "bl_husk": "T",
+    "bl_spitter": "Y",
+    "bl_tender2": "Q",
+    "bl_brute": "T",
+    "bl_lobber": "Y"
   }
 }

@@ -19,12 +19,22 @@ import { makeRng, makeNoise2D, fbm } from '../src/core/rng.js';
 import { GameMap } from '../src/sim/map.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const OUT = join(ROOT, 'assets/data');
-await mkdir(OUT, { recursive: true });
+
+// Both builds need these files, and Godot can only read what is inside its own
+// project directory, so they are written twice. Writing only the first copy is
+// how the two quietly drift apart - which is the thing this tool exists to
+// prevent.
+const OUTPUTS = [join(ROOT, 'assets/data'), join(ROOT, 'godot/data')];
+for (const dir of OUTPUTS) await mkdir(dir, { recursive: true });
+
+/** Write one file into every output directory. */
+async function emit(name, text) {
+  for (const dir of OUTPUTS) await writeFile(join(dir, name), text);
+}
 
 // --------------------------------------------------------------- definitions
-await writeFile(join(OUT, 'units.json'), JSON.stringify(DEFS, null, 2));
-await writeFile(join(OUT, 'factions.json'), JSON.stringify(
+await emit('units.json', JSON.stringify(DEFS, null, 2));
+await emit('factions.json', JSON.stringify(
   { factions: FACTIONS, order: FACTION_IDS, hotkeys: BUILD_HOTKEYS }, null, 2));
 
 // ------------------------------------------------------------------ fixture
@@ -83,9 +93,10 @@ for (const seed of [1, 7, 42]) {
   };
 }
 
-await writeFile(join(OUT, 'parity-fixture.json'), JSON.stringify(fixture, null, 2));
+await emit('parity-fixture.json', JSON.stringify(fixture, null, 2));
 
 console.log(`units.json          ${Object.keys(DEFS).length} definitions`);
 console.log(`factions.json       ${FACTION_IDS.length} factions`);
 console.log(`parity-fixture.json ${Object.keys(fixture.rng).length} rng seeds, ` +
   `${Object.keys(fixture.defs).length} resolved defs, ${Object.keys(fixture.maps).length} maps`);
+console.log(`written to          ${OUTPUTS.map((d) => d.replace(ROOT, '')).join(', ')}`);

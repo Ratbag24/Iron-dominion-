@@ -16,6 +16,9 @@ import { updateProjectiles } from './projectiles.js';
 import { FogMap } from './fog.js';
 import { AIPlayer } from './ai.js';
 
+/** How much health a converted unit keeps. */
+export const CONVERT_HP = 0.4;
+
 export const SIM_HZ = 30;
 export const SIM_DT = 1 / SIM_HZ;
 
@@ -212,7 +215,9 @@ export class World {
 
     this.entities.push(e);
     this.byId.set(e.id, e);
-    if (opts.complete !== false) player.stats.built++;
+    // A converted unit was not built, and counting it as built would make the
+    // hive's production look like it out-produced everyone.
+    if (opts.complete !== false && !opts.converted) player.stats.built++;
     return e;
   }
 
@@ -231,7 +236,11 @@ export class World {
     if (this.effects.length > 900) this.effects.splice(0, this.effects.length - 900);
   }
 
-  damage(target, amount, attacker) {
+  /**
+   * `infect` is the chance, in [0, 1], that a killing blow takes the unit
+   * rather than leaving a wreck. It rides in from the weapon that fired.
+   */
+  damage(target, amount, attacker, infect = 0) {
     if (!target.alive || amount <= 0) return;
     // Things still being built take extra damage, as in BAR: nanoframes are
     // fragile, which is what makes raiding construction worthwhile.
@@ -239,10 +248,10 @@ export class World {
     target.hp -= amount;
     target.lastDamageTime = this.time;
     if (attacker) target.lastAttackerId = attacker.id;
-    if (target.hp <= 0) this.kill(target, attacker);
+    if (target.hp <= 0) this.kill(target, attacker, infect);
   }
 
-  kill(e, killer) {
+  kill(e, killer, infect = 0) {
     if (!e.alive) return;
     e.alive = false;
     e.hp = 0;
@@ -250,6 +259,8 @@ export class World {
     const player = this.players[e.player];
     player.stats.lost++;
     if (killer) this.players[killer.player].stats.killed++;
+
+    if (this._convert(e, killer, infect)) return;
 
     if (e.isBuilding) {
       this.map.setBlocked(e.cx, e.cy, e.def.footprint, 0);
@@ -291,6 +302,37 @@ export class World {
       }
       player.defeated = true;
     }
+  }
+
+  /**
+   * Take a killed unit for the killer's side instead of leaving a wreck.
+   *
+   * Only mobile units, and never a commander: a hive that could eat the thing
+   * the match is decided by would decide it on one lucky bite. The unit keeps
+   * its own definition - a captured tank is still a tank, and still shoots
+   * what a tank shoots - which also means it does not inherit the teeth that
+   * took it. Conversion stops with the unit that was converted.
+   */
+  _convert(e, killer, infect) {
+    if (!(infect > 0) || !killer || !killer.alive) return false;
+    if (e.isBuilding || e.def.isCommander || !e.def.speed) return false;
+    if (!this.isEnemy(e, killer)) return false;
+    if (this.rng() >= infect) return false;
+
+    const taken = this.spawn(e.defId, killer.player, e.x, e.y, {
+      complete: true, heading: e.heading, converted: true,
+    });
+    // It comes over wounded. Taking a unit whole would make trading into the
+    // hive strictly worse than not fighting at all.
+    taken.hp = Math.max(1, taken.maxHp * CONVERT_HP);
+    this.players[killer.player].stats.converted =
+      (this.players[killer.player].stats.converted || 0) + 1;
+
+    this.addEffect({
+      type: 'convert', x: e.x, y: e.y, player: killer.player,
+      size: e.radius * 3.2,
+    });
+    return true;
   }
 
   /** Every living entity of a player, optionally filtered by definition id. */

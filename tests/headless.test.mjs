@@ -416,6 +416,65 @@ section('Matches reach a conclusion');
     FACTION_IDS.every((f) => wins[f] / games[f] < 0.85), table);
 }
 
+// ------------------------------------------------------- Blight conversion
+section('Blight conversion');
+{
+  const world = new World({ seed: 909, players: [
+    { name: 'Hive', faction: 'blight' },
+    { name: 'Foe', faction: 'concord' },
+  ]});
+  const hive = world.get(world.players[0].commanderId);
+
+  const husk = world.spawn('bl_husk', 0, 900, 900, { complete: true });
+  check('a hive weapon carries an infection chance',
+    husk.weapons[0].def.infects > 0, `${husk.weapons[0].def.infects}`);
+  check('a captured unit does not inherit the teeth',
+    !(getDef('con_tank', 'blight').weapons[0].infects > 0),
+    'a taken tank still shoots what a tank shoots');
+
+  // A killing blow that always converts, so the rule is tested and not the dice.
+  const tank = world.spawn('con_tank', 1, 920, 900, { complete: true });
+  world.kill(tank, husk, 1);
+  const taken = world.unitsOf(0, 'con_tank');
+  check('a killed unit changes hands', taken.length === 1);
+  check('it comes over wounded', taken.length === 1
+    && taken[0].hp < taken[0].maxHp * 0.5, taken.length
+      ? `${Math.round(taken[0].hp)} of ${taken[0].maxHp}` : 'nothing taken');
+  check('it leaves no wreck behind', world.wrecks.length === 0);
+  check('it counts as converted, not as built',
+    world.players[0].stats.converted === 1);
+
+  // The things that must never be taken.
+  const before = world.unitsOf(0).length;
+  const foeCommander = world.get(world.players[1].commanderId);
+  world.kill(foeCommander, husk, 1);
+  check('a commander is never taken', world.unitsOf(0).length === before,
+    'or one lucky bite would decide the match');
+
+  const pit = world.spawn('con_pillbox', 1, 1200, 900, { complete: true });
+  world.kill(pit, husk, 1);
+  check('a building is never taken',
+    world.unitsOf(0, 'con_pillbox').length === 0);
+
+  const friend = world.spawn('bl_skitter', 0, 940, 900, { complete: true });
+  const friendlyBefore = world.unitsOf(0).length;
+  world.kill(friend, hive, 1);
+  check('your own dead are not taken',
+    world.unitsOf(0).length === friendlyBefore - 1);
+
+  // And a normal weapon takes nothing at all.
+  const world2 = new World({ seed: 909, players: [
+    { name: 'A', faction: 'vanguard' },
+    { name: 'B', faction: 'concord' },
+  ]});
+  const rifleBot = world2.spawn('rifle', 0, 900, 900, { complete: true });
+  const victim = world2.spawn('con_tank', 1, 920, 900, { complete: true });
+  world2.kill(victim, rifleBot, rifleBot.weapons[0].def.infects || 0);
+  check('a faction without teeth converts nothing',
+    world2.unitsOf(0, 'con_tank').length === 0 && world2.wrecks.length === 1,
+    'and leaves a wreck as usual');
+}
+
 // ---------------------------------------------------------------- summary
 section('Summary');
 console.log(`  ${checks - failures}/${checks} checks passed`);

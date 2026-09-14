@@ -25,6 +25,10 @@ export function spawnProjectile(world, shooter, weapon, target, aimX, aimY) {
     player: shooter.player,
     ownerId: shooter.id,
     targetId: target ? target.id : 0,
+    // Carried from the weapon so the killing blow knows whether it takes what
+    // it kills; the shooter alone cannot say, since a unit may hold more than
+    // one weapon.
+    infects: w.infects || 0,
     life: clamp((w.range * 1.6) / w.speed, 0.25, 6),
     z: 0,
     trail: w.kind === 'laser' ? 22 : 0,
@@ -141,7 +145,7 @@ function detonate(world, p, buf, directHit) {
   const shooter = world.get(p.ownerId);
 
   if (directHit) {
-    world.damage(directHit, p.damage, shooter);
+    world.damage(directHit, p.damage, shooter, p.infects);
   }
 
   if (p.aoe > 0) {
@@ -152,6 +156,8 @@ function detonate(world, p, buf, directHit) {
       const d = dist(p.x, p.y, e.x, e.y) - e.radius;
       if (d > p.aoe) continue;
       const falloff = 1 - clamp(d / p.aoe, 0, 1);
+      // Splash does not convert: a shell that takes a whole group would make
+      // the hive's artillery the only weapon worth building.
       world.damage(e, p.damage * falloff * 0.85, shooter);
     }
     world.addEffect({ type: 'explosion', x: p.x, y: p.y, size: p.aoe * 1.15, color: p.color });
