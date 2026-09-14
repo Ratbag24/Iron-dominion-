@@ -44,3 +44,52 @@ jobs:
 
       - name: Run every suite
         run: GODOT=~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 tools/godot-test.sh
+
+  # The web export is where a threading assumption goes wrong quietly: a build
+  # without threads simply never runs what Thread.start is given, and the only
+  # symptom is a loading screen that waits forever. So the export is built and
+  # played through a browser, from a server with no cross-origin isolation
+  # headers - which is what a static host actually serves.
+  web:
+    runs-on: ubuntu-latest
+    env:
+      GODOT_VERSION: 4.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Cache the engine and its export templates
+        id: engine-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-web-${{ env.GODOT_VERSION }}-linux
+
+      - name: Fetch Godot and the export templates
+        if: steps.engine-cache.outputs.cache-hit != 'true'
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          name="Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          mkdir -p ~/godot
+          curl -fsSL "$base/${name}.zip" -o /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d ~/godot
+          chmod +x ~/godot/"$name"
+
+          curl -fsSL "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o /tmp/templates.tpz
+          unzip -q /tmp/templates.tpz -d /tmp/tpl
+          mkdir -p ~/.local/share/godot/export_templates
+          mv /tmp/tpl/templates ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+
+      - name: Build the web export
+        run: GODOT=~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 tools/godot-export.sh web
+
+      - name: Install a browser
+        run: npm install --no-save --no-audit --no-fund playwright && npx playwright install --with-deps chromium
+
+      - name: Play it in a browser
+        run: node tests/web.test.mjs
