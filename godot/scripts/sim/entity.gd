@@ -50,6 +50,10 @@ var active_job: Dictionary = {}
 var weapons: Array[IdWeapon] = []
 var turret_angle: float = 0.0
 var target_id: int = 0
+## Earliest tick this unit may search for a new target again. Searching is the
+## most expensive thing a unit does, and a unit that found nothing this tick
+## will almost certainly find nothing on the next one either.
+var next_scan_tick: int = 0
 var last_damage_time: float = -99.0
 var last_attacker_id: int = 0
 

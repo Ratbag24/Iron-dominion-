@@ -77,6 +77,8 @@ static func _resolve_target(
 		if cd <= max_range and world.fog[e.player].is_visible_at(current.x, current.y):
 			return current
 
+	if not IdOrders.take_scan_turn(world, e):
+		return null
 	return _acquire(world, e, max_range, buf)
 
 

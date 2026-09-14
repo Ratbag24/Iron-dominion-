@@ -437,6 +437,9 @@ func stats() -> Dictionary:
 		"entities": world.entities.size(),
 		"projectiles": world.projectiles.size(),
 		"fps": Engine.get_frames_per_second(),
+		"paused": not running,
+		"speed": speed,
+		"sound": sound == null or sound.enabled,
 	}
 
 

@@ -47,7 +47,17 @@ var ais: Array = []
 ## consumed by construction in the same tick.
 var job_groups: Dictionary = {}
 
-var _query_buf: Array = []
+## Scratch space for the neighbour queries the order and combat phases run
+## every tick for every unit. Reused rather than allocated: at a few hundred
+## units that is a few hundred arrays a tick, and their collection costs more
+## than the searches do.
+var assist_buf: Array = []
+var enemy_buf: Array = []
+
+## Per-phase microseconds from the last tick, when profiling is on. Off by
+## default: reading the clock eight times a tick is not free.
+var profile: bool = false
+var phase_us: Dictionary = {}
 
 
 func _init(opts: Dictionary = {}) -> void:
@@ -247,8 +257,14 @@ func kill(e: IdEntity, killer: IdEntity) -> void:
 			"size": 420.0, "big": true, "nuke": true,
 		})
 		# A dying commander takes its surroundings with it.
-		grid.query(e.x, e.y, 260.0, _query_buf)
-		for other in _query_buf:
+		#
+		# This one query keeps its own array rather than sharing the scratch
+		# buffer: the damage below can kill a second commander inside the
+		# blast, and that one's explosion would refill the buffer this loop is
+		# still walking.
+		var caught: Array = []
+		grid.query(e.x, e.y, 260.0, caught)
+		for other in caught:
 			if other == e or not other.alive:
 				continue
 			var d: float = IdMath.dist(e.x, e.y, other.x, other.y)
@@ -281,30 +297,37 @@ func tick(dt: float = SIM_DT) -> void:
 	wind_strength = 0.5 + 0.5 * sin(time * 0.055) * cos(time * 0.017 + 1.3)
 	wind_strength = clampf(wind_strength * 0.5 + 0.5, 0.05, 1.0)
 
-	pathfinder.begin_tick()
+	var t0 := Time.get_ticks_usec() if profile else 0
 
+	pathfinder.begin_tick()
 	grid.clear()
 	for e in entities:
 		if e.alive:
 			grid.insert(e)
+	if profile:
+		t0 = _mark("grid", t0)
 
 	for i in range(ais.size()):
 		if ais[i] != null and not players[i].defeated:
 			ais[i].update(dt)
+	if profile:
+		_mark("ai", t0)
 
-	build_jobs.clear()
-	for e in entities:
-		if e.alive:
-			IdOrders.update_orders(self, e, dt)
+	if profile:
+		_tick_profiled(dt)
+	else:
+		build_jobs.clear()
+		for e in entities:
+			if e.alive:
+				IdOrders.update_orders(self, e, dt)
 
-	IdEconomy.run_economy(self, dt)
-	IdConstruction.apply_construction(self, dt)
-	IdEconomy.settle_economy(self, dt)
-	IdMovement.update_movement(self, dt)
-	IdCombat.update_combat(self, dt)
-	IdProjectiles.update_projectiles(self, dt)
-
-	pathfinder.process_requests()
+		IdEconomy.run_economy(self, dt)
+		IdConstruction.apply_construction(self, dt)
+		IdEconomy.settle_economy(self, dt)
+		IdMovement.update_movement(self, dt)
+		IdCombat.update_combat(self, dt)
+		IdProjectiles.update_projectiles(self, dt)
+		pathfinder.process_requests()
 
 	_cleanup()
 
@@ -313,6 +336,40 @@ func tick(dt: float = SIM_DT) -> void:
 			_update_fog(i)
 
 	_check_victory()
+
+
+## The same phases, timed. Kept apart from the plain path so profiling costs
+## nothing when it is off.
+func _tick_profiled(dt: float) -> void:
+	var t := Time.get_ticks_usec()
+	build_jobs.clear()
+	for e in entities:
+		if e.alive:
+			IdOrders.update_orders(self, e, dt)
+	t = _mark("orders", t)
+
+	IdEconomy.run_economy(self, dt)
+	IdConstruction.apply_construction(self, dt)
+	IdEconomy.settle_economy(self, dt)
+	t = _mark("economy", t)
+
+	IdMovement.update_movement(self, dt)
+	t = _mark("movement", t)
+
+	IdCombat.update_combat(self, dt)
+	t = _mark("combat", t)
+
+	IdProjectiles.update_projectiles(self, dt)
+	t = _mark("projectiles", t)
+
+	pathfinder.process_requests()
+	_mark("pathfinding", t)
+
+
+func _mark(name: String, since: int) -> int:
+	var now := Time.get_ticks_usec()
+	phase_us[name] = int(phase_us.get(name, 0)) + (now - since)
+	return now
 
 
 func _update_fog(player_index: int) -> void:

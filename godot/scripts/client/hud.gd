@@ -10,9 +10,6 @@ extends CanvasLayer
 const PANEL_BG := Color(0.055, 0.075, 0.11, 0.88)
 const PANEL_EDGE := Color(0.35, 0.55, 0.78, 0.45)
 const TEXT := Color(0.86, 0.91, 0.97)
-const TEXT_DIM := Color(0.55, 0.62, 0.72)
-const METAL := Color(0.72, 0.78, 0.86)
-const ENERGY := Color(1.0, 0.82, 0.35)
 const STALL := Color(1.0, 0.42, 0.35)
 const OK := Color(0.42, 0.86, 0.55)
 const ORDER_LINE := Color(0.45, 0.82, 1.0, 0.55)
@@ -203,9 +200,17 @@ func refresh() -> void:
 		flags += "  ENERGY STALL"
 
 	var stats: Dictionary = game.stats()
-	_top.text = "%s\n%s%s\n%s   %d fps   %.1fms/tick" % [
+	var state := ""
+	if bool(stats.get("paused", false)):
+		state = "   PAUSED"
+	elif float(stats.get("speed", 1.0)) != 1.0:
+		state = "   %gx" % float(stats["speed"])
+	if not bool(stats.get("sound", true)):
+		state += "   MUTED"
+
+	_top.text = "%s\n%s%s\n%s   %d fps   %.1fms/tick%s" % [
 		metal_line, energy_line, flags,
-		_clock(world.time), int(stats["fps"]), float(stats["sim_ms"]),
+		_clock(world.time), int(stats["fps"]), float(stats["sim_ms"]), state,
 	]
 	_top.add_theme_color_override(
 		"font_color", STALL if (p.stalling_metal or p.stalling_energy) else TEXT

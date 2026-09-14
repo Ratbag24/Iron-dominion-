@@ -1,9 +1,9 @@
 class_name IdRtsCamera
 extends Camera3D
 
-## A top-down RTS camera: pan with the keyboard, the screen edge or a middle
-## drag, zoom under the cursor with the wheel, rotate with a right drag while
-## holding the modifier.
+## A top-down RTS camera: pan with the arrow keys, the screen edge or a middle
+## drag, zoom under the cursor with the wheel, rotate with shift and a middle
+## drag.
 ##
 ## Zooming keeps the ground point under the pointer fixed, which is what makes
 ## a strategy camera feel like it is attached to the map rather than to the
@@ -123,7 +123,10 @@ func handle_input(event: InputEvent) -> bool:
 			zoom(-1.0, mb.position)
 			return true
 		if mb.button_index == MOUSE_BUTTON_MIDDLE:
-			_dragging = mb.pressed
+			# Shift turns the middle drag into a rotate, which is the other
+			# way round this is usually reached; Alt held does the same.
+			_rotating = mb.pressed and mb.shift_pressed
+			_dragging = mb.pressed and not mb.shift_pressed
 			return true
 	elif event is InputEventMouseMotion:
 		_mouse_seen = true

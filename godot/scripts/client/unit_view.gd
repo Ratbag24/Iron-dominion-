@@ -10,6 +10,10 @@ extends Node3D
 
 const NANOFRAME_COLOUR := Color(0.35, 0.62, 0.85)
 
+## How far either side of a unit the ground is sampled to find its slope.
+## About a unit's own length: shorter and every pebble tips it over.
+const SLOPE_SAMPLE: float = 14.0
+
 ## Wrecks keep their shape but lose their allegiance.
 const WRECK_COLOURS := {
 	"primary": Color(0.26, 0.25, 0.24),
@@ -73,10 +77,20 @@ func sync() -> void:
 			node = _create(e)
 			if node == null:
 				continue
-		node.position = Vector3(e.x, terrain.height_at(e.x, e.y), e.y)
+		var ground := terrain.height_at(e.x, e.y)
 		# Simulation headings are measured in the XZ plane with +X at zero and
 		# y growing "south"; Godot's yaw runs the other way round.
-		node.rotation.y = -e.heading
+		var yaw := -e.heading
+		if e.is_building:
+			node.position = Vector3(e.x, ground, e.y)
+			node.rotation = Vector3(0.0, yaw, 0.0)
+		else:
+			# Mobile units lie along the slope they are standing on. Without
+			# this they stay bolt upright on a hillside, which reads as
+			# hovering rather than as driving.
+			node.transform = Transform3D(
+				_slope_basis(e.x, e.y, yaw), Vector3(e.x, ground, e.y)
+			)
 		var turret: Node3D = _turrets.get(e.id)
 		if turret != null:
 			turret.rotation.y = -e.turret_angle + e.heading
@@ -197,6 +211,28 @@ func _make_blip() -> MeshInstance3D:
 	mi.mesh = _blip_mesh
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
+
+
+## An orientation that faces `yaw` and lies flat on the ground beneath.
+##
+## The normal comes from sampling the heightfield either side of the unit,
+## rather than from the mesh, so it follows the same surface the simulation
+## walks on.
+func _slope_basis(x: float, y: float, yaw: float) -> Basis:
+	var r := SLOPE_SAMPLE
+	var dx := terrain.height_at(x + r, y) - terrain.height_at(x - r, y)
+	var dy := terrain.height_at(x, y + r) - terrain.height_at(x, y - r)
+	var normal := Vector3(-dx, 2.0 * r, -dy).normalized()
+
+	# Start from the upright rotation that already gives the right heading and
+	# lean it onto the normal, rather than rebuilding the heading by hand and
+	# having to rediscover which way Godot's yaw turns.
+	var flat := Basis(Vector3.UP, yaw)
+	var right := normal.cross(flat.z)
+	if right.length_squared() < 1e-8:
+		return flat
+	right = right.normalized()
+	return Basis(right, normal, right.cross(normal).normalized())
 
 
 func _create(e: IdEntity) -> Node3D:

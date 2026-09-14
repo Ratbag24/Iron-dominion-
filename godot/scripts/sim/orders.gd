@@ -17,6 +17,9 @@ const PATROL: String = "patrol"
 
 const ARRIVE_SLACK: float = 26.0
 
+## Ticks between target searches for a unit that has nothing to shoot at.
+const SCAN_INTERVAL: int = 3
+
 
 static func update_orders(world: IdWorld, e: IdEntity, _dt: float) -> void:
 	if e.under_construction:
@@ -102,7 +105,7 @@ static func _do_move(world: IdWorld, e: IdEntity, order: Dictionary) -> void:
 static func _do_attack_move(world: IdWorld, e: IdEntity, order: Dictionary) -> void:
 	var range_max: float = float(e.def.get("maxWeaponRange", 0.0))
 	# Stop and engage anything in weapons range, otherwise keep walking.
-	var foe: IdEntity = find_nearby_enemy(world, e, range_max * 1.15 + 60.0)
+	var foe: IdEntity = current_foe(world, e, range_max * 1.15 + 60.0)
 	if foe != null:
 		e.target_id = foe.id
 		if IdMath.dist(e.x, e.y, foe.x, foe.y) > range_max * 0.85:
@@ -246,7 +249,7 @@ static func _do_guard(world: IdWorld, e: IdEntity, order: Dictionary) -> void:
 
 	# Combat escorts shadow the target and engage anything that threatens it.
 	var range_max: float = float(e.def.get("maxWeaponRange", 0.0))
-	var foe: IdEntity = find_nearby_enemy(world, e, range_max + 180.0)
+	var foe: IdEntity = current_foe(world, e, range_max + 180.0)
 	if foe != null and range_max > 0.0:
 		e.target_id = foe.id
 		if IdMath.dist(e.x, e.y, foe.x, foe.y) > range_max * 0.85:
@@ -271,7 +274,7 @@ static func _do_patrol(world: IdWorld, e: IdEntity, order: Dictionary) -> void:
 	# Fight anything that turns up on the route.
 	var range_max: float = float(e.def.get("maxWeaponRange", 0.0))
 	if range_max > 0.0:
-		var foe: IdEntity = find_nearby_enemy(world, e, range_max * 1.15 + 60.0)
+		var foe: IdEntity = current_foe(world, e, range_max * 1.15 + 60.0)
 		if foe != null:
 			e.target_id = foe.id
 			if IdMath.dist(e.x, e.y, foe.x, foe.y) > range_max * 0.85:
@@ -360,7 +363,7 @@ static func auto_assist(
 	if radius <= 0.0:
 		radius = build_range if assist_only else build_range * 2.2
 
-	var found: Array = []
+	var found: Array = world.assist_buf
 	world.grid.query(e.x, e.y, radius, found)
 	var team: int = world.players[e.player].team
 
@@ -435,8 +438,45 @@ static func auto_assist(
 
 # ----------------------------------------------------------------- helpers
 
+## The enemy this unit is already engaging, if it still holds up, and a fresh
+## search otherwise.
+##
+## Rescanning every tick is what makes a large battle expensive: each search
+## sweeps every grid cell within weapons range, and in a melee that is most of
+## the units on the field, for every unit on the field. A unit that already has
+## a live target in range does not need to look for a better one - and sticking
+## with a target rather than re-picking the nearest each tick is how a unit in
+## this kind of game is meant to behave anyway.
+static func current_foe(world: IdWorld, e: IdEntity, radius: float) -> IdEntity:
+	var held: IdEntity = world.get_entity(e.target_id)
+	if held != null and world.is_enemy(e, held):
+		if IdMath.dist2(e.x, e.y, held.x, held.y) <= radius * radius:
+			if world.fog[e.player].is_visible_at(held.x, held.y):
+				return held
+	if not take_scan_turn(world, e):
+		return null
+	return find_nearby_enemy(world, e, radius)
+
+
+## Claim this unit's turn to run a fresh search, if it is due one.
+##
+## Returns true and books the next turn; returns false when one is not due.
+## The booking is the point, so this is not the predicate its name might
+## suggest - call it once, and only when about to search.
+##
+## Searching sweeps every grid cell within weapons range, so a unit that has
+## nothing to shoot at must not do it every tick: it will find the same
+## nothing. The stagger is by entity id, so the units that do search in a
+## given tick are spread across the field rather than all going at once.
+static func take_scan_turn(world: IdWorld, e: IdEntity) -> bool:
+	if world.tick_count < e.next_scan_tick:
+		return false
+	e.next_scan_tick = world.tick_count + SCAN_INTERVAL + (e.id & 3)
+	return true
+
+
 static func find_nearby_enemy(world: IdWorld, e: IdEntity, radius: float) -> IdEntity:
-	var found: Array = []
+	var found: Array = world.enemy_buf
 	world.grid.query(e.x, e.y, radius, found)
 	var fog: IdFogMap = world.fog[e.player]
 	var best: IdEntity = null

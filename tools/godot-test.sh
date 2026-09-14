@@ -20,7 +20,7 @@ echo "Importing assets"
 "$GODOT" --headless --path godot --import >/dev/null 2>&1
 
 status=0
-for test in verify_assets parity_rng parity_map test_pathfinder test_defs test_world test_commands test_audio; do
+for test in verify_assets parity_rng parity_map test_pathfinder test_defs test_world test_commands test_audio test_view; do
   script="scripts/tests/$test.gd"
   [ "$test" = "verify_assets" ] && script="scripts/verify_assets.gd"
   echo
