@@ -135,9 +135,59 @@ func _init() -> void:
 		% [world.time, world.entities.size(), world.game_over])
 
 	world.dispose()
+
+	print("\nTwo against two")
+	print("---------------")
+	IdMatchSettings.opponents = 3
+	IdMatchSettings.team_mode = "2v2"
+	var specs: Array = IdMatchSettings.player_specs(true)
+	check(specs.size() == 4, "four sides", "%d" % specs.size())
+	var teams: Array = []
+	for spec in specs:
+		teams.append(int(spec["team"]))
+	check(teams == [0, 0, 1, 1], "paired as neighbours round the map", str(teams))
+
+	var allied := IdWorld.new({"seed": 31337, "players": specs})
+	check(allied.players[0].team == allied.players[1].team,
+		"the first two are allies")
+	check(allied.players[0].team != allied.players[2].team,
+		"and the other two are not")
+
+	# Allies must not shoot each other, and must share what they can see.
+	var a: IdEntity = allied.get_entity(allied.players[0].commander_id)
+	var ally: IdEntity = allied.get_entity(allied.players[1].commander_id)
+	var foe: IdEntity = allied.get_entity(allied.players[2].commander_id)
+	check(not allied.is_enemy(a, ally), "allies are not enemies")
+	check(allied.is_enemy(a, foe), "the other team is")
+
+	for i in range(8):
+		allied.tick()
+	check(allied.fog[0].is_visible_at(ally.x, ally.y),
+		"an ally's ground is revealed to us")
+	check(not allied.fog[0].is_visible_at(foe.x, foe.y),
+		"an enemy's is not")
+
+	# A team survives while either of its commanders does.
+	allied.kill(a, null)
+	allied._cleanup()
+	allied._check_victory()
+	check(not allied.game_over, "losing one commander does not lose the match",
+		"winner %d" % allied.winner)
+	allied.kill(ally, null)
+	allied._cleanup()
+	allied._check_victory()
+	check(allied.game_over and allied.winner == 1,
+		"losing both hands the match to the other team",
+		"over=%s winner=%d" % [allied.game_over, allied.winner])
+	allied.dispose()
+
+	# Leave the settings as they were found.
+	IdMatchSettings.opponents = 1
+	IdMatchSettings.team_mode = "ffa"
+
 	print("")
 	if failures == 0:
-		print("PASS: a four-player map is fair and playable")
+		print("PASS: four-player maps are fair, and teams hold together")
 	else:
 		print("FAIL: %d checks failed" % failures)
 	quit(1 if failures > 0 else 0)

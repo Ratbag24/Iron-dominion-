@@ -11,6 +11,10 @@ static var enemy_faction: String = "legion"
 ## How many AI opponents, each on its own team: one is a duel, more is a
 ## free-for-all on a map laid out in quarters.
 static var opponents: int = 1
+
+## "ffa" puts every side on its own team; "2v2" pairs you with the first
+## opponent against the other two. Only meaningful with three opponents.
+static var team_mode: String = "ffa"
 static var difficulty: String = "normal"
 static var map_seed: int = 12345
 
@@ -41,4 +45,10 @@ static func player_specs(autoplay: bool = false) -> Array:
 			"is_ai": true,
 			"ai_level": difficulty,
 		})
+
+	# Starts run round the map in order, so pairing neighbours gives each team
+	# a shared front rather than two separate wars.
+	var paired: bool = team_mode == "2v2" and specs.size() == 4
+	for i in range(specs.size()):
+		specs[i]["team"] = (i / 2) if paired else i
 	return specs

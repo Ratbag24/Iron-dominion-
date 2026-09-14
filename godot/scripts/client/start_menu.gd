@@ -21,6 +21,10 @@ var _faction: String = "vanguard"
 var _enemy: String = "legion"
 var _difficulty: String = "normal"
 var _opponents: int = 1
+var _team_mode: String = "ffa"
+var _teams_row: Control
+var _team_buttons: Dictionary = {}
+var _team_labels: Array[Control] = []
 var _seed: int = 12345
 
 var _faction_blurb: Label
@@ -87,6 +91,27 @@ func _ready() -> void:
 			_opponents = n
 			_refresh())
 		counts.add_child(b)
+
+	# --- sides ------------------------------------------------------------
+	# Only worth asking with three opponents; with fewer there is only one
+	# way to arrange them.
+	centre.add_child(_spacer(6))
+	var teams_label := _section("SIDES")
+	centre.add_child(teams_label)
+	_teams_row = HBoxContainer.new()
+	_teams_row.add_theme_constant_override("separation", 8)
+	centre.add_child(_teams_row)
+	var team_group := ButtonGroup.new()
+	for mode in [["ffa", "Free-for-all"], ["2v2", "Two against two"]]:
+		var b := _choice_button(mode[1])
+		b.button_group = team_group
+		b.button_pressed = mode[0] == _team_mode
+		b.pressed.connect(func():
+			_team_mode = mode[0]
+			_refresh())
+		_teams_row.add_child(b)
+		_team_buttons[mode[0]] = b
+	_team_labels.append(teams_label)
 
 	# --- opponent factions ------------------------------------------------
 	centre.add_child(_spacer(6))
@@ -219,6 +244,15 @@ func _pick_enemy(id: String) -> void:
 
 
 func _refresh() -> void:
+	var pick_sides := _opponents == 3
+	_teams_row.visible = pick_sides
+	for l in _team_labels:
+		l.visible = pick_sides
+	if not pick_sides:
+		_team_mode = "ffa"
+	for mode in _team_buttons:
+		_team_buttons[mode].button_pressed = mode == _team_mode
+
 	for id in _faction_buttons:
 		_faction_buttons[id].button_pressed = id == _faction
 	for id in _enemy_buttons:
@@ -243,5 +277,6 @@ func _start() -> void:
 	IdMatchSettings.enemy_faction = _enemy
 	IdMatchSettings.difficulty = _difficulty
 	IdMatchSettings.opponents = _opponents
+	IdMatchSettings.team_mode = _team_mode
 	IdMatchSettings.map_seed = _seed
 	get_tree().change_scene_to_file("res://scenes/game.tscn")
