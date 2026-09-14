@@ -26,6 +26,13 @@ var _flashes: MeshInstance3D
 var _shot_mesh: ImmediateMesh
 var _flash_mesh: ImmediateMesh
 
+## Geometry is gathered into these before it reaches the mesh. An ImmediateMesh
+## surface has to be opened before anything can be added and rejects being
+## closed empty, so deciding whether there is anything to draw first is simpler
+## than opening one and discovering there was not.
+var _verts: PackedVector3Array = PackedVector3Array()
+var _colours: PackedColorArray = PackedColorArray()
+
 
 func setup(w: IdWorld, t: IdTerrainBuilder, viewer_index: int = 0) -> void:
 	world = w
@@ -81,8 +88,8 @@ func _draw_shots() -> void:
 	_shot_mesh.clear_surfaces()
 	if world.projectiles.is_empty():
 		return
-	_shot_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-	var drawn := 0
+	_verts.clear()
+	_colours.clear()
 	for p in world.projectiles:
 		var x: float = p["x"]
 		var y: float = p["y"]
@@ -105,14 +112,11 @@ func _draw_shots() -> void:
 			var back: float = TRACER_LENGTH / speed
 			tail = head - Vector3(float(p["vx"]) * back, 0.0, float(p["vy"]) * back)
 
-		_shot_mesh.surface_set_color(colour)
-		_shot_mesh.surface_add_vertex(tail)
-		_shot_mesh.surface_set_color(Color(colour.r, colour.g, colour.b, 0.15))
-		_shot_mesh.surface_add_vertex(head)
-		drawn += 1
-	_shot_mesh.surface_end()
-	if drawn == 0:
-		_shot_mesh.clear_surfaces()
+		_verts.append(tail)
+		_colours.append(colour)
+		_verts.append(head)
+		_colours.append(Color(colour.r, colour.g, colour.b, 0.15))
+	_emit(_shot_mesh, Mesh.PRIMITIVE_LINES)
 
 
 # ----------------------------------------------------------------- effects
@@ -129,64 +133,70 @@ func _draw_effects() -> void:
 	if keep.is_empty():
 		return
 
-	_flash_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-	var drawn := 0
+	_verts.clear()
+	_colours.clear()
 	for fx in keep:
 		var age: float = now - float(fx["t"])
-		var kind: String = fx["type"]
-		match kind:
+		match String(fx["type"]):
 			"explosion":
-				drawn += _explosion(fx, age)
+				_explosion(fx, age)
 			"impact", "muzzle":
-				drawn += _spark(fx, age)
+				_spark(fx, age)
 			"nanolathe":
-				drawn += _beam(fx, age)
+				_beam(fx, age)
 			"buildStart", "buildDone", "unitDone":
-				drawn += _ring(fx, age)
-	_flash_mesh.surface_end()
-	if drawn == 0:
-		_flash_mesh.clear_surfaces()
+				_ring(fx, age)
+	_emit(_flash_mesh, Mesh.PRIMITIVE_TRIANGLES)
 
 
-func _explosion(fx: Dictionary, age: float) -> int:
+## Hand the gathered geometry to a mesh, if there is any.
+func _emit(mesh: ImmediateMesh, primitive: int) -> void:
+	if _verts.is_empty():
+		return
+	mesh.surface_begin(primitive)
+	for i in range(_verts.size()):
+		mesh.surface_set_color(_colours[i])
+		mesh.surface_add_vertex(_verts[i])
+	mesh.surface_end()
+
+
+func _explosion(fx: Dictionary, age: float) -> void:
 	var x: float = fx["x"]
 	var y: float = fx["y"]
 	if not _visible_at(x, y):
-		return 0
+		return
 	var t: float = clampf(age / EFFECT_LIFE, 0.0, 1.0)
 	var size: float = float(fx["size"]) * (0.35 + t * 0.9)
 	var colour := Color(fx.get("color", "#ffb257"))
 	colour.a = (1.0 - t) * 0.9
 	_billboard(Vector3(x, _ground(x, y) + size * 0.35, y), size, colour)
-	return 1
 
 
-func _spark(fx: Dictionary, age: float) -> int:
+func _spark(fx: Dictionary, age: float) -> void:
 	var x: float = fx["x"]
 	var y: float = fx["y"]
 	if not _visible_at(x, y):
-		return 0
+		return
 	var t: float = clampf(age / (EFFECT_LIFE * 0.35), 0.0, 1.0)
 	if t >= 1.0:
-		return 0
+		return
 	var colour := Color(fx.get("color", "#ffe9b0"))
 	colour.a = (1.0 - t) * 0.85
 	_billboard(Vector3(x, _ground(x, y) + 12.0, y), float(fx["size"]) * (1.0 - t * 0.4), colour)
-	return 1
 
 
 ## A builder's nanolathe: a thin quad from the builder to whatever it is
 ## working on. Re-emitted by the simulation every few ticks, so it only has to
 ## live long enough to bridge the gap.
-func _beam(fx: Dictionary, age: float) -> int:
+func _beam(fx: Dictionary, age: float) -> void:
 	if age > BEAM_LIFE:
-		return 0
+		return
 	var x: float = fx["x"]
 	var y: float = fx["y"]
 	var tx: float = fx["tx"]
 	var ty: float = fx["ty"]
 	if not _visible_at(tx, ty):
-		return 0
+		return
 	var from := Vector3(x, _ground(x, y) + 16.0, y)
 	var to := Vector3(tx, _ground(tx, ty) + 14.0, ty)
 	var colour := (
@@ -195,17 +205,16 @@ func _beam(fx: Dictionary, age: float) -> int:
 	)
 	var side := (to - from).cross(Vector3.UP).normalized() * 1.1
 	if side.length_squared() < 1e-6:
-		return 0
+		return
 	_quad(from - side, from + side, to + side, to - side, colour)
-	return 1
 
 
 ## A flat ring on the ground, for construction starting and finishing.
-func _ring(fx: Dictionary, age: float) -> int:
+func _ring(fx: Dictionary, age: float) -> void:
 	var x: float = fx["x"]
 	var y: float = fx["y"]
 	if not _visible_at(x, y):
-		return 0
+		return
 	var t: float = clampf(age / EFFECT_LIFE, 0.0, 1.0)
 	var size: float = float(fx.get("size", 40.0)) * (0.4 + t * 0.8)
 	var colour := Color(0.45, 0.82, 1.0, (1.0 - t) * 0.5)
@@ -222,7 +231,6 @@ func _ring(fx: Dictionary, age: float) -> int:
 			Vector3(x + cos(a1) * inner, h, y + sin(a1) * inner),
 			colour
 		)
-	return 1
 
 
 ## A camera-facing quad. Built in world space against the camera's basis so it
@@ -246,11 +254,6 @@ func _billboard(centre: Vector3, size: float, colour: Color) -> void:
 
 
 func _quad(a: Vector3, b: Vector3, c: Vector3, d: Vector3, colour: Color) -> void:
-	_flash_mesh.surface_set_color(colour)
-	_flash_mesh.surface_add_vertex(a)
-	_flash_mesh.surface_add_vertex(b)
-	_flash_mesh.surface_add_vertex(c)
-	_flash_mesh.surface_set_color(colour)
-	_flash_mesh.surface_add_vertex(a)
-	_flash_mesh.surface_add_vertex(c)
-	_flash_mesh.surface_add_vertex(d)
+	for v in [a, b, c, a, c, d]:
+		_verts.append(v)
+		_colours.append(colour)

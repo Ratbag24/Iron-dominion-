@@ -125,9 +125,9 @@ func _ready() -> void:
 
 	var hint := _heading(
 		"Arrows or screen edge to pan   ·   wheel to zoom   ·   right-click to order\n"
-		+ "A attack-move   ·   D guard   ·   E patrol   ·   R reclaim   ·   F repair"
-		+ "   ·   S stop\n"
-		+ "Ctrl+1-9 sets a control group, 1-9 selects it, twice jumps to it"
+		+ "A attack-move   ·   S stop   ·   D guard   ·   F patrol"
+		+ "   ·   E reclaim   ·   R repair\n"
+		+ "Ctrl+0-9 sets a control group, 0-9 selects it, twice jumps to it"
 		+ "   ·   space pauses   ·   +/- speed",
 		12, DIM
 	)

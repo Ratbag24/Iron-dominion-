@@ -15,6 +15,16 @@ const METAL := Color(0.72, 0.78, 0.86)
 const ENERGY := Color(1.0, 0.82, 0.35)
 const STALL := Color(1.0, 0.42, 0.35)
 const OK := Color(0.42, 0.86, 0.55)
+const ORDER_LINE := Color(0.45, 0.82, 1.0, 0.55)
+const ATTACK_LINE := Color(1.0, 0.45, 0.38, 0.6)
+
+const COMMAND_NAMES := {
+	"attackMove": "attack move",
+	"guard": "guard",
+	"patrol": "patrol",
+	"reclaim": "reclaim",
+	"repair": "repair",
+}
 
 var world: IdWorld
 var selection: IdSelection
@@ -212,15 +222,35 @@ func _clock(t: float) -> String:
 	return "%d:%02d" % [int(t) / 60, int(t) % 60]
 
 
+## What the player has armed, if anything. Without this the only sign that a
+## command is waiting for a click is the build preview, and the commands that
+## have no preview give no sign at all.
+func _armed_line() -> String:
+	if selection.build_def != "":
+		var def: Dictionary = IdUnitDefs.get_def(
+			selection.build_def, world.players[selection.player_index].faction
+		)
+		return "PLACING %s — click to site it, shift to keep placing, right-click to cancel" % [
+			String(def.get("name", selection.build_def)).to_upper()
+		]
+	if selection.pending_command != "":
+		return "%s — click a target, right-click to cancel" % [
+			COMMAND_NAMES.get(selection.pending_command, selection.pending_command).to_upper()
+		]
+	return ""
+
+
 func _refresh_info() -> void:
 	var units := selection.selected_entities()
-	_info.visible = not units.is_empty()
+	var armed := _armed_line()
+	_info.visible = not units.is_empty() or armed != ""
 	if units.is_empty():
-		_info.text = ""
+		_info.text = armed
 		return
+	var prefix := armed + "\n" if armed != "" else ""
 	if units.size() == 1:
 		var e: IdEntity = units[0]
-		var line := "%s\n%d / %d hp" % [
+		var line := prefix + "%s\n%d / %d hp" % [
 			String(e.def.get("name", e.def_id)), int(e.hp), int(e.max_hp),
 		]
 		if e.under_construction:
@@ -245,7 +275,7 @@ func _refresh_info() -> void:
 	var parts: Array[String] = []
 	for key in by_type:
 		parts.append("%d %s" % [by_type[key], key])
-	_info.text = "%d selected\n%s" % [units.size(), ", ".join(parts)]
+	_info.text = prefix + "%d selected\n%s" % [units.size(), ", ".join(parts)]
 
 
 func _refresh_palette() -> void:
@@ -274,6 +304,7 @@ func _refresh_palette() -> void:
 		b.tooltip_text = "%s\n%s" % [
 			String(def.get("name", id)), String(def.get("desc", "")),
 		]
+		b.gui_input.connect(_on_palette_input.bind(id))
 		b.pressed.connect(_on_build_pressed.bind(id))
 		_palette.add_child(b)
 	_update_palette_state()
@@ -292,6 +323,23 @@ func _update_palette_state() -> void:
 		var affordable: bool = p.metal >= float(def.get("metal", 0)) * 0.25
 		b.modulate = Color.WHITE if affordable else Color(0.62, 0.62, 0.62)
 		b.button_pressed = _palette_ids[i] == selection.build_def
+
+
+## Shift-clicking a unit in a factory's menu queues five of it, which is how
+## you fill a production run without clicking five times.
+func _on_palette_input(event: InputEvent, def_id: String) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mb := event as InputEventMouseButton
+	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed or not mb.shift_pressed:
+		return
+	var def: Dictionary = IdUnitDefs.get_def(
+		def_id, world.players[selection.player_index].faction
+	)
+	if String(def.get("kind", "")) == "building":
+		return
+	if selection.queue_unit(def_id, 5):
+		get_viewport().set_input_as_handled()
 
 
 func _on_build_pressed(def_id: String) -> void:
@@ -342,12 +390,64 @@ func _draw_overlay() -> void:
 				OK.lerp(STALL, 1.0 - frac)
 			)
 
+	_draw_order_lines(cam)
+
 	if selection.dragging:
 		var rect := Rect2(selection.drag_start, Vector2.ZERO).expand(selection.drag_end)
 		_overlay.draw_rect(rect, Color(0.42, 0.86, 0.55, 0.12), true)
 		_overlay.draw_rect(rect, OK, false, 1.0)
 
 	_draw_build_preview(cam)
+
+
+## Where each selected unit has been told to go, as a chain from the unit
+## through its queued orders. A queue you cannot see is a queue you cannot
+## correct.
+func _draw_order_lines(cam: IdRtsCamera) -> void:
+	for e in world.entities:
+		if not e.alive or not e.selected or e.orders.is_empty():
+			continue
+		var from := Vector2(e.x, e.y)
+		for order in e.orders:
+			var point: Variant = _order_point(order)
+			if point == null:
+				continue
+			var to: Vector2 = point
+			var colour: Color = (
+				ATTACK_LINE if String(order.get("type", "")) in [IdOrders.ATTACK, IdOrders.ATTACK_MOVE]
+				else ORDER_LINE
+			)
+			_draw_ground_line(cam, from, to, colour)
+			from = to
+
+
+## Where an order points on the ground, or null when it has no position.
+func _order_point(order: Dictionary) -> Variant:
+	var kind := String(order.get("type", ""))
+	if order.has("x"):
+		return Vector2(order["x"], order["y"])
+	if order.has("targetId"):
+		var target: IdEntity = world.get_entity(int(order["targetId"]))
+		return Vector2(target.x, target.y) if target != null else null
+	if kind == IdOrders.PATROL:
+		var points: Array = order.get("points", [])
+		if not points.is_empty():
+			return points[int(order.get("index", 0)) % points.size()]
+	if kind == IdOrders.RECLAIM:
+		for w in world.wrecks:
+			if int(w["id"]) == int(order.get("wreckId", 0)):
+				return Vector2(w["x"], w["y"])
+	return null
+
+
+func _draw_ground_line(cam: IdRtsCamera, a: Vector2, b: Vector2, colour: Color) -> void:
+	var pa := Vector3(a.x, cam.terrain.height_at(a.x, a.y) + 6.0, a.y)
+	var pb := Vector3(b.x, cam.terrain.height_at(b.x, b.y) + 6.0, b.y)
+	if cam.is_position_behind(pa) or cam.is_position_behind(pb):
+		return
+	_overlay.draw_line(
+		cam.unproject_position(pa), cam.unproject_position(pb), colour, 1.0
+	)
 
 
 func _draw_build_preview(cam: IdRtsCamera) -> void:

@@ -39,6 +39,31 @@ npm install          # only needed for the build (esbuild)
 npm run build        # -> dist/iron-dominion.html
 ```
 
+## The Godot build
+
+The game is being moved to **Godot 4**, so that the models are editable in
+Blender and the project can be exported as a desktop build rather than living
+only in a browser tab. The simulation was written renderer-agnostic from the
+start, which is what made that move possible: the economy, construction,
+pathfinding, combat, fog and AI are the same design in both, and the ported
+map generator and random number stream are checked against the browser build's
+output value for value.
+
+```sh
+godot --path godot                        # play
+GODOT=/path/to/godot tools/godot-test.sh  # run every suite headlessly
+GODOT=/path/to/godot tools/godot-shots.sh # capture the interface states
+```
+
+Needs Godot 4.3 or later. The first run imports the models, which takes a
+moment; after that it starts straight into the front end.
+
+The models live in `godot/assets/models` as glTF binaries, one per unit, with a
+named material per colour — open any of them in Blender, edit, and export over
+the top. `tools/export-models.mjs` regenerates them from the procedural source
+in `src/client/gfx/models.js`, and `tools/export-data.mjs` writes the unit and
+faction data both builds read.
+
 ## Controls
 
 | | |

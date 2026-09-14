@@ -48,7 +48,7 @@ var _generate_ms: int = 0
 var _terrain_mesh: Mesh
 var _minimap_image: Image
 
-## Control groups, keyed 0-8 for the number keys 1-9.
+## Control groups, keyed by the number key that recalls them.
 var _groups: Dictionary = {}
 var _last_group: int = -1
 var _last_group_time: int = 0
@@ -268,6 +268,29 @@ func _handle_key(key: InputEventKey) -> bool:
 		KEY_MINUS, KEY_KP_SUBTRACT:
 			speed = maxf(speed * 0.5, 0.25)
 			return true
+		KEY_H:
+			# Jump to the commander, which is where you want to be whenever
+			# something has gone wrong somewhere else.
+			var com: IdEntity = world.get_entity(world.players[0].commander_id)
+			if com != null:
+				cam.focus_on(Vector2(com.x, com.y))
+			return true
+		KEY_HOME:
+			cam.distance = 700.0
+			cam.yaw = 0.0
+			cam.pitch = 0.92
+			cam.focus_on(Vector2(world.players[0].start_x, world.players[0].start_y))
+			return true
+		KEY_BRACKETLEFT:
+			cam.yaw -= 0.18
+			cam.focus_on(Vector2(cam.focus.x, cam.focus.z))
+			return true
+		KEY_BRACKETRIGHT:
+			cam.yaw += 0.18
+			cam.focus_on(Vector2(cam.focus.x, cam.focus.z))
+			return true
+		KEY_TAB:
+			return _select_next_idle_builder()
 		KEY_ESCAPE:
 			if selection != null and selection.build_def != "":
 				selection.build_def = ""
@@ -295,8 +318,8 @@ func _handle_key(key: InputEventKey) -> bool:
 			return true
 
 	# Number keys are control groups, as in every game of this kind.
-	if key.keycode >= KEY_1 and key.keycode <= KEY_9:
-		return _control_group(key.keycode - KEY_1, key.ctrl_pressed, key.shift_pressed)
+	if key.keycode >= KEY_0 and key.keycode <= KEY_9:
+		return _control_group(key.keycode - KEY_0, key.ctrl_pressed, key.shift_pressed)
 
 	# Everything else goes to the build palette, whose keys are in the shared
 	# data file so a faction's equivalent structure sits on the same one.
@@ -307,16 +330,48 @@ func _handle_key(key: InputEventKey) -> bool:
 
 ## Ctrl assigns the current selection to a group, shift adds it to the current
 ## selection, and a bare press selects it. Pressing the same group twice in
-## quick succession jumps the camera to it.
+## quick succession jumps the camera to it. The keys match the browser build's,
+## so the two are not two different games to learn.
+## Cycle through builders with nothing to do. An idle builder is wasted build
+## power, and in a game this size they are easy to lose track of.
+func _select_next_idle_builder() -> bool:
+	if selection == null:
+		return false
+	var idle: Array[IdEntity] = []
+	for e in world.units_of(0):
+		if e.under_construction or e.is_building:
+			continue
+		if float(e.def.get("buildPower", 0.0)) <= 0.0:
+			continue
+		if bool(e.def.get("assistOnly", false)) or bool(e.def.get("factory", false)):
+			continue
+		if e.orders.is_empty():
+			idle.append(e)
+	if idle.is_empty():
+		return true
+
+	# Start from the one after whichever is selected, so repeated presses walk
+	# the list rather than sticking on the first.
+	var start := 0
+	for i in range(idle.size()):
+		if selection.selected.has(idle[i].id):
+			start = i + 1
+			break
+	var pick: IdEntity = idle[start % idle.size()]
+	selection.select_ids([pick.id], false)
+	cam.focus_on(Vector2(pick.x, pick.y))
+	return true
+
+
 ## The commands that wait for a click. These keys are the ones the shared data
 ## file deliberately keeps clear of the build menu.
 func _command_for(keycode: int) -> String:
 	match keycode:
 		KEY_A: return IdOrders.ATTACK_MOVE
 		KEY_D: return IdOrders.GUARD
-		KEY_E: return IdOrders.PATROL
-		KEY_R: return IdOrders.RECLAIM
-		KEY_F: return IdOrders.REPAIR
+		KEY_F: return IdOrders.PATROL
+		KEY_E: return IdOrders.RECLAIM
+		KEY_R: return IdOrders.REPAIR
 	return ""
 
 
