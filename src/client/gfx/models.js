@@ -6,9 +6,9 @@
 
 import { box, cylinder, cone, sphere, plate, merge, splitEmissive } from './geometry.js';
 
-const HULL = '#8b929c';
-const HULL_DARK = '#4e545d';
-const HULL_LIGHT = '#c3c9d2';
+const HULL = '#a2a9b4';
+const HULL_DARK = '#5f6670';
+const HULL_LIGHT = '#d2d8e0';
 const DARK = '#2c3036';
 const GLASS = '#16324d';
 const GLOW = '#8ef6ff';
@@ -91,22 +91,64 @@ function scout(r, c) {
 function rifle(r, c, faction) {
   const wide = heavyBuild(faction);
   const parts = legPair(r, c, { gauge: 0.48, scale: 0.95 });
+
+  // Pelvis and waist ring, so the torso sits on something rather than floating.
   parts.push(box(r * 0.66, r * 0.24, r * 0.82, HULL_DARK, { y: r * 0.94 }));
-  parts.push(box(r * 1.15, r * 0.78, r * (wide ? 1.2 : 1.0), c.primary, { y: r * 1.36 }));
+  parts.push(cylinder(r * 0.3, r * 0.3, r * 0.12, STEEL, { y: r * 1.06 }, 14));
+  parts.push(...boltRing(r, { y: r * 1.1, radius: 0.24, count: 10, size: 0.026 }));
+
+  // Torso in plain armour; the team colour goes on panels, not on all of it.
+  parts.push(box(r * 1.15, r * 0.78, r * (wide ? 1.2 : 1.0), HULL, { y: r * 1.36 }));
+  parts.push(...seam(r, { from: [-r * 0.5, r * 1.74, 0], to: [r * 0.5, r * 1.74, 0], width: 0.04 }));
   // Legion carries a slab of frontal armour; Vanguard gets a sloped prow.
-  if (wide) parts.push(box(r * 0.3, r * 0.6, r * 1.05, c.dark, { x: r * 0.62, y: r * 1.36 }));
-  else parts.push(box(r * 0.42, r * 0.52, r * 0.86, c.dark, { x: r * 0.58, y: r * 1.36, rz: -0.26 }));
-  parts.push(box(r * 0.46, r * 0.3, r * 0.6, HULL, { x: -r * 0.34, y: r * 1.82 }));
-  parts.push(box(r * 0.1, r * 0.12, r * 0.34, GLOW, { x: -r * 0.1, y: r * 1.84 }));
+  if (wide) {
+    parts.push(...armourPlate(r, { x: r * 0.62, y: r * 1.36, w: 1.05, h: 0.62, d: 0.14, c }));
+  } else {
+    parts.push(box(r * 0.44, r * 0.54, r * 0.86, HULL_DARK, { x: r * 0.58, y: r * 1.36, rz: -0.26 }));
+    parts.push(...boltLine(r, {
+      from: [r * 0.72, r * 1.6, -r * 0.34], to: [r * 0.72, r * 1.6, r * 0.34], count: 4,
+    }));
+  }
+  // Chest recognition panel and a rib down each flank.
+  parts.push(box(r * 0.4, r * 0.28, r * 0.04, c.primary, { x: r * 0.42, y: r * 1.3, rz: -0.26 }));
+  for (const side of [-1, 1]) {
+    const z = side * r * (wide ? 0.62 : 0.52);
+    parts.push(box(r * 0.9, r * 0.1, r * 0.04, c.primary, { z, y: r * 1.5 }));
+    parts.push(...seam(r, { from: [-r * 0.45, r * 1.2, z], to: [r * 0.45, r * 1.2, z], width: 0.032 }));
+  }
+
+  // Head: sensor housing set into a collar, with an eye band.
+  parts.push(cylinder(r * 0.2, r * 0.22, r * 0.12, HULL_DARK, { x: -r * 0.28, y: r * 1.74 }, 12));
+  parts.push(box(r * 0.46, r * 0.32, r * 0.6, HULL, { x: -r * 0.3, y: r * 1.9 }));
+  parts.push(box(r * 0.08, r * 0.13, r * 0.36, GLOW, { x: -r * 0.06, y: r * 1.92 }));
+  parts.push(box(r * 0.3, r * 0.06, r * 0.5, HULL_DARK, { x: -r * 0.3, y: r * 2.07 }));
+  parts.push(...aerial(r, { x: -r * 0.5, z: r * 0.2, y: r * 1.98, len: 0.9 }));
+
+  // Back: power pack with a grille and its cooling run.
+  parts.push(box(r * 0.34, r * 0.6, r * 0.74, HULL_DARK, { x: -r * 0.62, y: r * 1.4 }));
+  parts.push(...grille(r, { x: -r * 0.78, y: r * 1.4, w: 0.1, d: 0.6, slats: 5 }));
+  parts.push(...cable(r, [-r * 0.72, r * 1.66, -r * 0.24], [-r * 0.36, r * 1.78, -r * 0.3]));
+  parts.push(...cable(r, [-r * 0.72, r * 1.62, r * 0.24], [-r * 0.36, r * 1.74, r * 0.3]));
+
   parts.push(...shoulder(r, c, { z: -r * 0.62, y: r * 1.56, scale: 0.9 }));
   parts.push(box(r * 0.4, r * 0.34, r * 0.44, HULL_DARK, { x: -r * 0.5, z: r * 0.4, y: r * 1.6 }));
+
   return {
     body: merge(parts),
     turret: merge([
-      box(r * 0.42, r * 0.34, r * 0.4, c.dark, {}),
-      box(r * 0.95, r * 0.18, r * 0.18, HULL_LIGHT, { x: r * 0.6 }),
-      cylinder(r * 0.12, r * 0.1, r * 0.18, '#5f646c', { x: r * 1.12, rz: Math.PI / 2 }, 10),
-      box(r * 0.26, r * 0.2, r * 0.16, HULL, { x: -r * 0.2, y: r * 0.16 }),
+      // Shoulder mount, upper arm, and the weapon it carries.
+      cylinder(r * 0.22, r * 0.22, r * 0.26, HULL_DARK, { rx: Math.PI / 2 }, 12),
+      ...boltRing(r, { y: r * 0.14, radius: 0.16, count: 7, size: 0.026 }),
+      box(r * 0.44, r * 0.36, r * 0.42, HULL, { x: r * 0.1 }),
+      box(r * 0.95, r * 0.2, r * 0.2, HULL_LIGHT, { x: r * 0.62 }),
+      cylinder(r * 0.09, r * 0.09, r * 0.26, STEEL, { x: r * 1.12, rz: Math.PI / 2 }, 10),
+      cylinder(r * 0.12, r * 0.1, r * 0.1, GREASE, { x: r * 1.3, rz: Math.PI / 2 }, 10),
+      // Magazine, heat shroud and a carry handle over the receiver.
+      box(r * 0.2, r * 0.3, r * 0.16, GREASE, { x: r * 0.44, y: -r * 0.22 }),
+      ...[-1, 1].map((side) =>
+        box(r * 0.42, r * 0.05, r * 0.05, STEEL, { x: r * 0.64, z: side * r * 0.1, y: r * 0.12 })),
+      box(r * 0.26, r * 0.05, r * 0.1, HULL_DARK, { x: r * 0.3, y: r * 0.22 }),
+      box(r * 0.3, r * 0.12, r * 0.04, c.primary, { x: r * 0.12, z: r * 0.22 }),
     ]),
     turretY: r * 1.6,
   };
@@ -284,7 +326,7 @@ function converter(s, c) {
 
 function storage(s, c, metalKind) {
   const parts = foundation(s, c);
-  const tint = metalKind ? '#9aa3ad' : '#d8b24a';
+  const tint = metalKind ? HULL : '#d8b24a';
   parts.push(cylinder(s * 0.34, s * 0.34, s * 0.75, tint, { y: s * 0.5 }, 12));
   parts.push(cylinder(s * 0.37, s * 0.37, s * 0.08, HULL_DARK, { y: s * 0.5 }, 12));
   parts.push(cylinder(s * 0.3, s * 0.3, s * 0.06, c.primary, { y: s * 0.89 }, 12));
@@ -380,6 +422,158 @@ function radar(s, c) {
 // the hull is a slightly better box.
 
 /** Running gear: road wheels, return rollers and a track guard each side. */
+
+// --------------------------------------------------------- detail vocabulary
+//
+// These exist because the models carry no textures: every panel line, bolt and
+// grille has to be geometry, or the hulls read as bare blocks. They are kept
+// cheap - a bolt is an eight-sided cylinder - and used in rows, because it is
+// the repetition that makes a surface look manufactured rather than moulded.
+
+const STEEL = '#7d838c';
+const GREASE = '#3a3f46';
+
+/** Bolt heads evenly spaced along a line. The cheapest read of "assembled". */
+function boltLine(r, { from, to, count = 4, size = 0.05, colour = STEEL }) {
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const t = count === 1 ? 0.5 : i / (count - 1);
+    parts.push(cylinder(r * size, r * size, r * size * 0.7, colour, {
+      x: from[0] + (to[0] - from[0]) * t,
+      y: from[1] + (to[1] - from[1]) * t,
+      z: from[2] + (to[2] - from[2]) * t,
+      rx: Math.PI / 2,
+    }, 6));
+  }
+  return parts;
+}
+
+/** Bolt heads around a circular rim: hatch collars, turret rings, hubs. */
+function boltRing(r, { x = 0, y = 0, z = 0, radius = 0.3, count = 8, size = 0.045, colour = STEEL }) {
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    parts.push(cylinder(r * size, r * size, r * size * 0.8, colour, {
+      x: x + Math.cos(a) * r * radius,
+      z: z + Math.sin(a) * r * radius,
+      y,
+    }, 6));
+  }
+  return parts;
+}
+
+/** A raised weld seam. Breaks a long flat face into panels. */
+function seam(r, { from, to, width = 0.035, colour = HULL_DARK }) {
+  const dx = to[0] - from[0];
+  const dz = to[2] - from[2];
+  const len = Math.hypot(dx, dz) || r * 0.1;
+  return [box(len, r * width * 0.5, r * width, colour, {
+    x: (from[0] + to[0]) / 2,
+    y: (from[1] + to[1]) / 2,
+    z: (from[2] + to[2]) / 2,
+    ry: -Math.atan2(dz, dx),
+  })];
+}
+
+/** A louvred grille: radiator faces, intakes, engine decks. */
+function grille(r, { x = 0, y = 0, z = 0, w = 0.6, d = 0.5, slats = 6, colour = GREASE }) {
+  const parts = [box(r * w, r * 0.05, r * d, colour, { x, y, z })];
+  for (let i = 0; i < slats; i++) {
+    const t = (i + 0.5) / slats - 0.5;
+    parts.push(box(r * w * 0.9, r * 0.045, r * d * (0.55 / slats), STEEL,
+      { x, y: y + r * 0.04, z: z + t * r * d, rx: 0.35 }));
+  }
+  return parts;
+}
+
+/** A hose or cable run, sagging between two points. */
+function cable(r, from, to, { colour = GREASE, sag = 0.12, segments = 4, thickness = 0.028 } = {}) {
+  const parts = [];
+  for (let i = 0; i < segments; i++) {
+    const t0 = i / segments;
+    const t1 = (i + 1) / segments;
+    const at = (t) => [
+      from[0] + (to[0] - from[0]) * t,
+      from[1] + (to[1] - from[1]) * t - Math.sin(t * Math.PI) * r * sag,
+      from[2] + (to[2] - from[2]) * t,
+    ];
+    const a = at(t0);
+    const b = at(t1);
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const dz = b[2] - a[2];
+    const len = Math.hypot(dx, dy, dz) || 0.001;
+    parts.push(cylinder(r * thickness, r * thickness, len, colour, {
+      x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, z: (a[2] + b[2]) / 2,
+      rz: Math.atan2(dy, Math.hypot(dx, dz)) - Math.PI / 2,
+      ry: -Math.atan2(dz, dx),
+    }, 5));
+  }
+  return parts;
+}
+
+/** A sensor block: armoured housing with lenses that catch the light. */
+function optics(r, { x = 0, y = 0, z = 0, scale = 1, glow = GLOW } = {}) {
+  return [
+    box(r * 0.3 * scale, r * 0.22 * scale, r * 0.4 * scale, HULL_DARK, { x, y, z }),
+    box(r * 0.05 * scale, r * 0.16 * scale, r * 0.3 * scale, DARK, { x: x + r * 0.16 * scale, y, z }),
+    cylinder(r * 0.06 * scale, r * 0.06 * scale, r * 0.05 * scale, glow,
+      { x: x + r * 0.19 * scale, y: y + r * 0.03 * scale, z: z - r * 0.08 * scale, rz: Math.PI / 2 }, 8),
+    cylinder(r * 0.04 * scale, r * 0.04 * scale, r * 0.05 * scale, GLASS,
+      { x: x + r * 0.19 * scale, y: y + r * 0.03 * scale, z: z + r * 0.09 * scale, rz: Math.PI / 2 }, 8),
+    ...boltLine(r, {
+      from: [x - r * 0.13 * scale, y + r * 0.12 * scale, z - r * 0.15 * scale],
+      to: [x + r * 0.1 * scale, y + r * 0.12 * scale, z - r * 0.15 * scale],
+      count: 3, size: 0.028 * scale,
+    }),
+  ];
+}
+
+/** Grab rails along a hull, the detail that gives a vehicle human scale. */
+function railing(r, { from, to, posts = 3, height = 0.16, thickness = 0.022 } = {}) {
+  const parts = [];
+  const top = [];
+  for (let i = 0; i < posts; i++) {
+    const t = posts === 1 ? 0.5 : i / (posts - 1);
+    const px = from[0] + (to[0] - from[0]) * t;
+    const py = from[1] + (to[1] - from[1]) * t;
+    const pz = from[2] + (to[2] - from[2]) * t;
+    parts.push(cylinder(r * thickness, r * thickness, r * height, STEEL,
+      { x: px, y: py + r * height * 0.5, z: pz }, 5));
+    top.push([px, py + r * height, pz]);
+  }
+  for (let i = 0; i < top.length - 1; i++) {
+    parts.push(...cable(r, top[i], top[i + 1], { colour: STEEL, sag: 0, segments: 1, thickness }));
+  }
+  return parts;
+}
+
+/** An armour plate laid over a hull face, bolted at its edge. */
+function armourPlate(r, { x = 0, y = 0, z = 0, w = 0.5, h = 0.4, d = 0.08, tilt = 0, colour = null, c = null }) {
+  const shade = colour || (c ? c.dark : HULL_DARK);
+  return [
+    box(r * d, r * h, r * w, shade, { x, y, z, rz: tilt }),
+    ...boltLine(r, {
+      from: [x + r * d * 0.6, y + r * h * 0.38, z - r * w * 0.38],
+      to: [x + r * d * 0.6, y + r * h * 0.38, z + r * w * 0.38],
+      count: 4, size: 0.032,
+    }),
+  ];
+}
+
+/** Tool and track-link stowage, strapped to a hull side. */
+function toolRack(r, { x = 0, y = 0, z = 0, count = 3 } = {}) {
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const t = (i - (count - 1) / 2) * 0.22;
+    parts.push(box(r * 0.18, r * 0.05, r * 0.05, i % 2 ? STEEL : GREASE,
+      { x: x + t * r, y, z }));
+  }
+  parts.push(box(r * 0.02, r * 0.09, r * 0.02, GREASE, { x: x - r * 0.2, y, z }));
+  parts.push(box(r * 0.02, r * 0.09, r * 0.02, GREASE, { x: x + r * 0.2, y, z }));
+  return parts;
+}
+
 function runningGear(len, width, height, gauge, wheels = 5) {
   const parts = [];
   const wheelR = height * 0.62;
@@ -389,7 +583,7 @@ function runningGear(len, width, height, gauge, wheels = 5) {
     parts.push(box(len * 0.98, height * 0.16, width * 0.55, '#53585f', { z: side, y: height * 1.0 }));
     for (let i = 0; i < wheels; i++) {
       const t = wheels === 1 ? 0 : (i / (wheels - 1)) * 2 - 1;
-      parts.push(cylinder(wheelR, wheelR, width * 0.72, '#3a3e44', {
+      parts.push(cylinder(wheelR, wheelR, width * 0.72, GREASE, {
         x: t * len * 0.42, z: side, y: wheelR, rx: Math.PI / 2,
       }, 10));
       parts.push(cylinder(wheelR * 0.42, wheelR * 0.42, width * 0.8, '#5b6068', {
@@ -446,8 +640,8 @@ function engineDeck(r, { x = 0, z = 0, y = 0, w = 1, d = 1, slats = 4 } = {}) {
 /** Exhaust stack with a heat shield. */
 function exhaust(r, { x = 0, z = 0, y = 0 } = {}) {
   return [
-    cylinder(r * 0.08, r * 0.09, r * 0.3, '#2e3238', { x, z, y: y + r * 0.15 }, 10),
-    cylinder(r * 0.11, r * 0.11, r * 0.06, '#6a6f77', { x, z, y: y + r * 0.3 }, 10),
+    cylinder(r * 0.08, r * 0.09, r * 0.3, GREASE, { x, z, y: y + r * 0.15 }, 10),
+    cylinder(r * 0.11, r * 0.11, r * 0.06, STEEL, { x, z, y: y + r * 0.3 }, 10),
   ];
 }
 
@@ -475,33 +669,65 @@ function legPair(r, c, { gauge = 0.5, scale = 1, splay = 0.12 } = {}) {
   const s = scale;
   for (const side of [-gauge, gauge]) {
     const dir = side < 0 ? -1 : 1;
-    // Hip actuator.
-    parts.push(cylinder(r * 0.16 * s, r * 0.16 * s, r * 0.2 * s, HULL, {
+    // Hip actuator, with its bolted collar.
+    parts.push(cylinder(r * 0.17 * s, r * 0.17 * s, r * 0.22 * s, HULL, {
       z: side * r, y: r * 0.92 * s, rx: Math.PI / 2,
-    }, 10));
+    }, 12));
+    parts.push(cylinder(r * 0.2 * s, r * 0.2 * s, r * 0.06 * s, HULL_DARK, {
+      z: side * r * 1.06, y: r * 0.92 * s, rx: Math.PI / 2,
+    }, 12));
+    parts.push(...boltRing(r, {
+      z: side * r * 1.1, y: r * 0.92 * s, radius: 0.13 * s, count: 6, size: 0.026 * s,
+    }));
+
     // Thigh, angled back; shin, angled forward. A slight Z stance reads as
     // load-bearing rather than as two vertical posts.
     parts.push(box(r * 0.24 * s, r * 0.56 * s, r * 0.24 * s, HULL_DARK, {
       x: -r * 0.06 * s, z: side * r, y: r * 0.66 * s, rz: 0.16,
     }));
-    parts.push(cylinder(r * 0.12 * s, r * 0.12 * s, r * 0.18 * s, HULL_LIGHT, {
-      x: -r * 0.14 * s, z: side * r, y: r * 0.4 * s, rx: Math.PI / 2,
+    // Hydraulic ram alongside the thigh: the detail that says "powered".
+    parts.push(cylinder(r * 0.05 * s, r * 0.05 * s, r * 0.34 * s, STEEL, {
+      x: r * 0.1 * s, z: side * r, y: r * 0.72 * s, rz: 0.16,
     }, 8));
+    parts.push(cylinder(r * 0.035 * s, r * 0.035 * s, r * 0.26 * s, HULL_LIGHT, {
+      x: r * 0.07 * s, z: side * r, y: r * 0.48 * s, rz: 0.16,
+    }, 8));
+
+    // Knee: joint pin plus a shin guard over the front of it.
+    parts.push(cylinder(r * 0.13 * s, r * 0.13 * s, r * 0.2 * s, HULL_LIGHT, {
+      x: -r * 0.14 * s, z: side * r, y: r * 0.4 * s, rx: Math.PI / 2,
+    }, 10));
+    parts.push(box(r * 0.1 * s, r * 0.26 * s, r * 0.24 * s, c.dark, {
+      x: -r * 0.02 * s, z: side * r, y: r * 0.38 * s, rz: -0.3,
+    }));
+
     parts.push(box(r * 0.2 * s, r * 0.42 * s, r * 0.2 * s, HULL_DARK, {
       x: -r * 0.06 * s, z: side * (r + dir * splay * r * 0.3), y: r * 0.2 * s, rz: -0.2,
     }));
-    // Foot.
-    parts.push(box(r * 0.46 * s, r * 0.12 * s, r * 0.3 * s, '#3d4148', {
+    // Ankle linkage.
+    parts.push(cylinder(r * 0.04 * s, r * 0.04 * s, r * 0.22 * s, STEEL, {
+      x: -r * 0.16 * s, z: side * (r + dir * splay * r * 0.4), y: r * 0.2 * s, rz: -0.2,
+    }, 6));
+
+    // Foot: sole, toe plate and a heel spur.
+    parts.push(box(r * 0.48 * s, r * 0.1 * s, r * 0.32 * s, '#3d4148', {
       x: r * 0.02 * s, z: side * (r + dir * splay * r), y: r * 0.06 * s,
     }));
-    parts.push(box(r * 0.16 * s, r * 0.08 * s, r * 0.26 * s, c.dark, {
+    parts.push(box(r * 0.18 * s, r * 0.08 * s, r * 0.28 * s, c.dark, {
       x: r * 0.24 * s, z: side * (r + dir * splay * r), y: r * 0.11 * s,
+    }));
+    parts.push(box(r * 0.1 * s, r * 0.07 * s, r * 0.22 * s, '#33373d', {
+      x: -r * 0.22 * s, z: side * (r + dir * splay * r), y: r * 0.09 * s, rz: 0.3,
+    }));
+    parts.push(...boltLine(r, {
+      from: [-r * 0.12 * s, r * 0.12 * s, side * (r + dir * splay * r)],
+      to: [r * 0.16 * s, r * 0.12 * s, side * (r + dir * splay * r)],
+      count: 3, size: 0.026 * s,
     }));
   }
   return parts;
 }
 
-/** Shoulder block with a pivot, for arm- and shoulder-mounted weapons. */
 function shoulder(r, c, { z = 0, y = 0, scale = 1 } = {}) {
   return [
     box(r * 0.34 * scale, r * 0.34 * scale, r * 0.3 * scale, c.dark, { z, y }),
@@ -578,8 +804,8 @@ function conEngineer(r, c) {
 function conJeep(r, c) {
   const parts = [];
   const wheel = (x, z) => [
-    cylinder(r * 0.32, r * 0.32, r * 0.2, '#2e3238', { x, z, y: r * 0.32, rx: Math.PI / 2 }, 12),
-    cylinder(r * 0.15, r * 0.15, r * 0.23, '#6a6f77', { x, z, y: r * 0.32, rx: Math.PI / 2 }, 8),
+    cylinder(r * 0.32, r * 0.32, r * 0.2, GREASE, { x, z, y: r * 0.32, rx: Math.PI / 2 }, 12),
+    cylinder(r * 0.15, r * 0.15, r * 0.23, STEEL, { x, z, y: r * 0.32, rx: Math.PI / 2 }, 8),
   ];
   for (const [x, z] of [[0.64, -0.58], [0.64, 0.58], [-0.64, -0.58], [-0.64, 0.58]]) {
     parts.push(...wheel(x * r, z * r));
@@ -593,8 +819,8 @@ function conJeep(r, c) {
   parts.push(box(r * 0.07, r * 0.46, r * 0.07, HULL, { x: -r * 0.55, z: r * 0.4, y: r * 0.9 }));
   parts.push(box(r * 0.34, r * 0.2, r * 0.62, HULL_DARK, { x: -r * 0.72, y: r * 0.82 }));
   parts.push(...aerial(r, { x: -r * 0.4, z: r * 0.42, y: r * 0.78, len: 1.1 }));
-  parts.push(cylinder(r * 0.13, r * 0.13, r * 0.08, '#c8cdd4', { x: r * 0.92, z: -r * 0.28, y: r * 0.68, rz: Math.PI / 2 }, 10));
-  parts.push(cylinder(r * 0.13, r * 0.13, r * 0.08, '#c8cdd4', { x: r * 0.92, z: r * 0.28, y: r * 0.68, rz: Math.PI / 2 }, 10));
+  parts.push(cylinder(r * 0.13, r * 0.13, r * 0.08, HULL_LIGHT, { x: r * 0.92, z: -r * 0.28, y: r * 0.68, rz: Math.PI / 2 }, 10));
+  parts.push(cylinder(r * 0.13, r * 0.13, r * 0.08, HULL_LIGHT, { x: r * 0.92, z: r * 0.28, y: r * 0.68, rz: Math.PI / 2 }, 10));
   return {
     body: merge(parts),
     turret: merge([
@@ -608,181 +834,87 @@ function conJeep(r, c) {
 
 function conTank(r, c) {
   const parts = runningGear(r * 2.15, r * 0.5, r * 0.56, r * 0.68, 6);
-  // Hull with a sloped glacis and side skirts.
-  parts.push(box(r * 1.8, r * 0.42, r * 1.3, c.primary, { y: r * 0.78 }));
-  parts.push(box(r * 0.64, r * 0.32, r * 1.26, c.primary, { x: r * 1.0, y: r * 0.74, rz: -0.34 }));
-  parts.push(box(r * 1.7, r * 0.24, r * 0.08, '#43474e', { z: -r * 0.7, y: r * 0.74 }));
-  parts.push(box(r * 1.7, r * 0.24, r * 0.08, '#43474e', { z: r * 0.7, y: r * 0.74 }));
-  parts.push(...engineDeck(r, { x: -r * 0.62, y: r * 1.0, w: 0.6, d: 1.2, slats: 5 }));
+
+  // Lower hull in plain metal. The team colour is an accent here, not the
+  // paint job: a hull that is entirely one saturated colour reads as a toy,
+  // however much detail is bolted to it.
+  parts.push(box(r * 1.8, r * 0.44, r * 1.3, HULL, { y: r * 0.78 }));
+  // Sloped glacis, with its weld seam and the tow points either side.
+  parts.push(box(r * 0.7, r * 0.34, r * 1.26, HULL, { x: r * 1.0, y: r * 0.74, rz: -0.34 }));
+  parts.push(...seam(r, { from: [r * 0.66, r * 1.0, -r * 0.63], to: [r * 0.66, r * 1.0, r * 0.63] }));
+  parts.push(...boltLine(r, {
+    from: [r * 1.22, r * 0.62, -r * 0.5], to: [r * 1.22, r * 0.62, r * 0.5], count: 5,
+  }));
+  for (const side of [-1, 1]) {
+    parts.push(box(r * 0.22, r * 0.12, r * 0.14, STEEL, { x: r * 1.26, z: side * r * 0.44, y: r * 0.6 }));
+  }
+
+  // Fenders over the tracks, with the mudguard lip that catches the light.
+  for (const side of [-1, 1]) {
+    parts.push(box(r * 1.9, r * 0.07, r * 0.3, HULL_DARK, { z: side * r * 0.74, y: r * 0.98 }));
+    parts.push(box(r * 0.26, r * 0.2, r * 0.28, HULL_DARK, { x: -r * 0.98, z: side * r * 0.74, y: r * 0.9 }));
+    parts.push(...seam(r, {
+      from: [-r * 0.9, r * 1.02, side * r * 0.74], to: [r * 0.9, r * 1.02, side * r * 0.74], width: 0.03,
+    }));
+  }
+
+  // Engine deck: the biggest flat face on the hull, so it carries the grille.
+  parts.push(...grille(r, { x: -r * 0.62, y: r * 1.0, w: 0.62, d: 1.15, slats: 7 }));
+  parts.push(...boltRing(r, { x: -r * 0.62, y: r * 1.02, radius: 0.42, count: 10, size: 0.03 }));
   parts.push(...exhaust(r, { x: -r * 0.86, z: r * 0.46, y: r * 1.0 }));
-  parts.push(...stowage(r, c, { x: -r * 0.3, z: r * 0.72, y: r * 0.96, count: 2 }));
-  parts.push(box(r * 0.3, r * 0.1, r * 0.12, HULL_DARK, { x: r * 1.2, z: -r * 0.4, y: r * 0.6 }));
-  parts.push(box(r * 0.3, r * 0.1, r * 0.12, HULL_DARK, { x: r * 1.2, z: r * 0.4, y: r * 0.6 }));
+  parts.push(...exhaust(r, { x: -r * 0.86, z: -r * 0.46, y: r * 1.0 }));
+
+  // Crew kit: the details that give a vehicle human scale.
+  parts.push(...toolRack(r, { x: -r * 0.3, z: r * 0.78, y: r * 1.04 }));
+  parts.push(...stowage(r, c, { x: -r * 0.36, z: -r * 0.78, y: r * 1.04, count: 3, spacing: 0.26 }));
+  parts.push(...railing(r, {
+    from: [-r * 0.2, r * 1.02, r * 0.6], to: [r * 0.5, r * 1.02, r * 0.6], posts: 3,
+  }));
+  parts.push(...cable(r, [-r * 0.85, r * 1.04, -r * 0.2], [-r * 0.3, r * 1.02, -r * 0.5]));
+
+  // Team colour: a band along the hull sides and a recognition panel.
+  for (const side of [-1, 1]) {
+    parts.push(box(r * 1.5, r * 0.11, r * 0.05, c.primary, { z: side * r * 0.66, y: r * 0.86 }));
+  }
+  parts.push(box(r * 0.34, r * 0.03, r * 0.5, c.primary, { x: -r * 0.05, y: r * 1.01 }));
+
   return {
     body: merge(parts),
     turret: merge([
       // Faceted turret: front plate, cheeks, bustle.
-      box(r * 1.0, r * 0.4, r * 0.95, c.dark, {}),
-      box(r * 0.42, r * 0.34, r * 0.78, c.dark, { x: r * 0.6, rz: -0.22 }),
-      box(r * 0.55, r * 0.3, r * 0.85, c.dark, { x: -r * 0.6 }),
-      ...gunBarrel(r, { len: 1.45, calibre: 0.115 }),
+      box(r * 1.0, r * 0.42, r * 0.95, HULL, {}),
+      box(r * 0.46, r * 0.36, r * 0.8, HULL, { x: r * 0.6, rz: -0.24 }),
+      box(r * 0.58, r * 0.32, r * 0.86, HULL_DARK, { x: -r * 0.62 }),
+      // Bustle rack: open stowage behind the turret.
+      box(r * 0.5, r * 0.24, r * 0.8, GREASE, { x: -r * 0.68, y: r * 0.2 }),
+      ...toolRack(r, { x: -r * 0.68, y: r * 0.3, count: 3 }),
+      // Mantlet, then the gun through it.
+      cylinder(r * 0.26, r * 0.26, r * 0.34, HULL_DARK, { x: r * 0.82, rz: Math.PI / 2 }, 14),
+      ...boltRing(r, { x: r * 0.8, radius: 0.22, count: 9, size: 0.032 }),
+      ...gunBarrel(r, { len: 1.5, calibre: 0.115 }),
       ...cupola(r, c, { x: -r * 0.12, z: r * 0.26, y: r * 0.2 }),
-      // Smoke dischargers and a coaxial mount.
-      box(r * 0.1, r * 0.12, r * 0.34, HULL_DARK, { x: r * 0.2, z: -r * 0.44, y: r * 0.18 }),
-      box(r * 0.1, r * 0.12, r * 0.34, HULL_DARK, { x: r * 0.2, z: r * 0.44, y: r * 0.18 }),
-      box(r * 0.44, r * 0.08, r * 0.08, HULL_LIGHT, { x: r * 0.42, z: -r * 0.24, y: r * 0.14 }),
+      ...boltRing(r, { x: -r * 0.12, z: r * 0.26, y: r * 0.22, radius: 0.2, count: 8, size: 0.026 }),
+      ...optics(r, { x: r * 0.22, z: -r * 0.3, y: r * 0.22, scale: 0.8 }),
+      // Smoke dischargers, angled outboard.
+      ...[-1, 1].map((side) =>
+        box(r * 0.12, r * 0.14, r * 0.36, HULL_DARK, { x: r * 0.2, z: side * r * 0.46, y: r * 0.16, ry: side * 0.3 })),
+      ...[-1, 1].flatMap((side) => boltLine(r, {
+        from: [r * 0.12, r * 0.24, side * r * 0.46], to: [r * 0.3, r * 0.24, side * r * 0.46],
+        count: 3, size: 0.028,
+      })),
+      box(r * 0.46, r * 0.09, r * 0.09, HULL_LIGHT, { x: r * 0.44, z: -r * 0.24, y: r * 0.14 }),
+      ...aerial(r, { x: -r * 0.5, z: -r * 0.34, y: r * 0.18, len: 1.1 }),
+      // Turret-side team panel, where an insignia would go.
+      ...[-1, 1].map((side) =>
+        box(r * 0.42, r * 0.2, r * 0.03, c.primary, { x: -r * 0.08, z: side * r * 0.49 })),
+      ...seam(r, { from: [-r * 0.42, r * 0.22, 0], to: [r * 0.4, r * 0.22, 0], width: 0.03 }),
     ]),
-    turretY: r * 1.0,
+    turretY: r * 1.02,
   };
 }
-
-function conMissile(r, c) {
-  const parts = runningGear(r * 2.0, r * 0.46, r * 0.52, r * 0.64, 5);
-  parts.push(box(r * 1.65, r * 0.42, r * 1.2, c.primary, { y: r * 0.72 }));
-  parts.push(box(r * 0.58, r * 0.3, r * 1.15, c.primary, { x: r * 0.95, y: r * 0.7, rz: -0.3 }));
-  parts.push(box(r * 0.62, r * 0.36, r * 0.9, c.dark, { x: r * 0.52, y: r * 1.08 }));
-  parts.push(...engineDeck(r, { x: -r * 0.55, y: r * 0.94, w: 0.5, d: 1.1, slats: 4 }));
-  parts.push(...aerial(r, { x: -r * 0.8, z: -r * 0.4, y: r * 0.94, len: 1.2 }));
-  return {
-    body: merge(parts),
-    turret: merge([
-      box(r * 0.34, r * 0.3, r * 0.9, HULL, { x: -r * 0.3 }),
-      // Boxed launcher, elevated, with tubes showing at the front.
-      box(r * 1.0, r * 0.52, r * 1.15, HULL, { x: -r * 0.1, rz: -0.2 }),
-      ...[-1, 0, 1].flatMap((k) => [
-        cylinder(r * 0.13, r * 0.13, r * 0.16, '#3a3e44', {
-          x: r * 0.44, z: k * r * 0.34, y: r * 0.2, rz: Math.PI / 2 - 0.2,
-        }, 10),
-        cone(r * 0.11, r * 0.26, '#ff9a5b', {
-          x: r * 0.52, z: k * r * 0.34, y: r * 0.22, rz: -Math.PI / 2 - 0.2,
-        }, 8),
-      ]),
-    ]),
-    turretY: r * 1.12,
-  };
-}
-
-function conHeavyTank(r, c) {
-  const parts = runningGear(r * 2.5, r * 0.62, r * 0.66, r * 0.82, 7);
-  parts.push(box(r * 2.05, r * 0.52, r * 1.62, c.primary, { y: r * 0.9 }));
-  parts.push(box(r * 0.76, r * 0.4, r * 1.56, c.primary, { x: r * 1.12, y: r * 0.86, rz: -0.3 }));
-  // Applique armour blocks along the flanks.
-  for (const z of [-1, 1]) {
-    for (let i = 0; i < 3; i++) {
-      parts.push(box(r * 0.5, r * 0.22, r * 0.1, '#4a4f57', {
-        x: (i - 1) * r * 0.62, z: z * r * 0.86, y: r * 0.92,
-      }));
-    }
-  }
-  parts.push(...engineDeck(r, { x: -r * 0.72, y: r * 1.17, w: 0.62, d: 1.45, slats: 6 }));
-  parts.push(...exhaust(r, { x: -r * 1.0, z: -r * 0.56, y: r * 1.17 }));
-  parts.push(...exhaust(r, { x: -r * 1.0, z: r * 0.56, y: r * 1.17 }));
-  parts.push(sphere(r * 0.19, GLOW, { x: r * 0.5, y: r * 1.2 }));
-  return {
-    body: merge(parts),
-    turret: merge([
-      box(r * 1.25, r * 0.5, r * 1.25, c.dark, {}),
-      box(r * 0.5, r * 0.42, r * 1.0, c.dark, { x: r * 0.72, rz: -0.2 }),
-      box(r * 0.62, r * 0.36, r * 1.1, c.dark, { x: -r * 0.76 }),
-      ...gunBarrel(r, { len: 1.5, calibre: 0.11, y: -r * 0.3 }),
-      ...gunBarrel(r, { len: 1.5, calibre: 0.11, y: r * 0.3 }),
-      ...cupola(r, c, { x: -r * 0.3, z: r * 0.34, y: r * 0.24, scale: 1.1 }),
-      box(r * 0.12, r * 0.14, r * 0.4, HULL_DARK, { x: r * 0.1, z: -r * 0.56, y: r * 0.22 }),
-      box(r * 0.12, r * 0.14, r * 0.4, HULL_DARK, { x: r * 0.1, z: r * 0.56, y: r * 0.22 }),
-    ]),
-    turretY: r * 1.24,
-  };
-}
-
-function conHowitzer(r, c) {
-  const parts = runningGear(r * 2.05, r * 0.5, r * 0.54, r * 0.7, 6);
-  parts.push(box(r * 1.75, r * 0.4, r * 1.25, c.primary, { y: r * 0.76 }));
-  parts.push(box(r * 0.6, r * 0.3, r * 1.2, c.primary, { x: r * 0.98, y: r * 0.72, rz: -0.3 }));
-  parts.push(...engineDeck(r, { x: r * 0.5, y: r * 0.98, w: 0.45, d: 1.1, slats: 4 }));
-  // Recoil spades, dug in at the back.
-  for (const z of [-1, 1]) {
-    parts.push(box(r * 0.55, r * 0.18, r * 0.34, '#4a4f57', {
-      x: -r * 1.02, z: z * r * 0.5, y: r * 0.32, rz: 0.42,
-    }));
-  }
-  parts.push(...stowage(r, c, { x: -r * 0.3, z: r * 0.74, y: r * 0.94, count: 3, spacing: 0.28 }));
-  return {
-    body: merge(parts),
-    turret: merge([
-      box(r * 0.95, r * 0.44, r * 1.05, c.dark, {}),
-      box(r * 0.5, r * 0.34, r * 0.9, c.dark, { x: -r * 0.6 }),
-      // A long, heavy barrel with a bore evacuator part way along it.
-      cylinder(r * 0.115, r * 0.125, r * 2.5, HULL_LIGHT, { x: r * 1.45, y: r * 0.12, rz: Math.PI / 2 + 0.06 }, 12),
-      cylinder(r * 0.2, r * 0.2, r * 0.3, '#5f646c', { x: r * 1.1, y: r * 0.1, rz: Math.PI / 2 + 0.06 }, 12),
-      cylinder(r * 0.19, r * 0.15, r * 0.28, '#4d5159', { x: r * 2.62, y: r * 0.22, rz: Math.PI / 2 + 0.06 }, 12),
-      box(r * 0.36, r * 0.36, r * 0.5, HULL, { x: r * 0.22, y: r * 0.06 }),
-      ...cupola(r, c, { x: -r * 0.2, z: r * 0.3, y: r * 0.22, scale: 0.85 }),
-    ]),
-    turretY: r * 1.04,
-  };
-}
-
-function conDerrick(s, c) {
-  const parts = foundation(s, c);
-  // Four legs meeting at a head, with a walking beam that rocks as it pumps.
-  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-    parts.push(box(s * 0.09, s * 0.95, s * 0.09, HULL, {
-      x: dx * s * 0.21, z: dz * s * 0.21, y: s * 0.5, rx: dz * 0.16, rz: -dx * 0.16,
-    }));
-  }
-  parts.push(box(s * 0.3, s * 0.12, s * 0.3, HULL_LIGHT, { y: s * 1.0 }));
-  return {
-    body: merge(parts),
-    spinner: merge([
-      box(s * 0.8, s * 0.1, s * 0.12, c.light, {}),
-      box(s * 0.14, s * 0.3, s * 0.14, HULL_DARK, { x: s * 0.36, y: -s * 0.18 }),
-    ]),
-    spinnerAxis: 'x',
-    spinnerY: s * 1.08,
-    spinSpeed: 1.5,
-  };
-}
-
-function conDiesel(s, c) {
-  const parts = foundation(s, c);
-  parts.push(box(s * 0.78, s * 0.46, s * 0.66, HULL, { y: s * 0.33 }));
-  parts.push(box(s * 0.8, s * 0.1, s * 0.7, c.primary, { y: s * 0.58 }));
-  // Radiator grille and exhaust stacks.
-  parts.push(box(s * 0.06, s * 0.3, s * 0.56, '#22262b', { x: s * 0.4, y: s * 0.33 }));
-  for (const dz of [-0.22, 0.22]) {
-    parts.push(cylinder(s * 0.07, s * 0.08, s * 0.5, HULL_DARK, { x: -s * 0.28, z: dz * s, y: s * 0.78 }, 6));
-  }
-  return { body: merge(parts) };
-}
-
-function conFusion(s, c) {
-  const parts = foundation(s, c, 3);
-  parts.push(cylinder(s * 0.3, s * 0.36, s * 0.4, HULL, { y: s * 0.28 }, 12));
-  parts.push(sphere(s * 0.3, c.primary, { y: s * 0.58 }, 12));
-  parts.push(sphere(s * 0.19, GLOW, { y: s * 0.58 }, 10));
-  // Cooling towers at the corners.
-  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-    parts.push(cylinder(s * 0.1, s * 0.14, s * 0.54, HULL_LIGHT, {
-      x: dx * s * 0.34, z: dz * s * 0.34, y: s * 0.32,
-    }, 8));
-  }
-  parts.push(box(s * 0.86, s * 0.06, s * 0.1, c.dark, { y: s * 0.1 }));
-  parts.push(box(s * 0.1, s * 0.06, s * 0.86, c.dark, { y: s * 0.1 }));
-  return { body: merge(parts) };
-}
-
-function conRefinery(s, c) {
-  const parts = foundation(s, c);
-  parts.push(cylinder(s * 0.22, s * 0.24, s * 0.7, HULL, { x: -s * 0.16, y: s * 0.42 }, 10));
-  parts.push(cylinder(s * 0.15, s * 0.16, s * 0.5, HULL_LIGHT, { x: s * 0.22, z: s * 0.18, y: s * 0.32 }, 8));
-  parts.push(cylinder(s * 0.12, s * 0.12, s * 0.1, '#ffd76a', { x: -s * 0.16, y: s * 0.8 }, 10));
-  parts.push(box(s * 0.5, s * 0.07, s * 0.07, HULL_DARK, { x: s * 0.04, z: -s * 0.2, y: s * 0.5 }));
-  return { body: merge(parts) };
-}
-
 function conTankStore(s, c, metalKind) {
   const parts = foundation(s, c);
-  const tint = metalKind ? '#9aa3ad' : '#d8b24a';
+  const tint = metalKind ? HULL : '#d8b24a';
   parts.push(cylinder(s * 0.3, s * 0.3, s * 0.62, tint, { z: -s * 0.18, y: s * 0.44 }, 12));
   parts.push(cylinder(s * 0.3, s * 0.3, s * 0.62, tint, { z: s * 0.18, y: s * 0.44 }, 12));
   parts.push(box(s * 0.06, s * 0.06, s * 0.4, HULL_DARK, { y: s * 0.7 }));
@@ -871,6 +1003,150 @@ function conRadar(s, c) {
 
 // ---------------------------------------------------------------- dispatch
 
+
+function conDerrick(s, c) {
+  const parts = foundation(s, c);
+  // Four legs meeting at a head, with a walking beam that rocks as it pumps.
+  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    parts.push(box(s * 0.09, s * 0.95, s * 0.09, HULL, {
+      x: dx * s * 0.21, z: dz * s * 0.21, y: s * 0.5, rx: dz * 0.16, rz: -dx * 0.16,
+    }));
+  }
+  parts.push(box(s * 0.3, s * 0.12, s * 0.3, HULL_LIGHT, { y: s * 1.0 }));
+  return {
+    body: merge(parts),
+    spinner: merge([
+      box(s * 0.8, s * 0.1, s * 0.12, c.light, {}),
+      box(s * 0.14, s * 0.3, s * 0.14, HULL_DARK, { x: s * 0.36, y: -s * 0.18 }),
+    ]),
+    spinnerAxis: 'x',
+    spinnerY: s * 1.08,
+    spinSpeed: 1.5,
+  };
+}
+
+function conDiesel(s, c) {
+  const parts = foundation(s, c);
+  parts.push(box(s * 0.78, s * 0.46, s * 0.66, HULL, { y: s * 0.33 }));
+  parts.push(box(s * 0.8, s * 0.1, s * 0.7, c.primary, { y: s * 0.58 }));
+  // Radiator grille and exhaust stacks.
+  parts.push(box(s * 0.06, s * 0.3, s * 0.56, '#22262b', { x: s * 0.4, y: s * 0.33 }));
+  for (const dz of [-0.22, 0.22]) {
+    parts.push(cylinder(s * 0.07, s * 0.08, s * 0.5, HULL_DARK, { x: -s * 0.28, z: dz * s, y: s * 0.78 }, 6));
+  }
+  return { body: merge(parts) };
+}
+
+function conFusion(s, c) {
+  const parts = foundation(s, c, 3);
+  parts.push(cylinder(s * 0.3, s * 0.36, s * 0.4, HULL, { y: s * 0.28 }, 12));
+  parts.push(sphere(s * 0.3, c.primary, { y: s * 0.58 }, 12));
+  parts.push(sphere(s * 0.19, GLOW, { y: s * 0.58 }, 10));
+  // Cooling towers at the corners.
+  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    parts.push(cylinder(s * 0.1, s * 0.14, s * 0.54, HULL_LIGHT, {
+      x: dx * s * 0.34, z: dz * s * 0.34, y: s * 0.32,
+    }, 8));
+  }
+  parts.push(box(s * 0.86, s * 0.06, s * 0.1, c.dark, { y: s * 0.1 }));
+  parts.push(box(s * 0.1, s * 0.06, s * 0.86, c.dark, { y: s * 0.1 }));
+  return { body: merge(parts) };
+}
+
+function conHeavyTank(r, c) {
+  const parts = runningGear(r * 2.5, r * 0.62, r * 0.66, r * 0.82, 7);
+  parts.push(box(r * 2.05, r * 0.52, r * 1.62, c.primary, { y: r * 0.9 }));
+  parts.push(box(r * 0.76, r * 0.4, r * 1.56, c.primary, { x: r * 1.12, y: r * 0.86, rz: -0.3 }));
+  // Applique armour blocks along the flanks.
+  for (const z of [-1, 1]) {
+    for (let i = 0; i < 3; i++) {
+      parts.push(box(r * 0.5, r * 0.22, r * 0.1, '#4a4f57', {
+        x: (i - 1) * r * 0.62, z: z * r * 0.86, y: r * 0.92,
+      }));
+    }
+  }
+  parts.push(...engineDeck(r, { x: -r * 0.72, y: r * 1.17, w: 0.62, d: 1.45, slats: 6 }));
+  parts.push(...exhaust(r, { x: -r * 1.0, z: -r * 0.56, y: r * 1.17 }));
+  parts.push(...exhaust(r, { x: -r * 1.0, z: r * 0.56, y: r * 1.17 }));
+  parts.push(sphere(r * 0.19, GLOW, { x: r * 0.5, y: r * 1.2 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      box(r * 1.25, r * 0.5, r * 1.25, c.dark, {}),
+      box(r * 0.5, r * 0.42, r * 1.0, c.dark, { x: r * 0.72, rz: -0.2 }),
+      box(r * 0.62, r * 0.36, r * 1.1, c.dark, { x: -r * 0.76 }),
+      ...gunBarrel(r, { len: 1.5, calibre: 0.11, y: -r * 0.3 }),
+      ...gunBarrel(r, { len: 1.5, calibre: 0.11, y: r * 0.3 }),
+      ...cupola(r, c, { x: -r * 0.3, z: r * 0.34, y: r * 0.24, scale: 1.1 }),
+      box(r * 0.12, r * 0.14, r * 0.4, HULL_DARK, { x: r * 0.1, z: -r * 0.56, y: r * 0.22 }),
+      box(r * 0.12, r * 0.14, r * 0.4, HULL_DARK, { x: r * 0.1, z: r * 0.56, y: r * 0.22 }),
+    ]),
+    turretY: r * 1.24,
+  };
+}
+
+function conHowitzer(r, c) {
+  const parts = runningGear(r * 2.05, r * 0.5, r * 0.54, r * 0.7, 6);
+  parts.push(box(r * 1.75, r * 0.4, r * 1.25, c.primary, { y: r * 0.76 }));
+  parts.push(box(r * 0.6, r * 0.3, r * 1.2, c.primary, { x: r * 0.98, y: r * 0.72, rz: -0.3 }));
+  parts.push(...engineDeck(r, { x: r * 0.5, y: r * 0.98, w: 0.45, d: 1.1, slats: 4 }));
+  // Recoil spades, dug in at the back.
+  for (const z of [-1, 1]) {
+    parts.push(box(r * 0.55, r * 0.18, r * 0.34, '#4a4f57', {
+      x: -r * 1.02, z: z * r * 0.5, y: r * 0.32, rz: 0.42,
+    }));
+  }
+  parts.push(...stowage(r, c, { x: -r * 0.3, z: r * 0.74, y: r * 0.94, count: 3, spacing: 0.28 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      box(r * 0.95, r * 0.44, r * 1.05, c.dark, {}),
+      box(r * 0.5, r * 0.34, r * 0.9, c.dark, { x: -r * 0.6 }),
+      // A long, heavy barrel with a bore evacuator part way along it.
+      cylinder(r * 0.115, r * 0.125, r * 2.5, HULL_LIGHT, { x: r * 1.45, y: r * 0.12, rz: Math.PI / 2 + 0.06 }, 12),
+      cylinder(r * 0.2, r * 0.2, r * 0.3, '#5f646c', { x: r * 1.1, y: r * 0.1, rz: Math.PI / 2 + 0.06 }, 12),
+      cylinder(r * 0.19, r * 0.15, r * 0.28, '#4d5159', { x: r * 2.62, y: r * 0.22, rz: Math.PI / 2 + 0.06 }, 12),
+      box(r * 0.36, r * 0.36, r * 0.5, HULL, { x: r * 0.22, y: r * 0.06 }),
+      ...cupola(r, c, { x: -r * 0.2, z: r * 0.3, y: r * 0.22, scale: 0.85 }),
+    ]),
+    turretY: r * 1.04,
+  };
+}
+
+function conMissile(r, c) {
+  const parts = runningGear(r * 2.0, r * 0.46, r * 0.52, r * 0.64, 5);
+  parts.push(box(r * 1.65, r * 0.42, r * 1.2, c.primary, { y: r * 0.72 }));
+  parts.push(box(r * 0.58, r * 0.3, r * 1.15, c.primary, { x: r * 0.95, y: r * 0.7, rz: -0.3 }));
+  parts.push(box(r * 0.62, r * 0.36, r * 0.9, c.dark, { x: r * 0.52, y: r * 1.08 }));
+  parts.push(...engineDeck(r, { x: -r * 0.55, y: r * 0.94, w: 0.5, d: 1.1, slats: 4 }));
+  parts.push(...aerial(r, { x: -r * 0.8, z: -r * 0.4, y: r * 0.94, len: 1.2 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      box(r * 0.34, r * 0.3, r * 0.9, HULL, { x: -r * 0.3 }),
+      // Boxed launcher, elevated, with tubes showing at the front.
+      box(r * 1.0, r * 0.52, r * 1.15, HULL, { x: -r * 0.1, rz: -0.2 }),
+      ...[-1, 0, 1].flatMap((k) => [
+        cylinder(r * 0.13, r * 0.13, r * 0.16, GREASE, {
+          x: r * 0.44, z: k * r * 0.34, y: r * 0.2, rz: Math.PI / 2 - 0.2,
+        }, 10),
+        cone(r * 0.11, r * 0.26, '#ff9a5b', {
+          x: r * 0.52, z: k * r * 0.34, y: r * 0.22, rz: -Math.PI / 2 - 0.2,
+        }, 8),
+      ]),
+    ]),
+    turretY: r * 1.12,
+  };
+}
+
+function conRefinery(s, c) {
+  const parts = foundation(s, c);
+  parts.push(cylinder(s * 0.22, s * 0.24, s * 0.7, HULL, { x: -s * 0.16, y: s * 0.42 }, 10));
+  parts.push(cylinder(s * 0.15, s * 0.16, s * 0.5, HULL_LIGHT, { x: s * 0.22, z: s * 0.18, y: s * 0.32 }, 8));
+  parts.push(cylinder(s * 0.12, s * 0.12, s * 0.1, '#ffd76a', { x: -s * 0.16, y: s * 0.8 }, 10));
+  parts.push(box(s * 0.5, s * 0.07, s * 0.07, HULL_DARK, { x: s * 0.04, z: -s * 0.2, y: s * 0.5 }));
+  return { body: merge(parts) };
+}
 
 // ------------------------------------------------------------------ Blight
 //
@@ -1294,6 +1570,7 @@ export function buildRawModel(def, colors) {
 /** The palette an exported asset is authored in, so materials can be named. */
 export const PALETTE = {
   HULL, HULL_DARK, HULL_LIGHT, DARK, GLASS, GLOW, TRACK,
+  STEEL, GREASE,
   CHITIN, CHITIN_DARK, CHITIN_LIGHT, FLESH, BILE,
 };
 

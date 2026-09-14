@@ -35,15 +35,21 @@ func _ready() -> void:
 	print("map generated in %dms" % (Time.get_ticks_msec() - t0))
 
 	var diag := false
+	var closeup := ""
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--diag":
 			diag = true
+		elif arg.begins_with("--closeup="):
+			closeup = arg.substr(10)
 	IdSceneSetup.build_environment(self)
 	IdSceneSetup.build_terrain(self, terrain, diag)
 	if not diag:
 		IdSceneSetup.build_water(self, map, terrain)
-	_place_showcase()
-	_place_camera()
+	if closeup != "":
+		_place_closeup(closeup.split(","))
+	else:
+		_place_showcase()
+		_place_camera()
 	print("scene ready: %d nodes" % _count_nodes(self))
 
 	# Capture a frame and exit, when asked to from the command line.
@@ -107,6 +113,40 @@ func _place_showcase() -> void:
 	var spot: Dictionary = map.nearest_free_metal_spot(ox, oz)
 	if not spot.is_empty():
 		spawn_model("con_derrick", spot["x"], spot["y"], BLUE)
+
+## A handful of models filling the frame, for judging their detail rather than
+## their silhouette. The wide showcase is too far out to see whether a hull has
+## panel lines on it.
+func _place_closeup(ids: PackedStringArray) -> void:
+	var start: Dictionary = map.start_positions[0]
+	var ox: float = start["x"]
+	var oz: float = start["y"]
+	var spacing := 70.0
+	var span := spacing * float(maxi(ids.size() - 1, 1))
+
+	for i in ids.size():
+		var id := ids[i].strip_edges()
+		if id == "":
+			continue
+		var colours := BLUE
+		if id.begins_with("bl_"):
+			colours = GREEN
+		elif not id.begins_with("con_"):
+			colours = RED
+		spawn_model(id, ox - span * 0.5 + float(i) * spacing, oz, colours, PI * 0.15)
+
+	var target := Vector3(ox, terrain.height_at(ox, oz), oz)
+	var cam := Camera3D.new()
+	cam.name = "Camera"
+	cam.fov = 34.0
+	cam.far = 12000.0
+	var pitch := 0.55
+	var dist := maxf(150.0, span * 1.5 + 120.0)
+	cam.position = target + Vector3(0, sin(pitch) * dist, cos(pitch) * dist)
+	add_child(cam)
+	cam.look_at(target + Vector3(0, 14, 0), Vector3.UP)
+	cam.make_current()
+
 
 func _place_camera() -> void:
 	var start: Dictionary = map.start_positions[0]

@@ -17,8 +17,15 @@ static func build_environment(parent: Node) -> void:
 	sky.sky_material = sky_mat
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.42
+	# Ambient is taken from a neutral colour rather than from the sky, and the
+	# sky is kept for reflections. Sky ambient means a dark blue sky fills every
+	# shadowed face with dark blue: a grey hull measured at under half its
+	# authored value and well into navy, so painted metal read as black plastic.
+	# Strength alone cannot fix that - the hue has to come from somewhere else.
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.66, 0.69, 0.74)
+	env.ambient_light_energy = 1.0
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_exposure = 0.95
 	env.glow_enabled = true
@@ -34,14 +41,14 @@ static func build_environment(parent: Node) -> void:
 
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color(1.0, 0.92, 0.78)
-	sun.light_energy = 1.55
+	sun.light_energy = 1.35
 	sun.shadow_enabled = true
 	sun.rotation_degrees = Vector3(-48, -128, 0)
 	parent.add_child(sun)
 
 	var rim := DirectionalLight3D.new()
 	rim.light_color = Color(0.53, 0.71, 1.0)
-	rim.light_energy = 0.4
+	rim.light_energy = 0.55
 	rim.rotation_degrees = Vector3(-28, 52, 0)
 	parent.add_child(rim)
 

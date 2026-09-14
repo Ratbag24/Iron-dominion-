@@ -57,8 +57,8 @@ name('#8ef6ff', 'Glow', { emissive: true });
 // runtime palette, so the whole asset set shares one small material list.
 name('#5b6068', 'Concrete');
 name('#33373d', 'Deck');
-name('#6a6f77', 'Steel');
-name('#3a3e44', 'Rubber');
+name(PALETTE.STEEL, 'Steel');
+name(PALETTE.GREASE, 'Rubber');
 name('#9aa3ad', 'StoreMetal');
 name('#d8b24a', 'StoreEnergy');
 
