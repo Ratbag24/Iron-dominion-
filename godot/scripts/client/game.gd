@@ -21,6 +21,7 @@ var terrain: IdTerrainBuilder
 var units: IdUnitView
 var cam: IdRtsCamera
 var effects: IdEffectsView
+var sound: IdSoundView
 var selection: IdSelection
 var hud: IdHud
 
@@ -120,6 +121,11 @@ func _build_scene() -> void:
 	add_child(effects)
 	effects.setup(world, terrain, -1 if _autoplay else 0)
 
+	sound = IdSoundView.new()
+	sound.name = "Sound"
+	add_child(sound)
+	sound.setup(world, terrain, -1 if _autoplay else 0)
+
 	cam = IdRtsCamera.new()
 	cam.name = "Camera"
 	add_child(cam)
@@ -129,6 +135,7 @@ func _build_scene() -> void:
 
 	selection = IdSelection.new()
 	selection.setup(world, cam, 0)
+	selection.sound = sound
 
 	if not _autoplay:
 		hud = IdHud.new()
@@ -230,6 +237,7 @@ func _process(dt: float) -> void:
 
 	units.sync()
 	effects.sync()
+	sound.sync()
 
 	var viewport: Vector2 = get_viewport().get_visible_rect().size
 	cam.update(dt, viewport, get_viewport().get_mouse_position())
@@ -261,6 +269,9 @@ func _handle_key(key: InputEventKey) -> bool:
 	match key.keycode:
 		KEY_SPACE:
 			running = not running
+			return true
+		KEY_M:
+			sound.enabled = not sound.enabled
 			return true
 		KEY_EQUAL, KEY_KP_ADD:
 			speed = minf(speed * 2.0, 8.0)

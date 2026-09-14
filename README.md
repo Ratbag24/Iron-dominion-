@@ -15,6 +15,12 @@ set to **GitHub Actions**. It cannot set that itself: the Actions token has no
 repository-admin scope, and the `github-pages` environment refuses deployments
 from any branch but the default one.</sub>
 
+> **On sound and art.** There are no audio or texture files in this project
+> for the same reason there are no model files in the browser build: every
+> sound is synthesised at startup from oscillators and filtered noise, and
+> every model and surface is generated in code. Nothing has to be licensed and
+> nothing has to be shipped.
+
 > **On the relationship to Beyond All Reason.** This is not a copy of BAR, and
 > it contains none of its code or assets. BAR is a decade of work by a large
 > team on the Recoil engine, with thousands of models, textures and sounds that
@@ -83,6 +89,7 @@ faction data both builds read.
 | **Queue 5 units** | Shift + click a unit in a factory's menu |
 | **Rally point** | Right click the ground with a factory selected |
 | **Pause / Speed** | `Space` · `+` and `-` |
+| **Mute** | `M` (Godot build) |
 
 ## How the game works
 

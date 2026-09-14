@@ -15,6 +15,10 @@ var world: IdWorld
 var cam: IdRtsCamera
 var player_index: int = 0
 
+## Set by the game, so a click can be heard. Optional: the automated paths run
+## without one.
+var sound: IdSoundView = null
+
 ## Entity ids currently selected.
 var selected: Array[int] = []
 
@@ -69,12 +73,16 @@ func _deselect_all() -> void:
 func select_ids(ids: Array[int], additive: bool) -> void:
 	if not additive:
 		_deselect_all()
+	var added := false
 	for id in ids:
 		if not selected.has(id):
 			selected.append(id)
+			added = true
 			var e: IdEntity = world.get_entity(id)
 			if e != null:
 				e.selected = true
+	if added and sound != null:
+		sound.play_ui("select")
 
 
 ## The player's unit nearest the cursor, or 0 when nothing is close enough.
@@ -205,6 +213,8 @@ func _handle_right(mb: InputEventMouseButton) -> bool:
 func issue_order(ground: Vector2, screen_pos: Vector2, queue: bool) -> void:
 	var target := _entity_under(screen_pos)
 	var units := selected_entities()
+	if not units.is_empty() and sound != null:
+		sound.play_ui("order")
 
 	for e in units:
 		if not queue:
