@@ -1,0 +1,46 @@
+# Runs the Godot suites on every push and pull request.
+#
+# The simulation is the same design in both builds, so a change to the shared
+# data files or to the game's rules has to hold up in both. These run headless:
+# no display, no GPU, nothing that needs a runner with a screen.
+
+name: Godot tests
+
+on:
+  push:
+    branches-ignore: []
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: godot-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GODOT_VERSION: 4.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the engine
+        id: engine-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-linux
+
+      - name: Fetch Godot
+        if: steps.engine-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot
+          name="Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          url="https://github.com/godotengine/godot/releases/download"
+          url="$url/${GODOT_VERSION}-stable/${name}.zip"
+          curl -fsSL "$url" -o /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d ~/godot
+          chmod +x ~/godot/"$name"
+
+      - name: Run every suite
+        run: GODOT=~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 tools/godot-test.sh

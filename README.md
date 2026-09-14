@@ -62,7 +62,8 @@ GODOT=/path/to/godot tools/godot-shots.sh # capture the interface states
 ```
 
 Needs Godot 4.3 or later. The first run imports the models, which takes a
-moment; after that it starts straight into the front end.
+moment; after that it starts straight into the front end. The suites run in CI
+on every push, headless — no display and no GPU.
 
 The models live in `godot/assets/models` as glTF binaries, one per unit, with a
 named material per colour — open any of them in Blender, edit, and export over
