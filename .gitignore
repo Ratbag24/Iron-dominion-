@@ -7,3 +7,6 @@ dist/
 godot/.godot/
 godot/android/
 export/
+
+# Exported builds
+build/

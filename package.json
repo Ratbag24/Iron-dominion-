@@ -11,7 +11,9 @@
     "test:godot": "bash tools/godot-test.sh",
     "export:models": "node tools/export-models.mjs",
     "export:data": "node tools/export-data.mjs",
-    "build": "node tools/build.mjs"
+    "build": "node tools/build.mjs",
+    "test:web": "node tests/web.test.mjs",
+    "export": "bash tools/godot-export.sh"
   },
   "license": "MIT",
   "private": true,

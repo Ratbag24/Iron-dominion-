@@ -60,6 +60,8 @@ func _ready() -> void:
 			_autoplay = true
 		elif arg.begins_with("--opponents="):
 			IdMatchSettings.opponents = int(arg.substr(12))
+		elif arg.begins_with("--sides="):
+			IdMatchSettings.team_mode = arg.substr(8)
 		elif arg == "--action":
 			_focus_action = true
 
@@ -68,8 +70,17 @@ func _ready() -> void:
 	add_child(_loading)
 	_loading.show_message("Generating map")
 
-	_loader = Thread.new()
-	_loader.start(_generate)
+	# Not every build has threads. A web export without them cannot be given
+	# work on one — Thread.start simply never runs it, and the loading screen
+	# waits for a result that will not come. Where that is the case the map is
+	# generated on the main thread instead, a frame later so the screen has
+	# had a chance to paint first. It blocks rather than animating, which is
+	# the honest trade for running at all.
+	if OS.has_feature("threads"):
+		_loader = Thread.new()
+		_loader.start(_generate)
+	else:
+		_generate_on_main.call_deferred()
 
 
 ## Runs off the main thread: world generation and the ground mesh, neither of
@@ -89,9 +100,19 @@ func _generate() -> void:
 	_generate_ms = Time.get_ticks_msec() - t0
 
 
+## The fallback path: generate here, then build, without a thread anywhere.
+func _generate_on_main() -> void:
+	# One more frame so the loading screen is actually on screen before the
+	# main loop stops answering.
+	await get_tree().process_frame
+	_generate()
+	_build_scene()
+
+
 func _build_scene() -> void:
-	_loader.wait_to_finish()
-	_loader = null
+	if _loader != null:
+		_loader.wait_to_finish()
+		_loader = null
 	_loading.queue_free()
 	_loading = null
 	print("world generated in %dms" % _generate_ms)
@@ -180,12 +201,12 @@ func _parse_cmdline() -> void:
 
 
 func _process(dt: float) -> void:
-	if _loader != null:
+	if _loading != null:
 		# is_alive is the thread's own answer, rather than a flag it sets and
-		# this side hopes to see.
-		if _loader.is_alive():
-			return
-		_build_scene()
+		# this side hopes to see. Without a thread, _generate_on_main clears
+		# the loading screen itself and this never fires.
+		if _loader != null and not _loader.is_alive():
+			_build_scene()
 		return
 
 	if _headless_ticks > 0:

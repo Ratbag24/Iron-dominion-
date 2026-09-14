@@ -56,9 +56,11 @@ map generator and random number stream are checked against the browser build's
 output value for value.
 
 ```sh
-godot --path godot                        # play
-GODOT=/path/to/godot tools/godot-test.sh  # run every suite headlessly
-GODOT=/path/to/godot tools/godot-shots.sh # capture the interface states
+godot --path godot                          # play
+GODOT=/path/to/godot tools/godot-test.sh    # run every suite headlessly
+GODOT=/path/to/godot tools/godot-shots.sh   # capture the interface states
+GODOT=/path/to/godot tools/godot-export.sh  # build for Linux, Windows, macOS and the web
+npm run test:web                            # drive the web export through a browser
 ```
 
 Needs Godot 4.3 or later. The first run imports the models, which takes a
@@ -73,6 +75,18 @@ test compares the height field under a quarter turn and counts the spots
 nearest each start. With three opponents you can play a free-for-all or two
 against two, where allies share vision and a team is out only when both its
 commanders are.
+
+Exporting needs the matching export templates for the engine's version, from
+the Godot download page or by unzipping the `.tpz` into
+`~/.local/share/godot/export_templates/<version>/`. Builds land in `build/`,
+which is not tracked.
+
+The web export is built without thread support, which is what lets it be
+served from an ordinary static host: a threaded build needs the
+`Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers that
+GitHub Pages cannot set. `npm run test:web` serves the export with no such
+headers and plays a match through it, which is the only honest way to know it
+works where it will actually live.
 
 The models live in `godot/assets/models` as glTF binaries, one per unit, with a
 named material per colour — open any of them in Blender, edit, and export over
