@@ -871,6 +871,332 @@ function conRadar(s, c) {
 
 // ---------------------------------------------------------------- dispatch
 
+
+// ------------------------------------------------------------------ Blight
+//
+// Grown rather than built. Where the machine factions are plated boxes with
+// panel lines, this is carapace and sac: squashed spheres, splayed cones and
+// rings of teeth. The team colour still carries, because a player has to be
+// able to tell whose hive is whose.
+
+const CHITIN = '#6d6455';
+const CHITIN_DARK = '#3a342b';
+const CHITIN_LIGHT = '#9c8f78';
+const FLESH = '#8c5b63';
+const BILE = '#b6ff6a';
+
+/** A domed shell: the shape most of the hive is made of. */
+function carapace(r, c, { x = 0, y = 0, z = 0, scale = 1, squash = 0.62 } = {}) {
+  return [
+    sphere(r * scale, c, { x, y, z, sy: squash }, 12),
+    sphere(r * scale * 0.82, CHITIN_DARK, { x: x - r * scale * 0.18, y, z, sy: squash * 0.9 }, 10),
+  ];
+}
+
+/** Thin legs splayed out sideways, three to a side. */
+function crawlerLegs(r, c, { scale = 1, gauge = 0.62, count = 3 } = {}) {
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const along = (i / Math.max(1, count - 1) - 0.5) * r * 1.3 * scale;
+    for (const side of [-1, 1]) {
+      const z = side * r * gauge;
+      parts.push(cylinder(r * 0.07 * scale, r * 0.05 * scale, r * 0.62 * scale, CHITIN_DARK,
+        { x: along, y: r * 0.46 * scale, z: z * 0.7, rx: side * 0.9 }, 6));
+      parts.push(cylinder(r * 0.05 * scale, r * 0.03 * scale, r * 0.5 * scale, CHITIN,
+        { x: along, y: r * 0.18 * scale, z, rx: side * -0.5 }, 6));
+    }
+  }
+  return parts;
+}
+
+/** A ridge of spines along the back. */
+function spines(r, c, { x = 0, y = 0, count = 4, len = 0.5, spacing = 0.3 } = {}) {
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const t = i / Math.max(1, count - 1) - 0.5;
+    parts.push(cone(r * 0.1, r * len * (1 - Math.abs(t) * 0.5), CHITIN_LIGHT,
+      { x: x + t * r * spacing * count, y, rz: -0.25 }, 6));
+  }
+  return parts;
+}
+
+/** A ring of teeth around a mouth. */
+function maw(r, { x = 0, y = 0, radius = 0.4, count = 8, len = 0.3 } = {}) {
+  const parts = [cylinder(r * radius * 0.8, r * radius, r * 0.12, FLESH,
+    { x, y, rz: Math.PI / 2 }, 12)];
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    parts.push(cone(r * 0.06, r * len, CHITIN_LIGHT, {
+      x: x + r * 0.08,
+      y: y + Math.sin(a) * r * radius * 0.8,
+      z: Math.cos(a) * r * radius * 0.8,
+      rz: -Math.PI / 2,
+    }, 5));
+  }
+  return parts;
+}
+
+/** Feeding tendrils, drooping outward. */
+function tendrils(r, c, { x = 0, y = 0, count = 5, len = 0.7, spread = 0.5 } = {}) {
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    parts.push(cylinder(r * 0.05, r * 0.02, r * len, FLESH, {
+      x: x + Math.cos(a) * r * spread * 0.4,
+      y,
+      z: Math.sin(a) * r * spread,
+      rx: Math.sin(a) * 0.7,
+      rz: Math.cos(a) * 0.7,
+    }, 5));
+  }
+  return parts;
+}
+
+/** An egg sac: the hive's answer to a storage tank. */
+function sac(s, c, { x = 0, z = 0, scale = 1, colour = null } = {}) {
+  return [
+    sphere(s * 0.2 * scale, colour || c.primary, { x, z, y: s * 0.2 * scale, sy: 1.15 }, 12),
+    sphere(s * 0.13 * scale, BILE, { x, z, y: s * 0.24 * scale, sy: 1.1 }, 10),
+  ];
+}
+
+/** A low organic mound every Blight structure sits on. */
+function mound(s, c, h = 0.1) {
+  return [
+    sphere(s * 0.44, CHITIN_DARK, { y: s * h * 0.5, sy: h * 1.6 }, 14),
+    sphere(s * 0.34, c.dark, { y: s * h * 0.8, sy: h * 1.3 }, 12),
+  ];
+}
+
+// --------------------------------------------------------------- hive units
+
+function blHive(r, c) {
+  const parts = crawlerLegs(r, c, { scale: 1.3, gauge: 0.7, count: 4 });
+  parts.push(...carapace(r, c.primary, { y: r * 1.5, scale: 1.5, squash: 0.72 }));
+  parts.push(...carapace(r, c.dark, { x: -r * 0.5, y: r * 2.1, scale: 0.9 }));
+  parts.push(...spines(r, c, { x: -r * 0.2, y: r * 2.3, count: 5, len: 0.8, spacing: 0.26 }));
+  parts.push(...maw(r, { x: r * 1.25, y: r * 1.4, radius: 0.45, count: 10, len: 0.36 }));
+  parts.push(sphere(r * 0.2, BILE, { x: r * 0.7, y: r * 2.0 }, 10));
+  parts.push(...tendrils(r, c, { x: r * 0.9, y: r * 0.9, count: 6, len: 0.9, spread: 0.6 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      ...carapace(r, c.light, { scale: 0.5, squash: 0.8 }),
+      cylinder(r * 0.16, r * 0.2, r * 0.9, CHITIN, { x: r * 0.6, rz: Math.PI / 2 }, 10),
+      cylinder(r * 0.1, r * 0.1, r * 0.22, BILE, { x: r * 1.06, rz: Math.PI / 2 }, 8),
+    ]),
+    turretY: r * 2.15,
+  };
+}
+
+function blTender(r, c) {
+  const parts = crawlerLegs(r, c, { scale: 0.9, gauge: 0.6 });
+  parts.push(...carapace(r, c.primary, { y: r * 0.95, scale: 0.95 }));
+  parts.push(...tendrils(r, c, { x: r * 0.7, y: r * 0.85, count: 4, len: 0.75, spread: 0.4 }));
+  parts.push(sphere(r * 0.16, BILE, { x: r * 0.3, y: r * 1.28 }, 8));
+  parts.push(...spines(r, c, { x: -r * 0.3, y: r * 1.24, count: 3, len: 0.36, spacing: 0.22 }));
+  return { body: merge(parts) };
+}
+
+function blSkitter(r, c) {
+  // All legs and jaw. Nothing here is meant to survive being shot at.
+  const parts = crawlerLegs(r, c, { scale: 1.1, gauge: 0.75, count: 3 });
+  parts.push(...carapace(r, c.primary, { y: r * 0.8, scale: 0.8, squash: 0.5 }));
+  parts.push(...maw(r, { x: r * 0.72, y: r * 0.78, radius: 0.3, count: 6, len: 0.28 }));
+  parts.push(sphere(r * 0.1, BILE, { x: r * 0.3, y: r * 1.02 }, 8));
+  parts.push(cone(r * 0.14, r * 0.6, CHITIN_DARK, { x: -r * 0.7, y: r * 0.85, rz: Math.PI / 2 }, 7));
+  return { body: merge(parts) };
+}
+
+function blHusk(r, c) {
+  const parts = crawlerLegs(r, c, { scale: 1, gauge: 0.62, count: 3 });
+  parts.push(...carapace(r, c.primary, { y: r * 1.0, scale: 1.05 }));
+  parts.push(...carapace(r, c.dark, { x: r * 0.42, y: r * 1.12, scale: 0.6, squash: 0.7 }));
+  parts.push(...spines(r, c, { x: -r * 0.25, y: r * 1.36, count: 4, len: 0.46 }));
+  parts.push(sphere(r * 0.12, BILE, { x: r * 0.5, y: r * 1.3 }, 8));
+  return {
+    body: merge(parts),
+    turret: merge([
+      sphere(r * 0.3, FLESH, { sy: 0.8 }, 10),
+      ...maw(r, { x: r * 0.3, radius: 0.26, count: 7, len: 0.3 }),
+    ]),
+    turretY: r * 1.32,
+  };
+}
+
+function blSpitter(r, c) {
+  const parts = crawlerLegs(r, c, { scale: 1, gauge: 0.66, count: 3 });
+  parts.push(...carapace(r, c.primary, { y: r * 1.0, scale: 1.0 }));
+  // The bile sac it fires from, carried high on the back.
+  parts.push(sphere(r * 0.46, BILE, { x: -r * 0.34, y: r * 1.42, sy: 0.85 }, 12));
+  parts.push(sphere(r * 0.3, FLESH, { x: -r * 0.34, y: r * 1.5, sy: 0.7 }, 10));
+  parts.push(...tendrils(r, c, { x: r * 0.5, y: r * 1.0, count: 3, len: 0.5, spread: 0.35 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      sphere(r * 0.26, CHITIN, { sy: 0.9 }, 10),
+      cone(r * 0.2, r * 0.8, FLESH, { x: r * 0.5, rz: -Math.PI / 2 }, 8),
+      cylinder(r * 0.08, r * 0.12, r * 0.16, BILE, { x: r * 0.92, rz: Math.PI / 2 }, 8),
+    ]),
+    turretY: r * 1.3,
+  };
+}
+
+function blBrute(r, c) {
+  const parts = crawlerLegs(r, c, { scale: 1.5, gauge: 0.8, count: 4 });
+  parts.push(...carapace(r, c.primary, { y: r * 1.35, scale: 1.5, squash: 0.7 }));
+  parts.push(...carapace(r, c.dark, { x: r * 0.6, y: r * 1.5, scale: 0.85, squash: 0.75 }));
+  parts.push(...spines(r, c, { x: -r * 0.3, y: r * 2.0, count: 6, len: 0.8, spacing: 0.24 }));
+  parts.push(...maw(r, { x: r * 1.35, y: r * 1.35, radius: 0.44, count: 10, len: 0.4 }));
+  parts.push(sphere(r * 0.14, BILE, { x: r * 0.8, y: r * 1.9, z: r * 0.3 }, 8));
+  parts.push(sphere(r * 0.14, BILE, { x: r * 0.8, y: r * 1.9, z: -r * 0.3 }, 8));
+  return {
+    body: merge(parts),
+    turret: merge([
+      sphere(r * 0.42, FLESH, { sy: 0.8 }, 12),
+      ...maw(r, { x: r * 0.42, radius: 0.34, count: 9, len: 0.42 }),
+      ...spines(r, c, { x: -r * 0.2, y: r * 0.28, count: 3, len: 0.4, spacing: 0.2 }),
+    ]),
+    turretY: r * 1.85,
+  };
+}
+
+function blLobber(r, c) {
+  const parts = crawlerLegs(r, c, { scale: 1.3, gauge: 0.8, count: 4 });
+  parts.push(...carapace(r, c.primary, { y: r * 1.0, scale: 1.25, squash: 0.55 }));
+  parts.push(sphere(r * 0.5, BILE, { x: -r * 0.5, y: r * 1.3, sy: 0.9 }, 12));
+  parts.push(...tendrils(r, c, { x: r * 0.6, y: r * 0.8, count: 4, len: 0.6, spread: 0.5 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      sphere(r * 0.34, CHITIN, { sy: 0.9 }, 10),
+      // A mortar throat, angled up.
+      cylinder(r * 0.26, r * 0.18, r * 1.2, FLESH, { x: r * 0.4, y: r * 0.4, rz: -0.9 }, 10),
+      cylinder(r * 0.28, r * 0.28, r * 0.14, CHITIN_LIGHT, { x: r * 0.76, y: r * 0.82, rz: -0.9 }, 10),
+    ]),
+    turretY: r * 1.2,
+  };
+}
+
+// ---------------------------------------------------------- hive structures
+
+function blTap(s, c) {
+  const parts = mound(s, c, 0.12);
+  parts.push(cylinder(s * 0.1, s * 0.16, s * 0.5, CHITIN, { y: s * 0.3 }, 10));
+  parts.push(sphere(s * 0.17, c.primary, { y: s * 0.56, sy: 1.2 }, 12));
+  parts.push(...maw(s * 0.5, { y: s * 0.72, radius: 0.3, count: 7, len: 0.2 }));
+  parts.push(...tendrils(s * 0.5, c, { y: s * 0.2, count: 6, len: 0.5, spread: 0.75 }));
+  return { body: merge(parts) };
+}
+
+function blVent(s, c) {
+  const parts = mound(s, c, 0.1);
+  // Three chimneys venting biomass gas.
+  for (const [x, z, h] of [[-0.14, -0.1, 0.5], [0.14, 0.06, 0.62], [0, 0.18, 0.42]]) {
+    parts.push(cylinder(s * 0.055, s * 0.09, s * h, CHITIN_DARK,
+      { x: s * x, z: s * z, y: s * h * 0.5 }, 8));
+    parts.push(cylinder(s * 0.07, s * 0.055, s * 0.08, BILE,
+      { x: s * x, z: s * z, y: s * (h + 0.03) }, 8));
+  }
+  parts.push(...sac(s, c, { x: -s * 0.2, z: s * 0.16, scale: 0.7 }));
+  return { body: merge(parts) };
+}
+
+function blBloom(s, c) {
+  const parts = mound(s, c, 0.14);
+  parts.push(sphere(s * 0.3, c.primary, { y: s * 0.34, sy: 0.9 }, 14));
+  parts.push(sphere(s * 0.22, BILE, { y: s * 0.44, sy: 0.85 }, 12));
+  // Petals opening off the bulb.
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    parts.push(cone(s * 0.1, s * 0.46, c.dark, {
+      x: Math.cos(a) * s * 0.26, z: Math.sin(a) * s * 0.26, y: s * 0.5,
+      rx: Math.sin(a) * 0.8, rz: -Math.cos(a) * 0.8,
+    }, 7));
+  }
+  parts.push(...tendrils(s * 0.6, c, { y: s * 0.18, count: 7, len: 0.6, spread: 0.85 }));
+  return { body: merge(parts) };
+}
+
+function blGut(s, c) {
+  const parts = mound(s, c, 0.1);
+  parts.push(sphere(s * 0.26, FLESH, { y: s * 0.28, sy: 0.95 }, 12));
+  parts.push(...maw(s * 0.6, { y: s * 0.5, radius: 0.34, count: 9, len: 0.24 }));
+  parts.push(...sac(s, c, { x: s * 0.24, scale: 0.6 }));
+  parts.push(...sac(s, c, { x: -s * 0.24, z: s * 0.1, scale: 0.55 }));
+  return { body: merge(parts) };
+}
+
+function blStore(s, c, metalKind) {
+  const parts = mound(s, c, 0.1);
+  const colour = metalKind ? CHITIN_LIGHT : BILE;
+  parts.push(...sac(s, c, { x: -s * 0.16, z: -s * 0.14, scale: 1.05, colour }));
+  parts.push(...sac(s, c, { x: s * 0.17, z: -s * 0.02, scale: 0.9, colour }));
+  parts.push(...sac(s, c, { x: -s * 0.04, z: s * 0.19, scale: 0.8, colour }));
+  return { body: merge(parts) };
+}
+
+function blPit(s, c, deep) {
+  const parts = mound(s, c, deep ? 0.14 : 0.12);
+  // A ring of carapace around an open pit.
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2;
+    parts.push(cone(s * (deep ? 0.09 : 0.075), s * (deep ? 0.5 : 0.4), c.primary, {
+      x: Math.cos(a) * s * 0.3, z: Math.sin(a) * s * 0.3, y: s * 0.2,
+      rx: Math.sin(a) * 0.3, rz: -Math.cos(a) * 0.3,
+    }, 7));
+  }
+  parts.push(cylinder(s * 0.26, s * 0.3, s * 0.1, CHITIN_DARK, { y: s * 0.06 }, 14));
+  parts.push(cylinder(s * 0.2, s * 0.2, s * 0.05, BILE, { y: s * 0.1 }, 14));
+  parts.push(...sac(s, c, { x: -s * 0.32, z: s * 0.24, scale: deep ? 0.9 : 0.7 }));
+  if (deep) {
+    parts.push(...sac(s, c, { x: s * 0.3, z: -s * 0.28, scale: 0.8 }));
+    parts.push(...spines(s * 0.7, c, { x: s * 0.1, y: s * 0.42, count: 5, len: 0.5, spacing: 0.3 }));
+  }
+  return { body: merge(parts) };
+}
+
+function blSpire(s, c) {
+  const parts = mound(s, c, 0.09);
+  parts.push(cylinder(s * 0.06, s * 0.14, s * 0.85, CHITIN, { y: s * 0.48 }, 10));
+  parts.push(sphere(s * 0.12, c.primary, { y: s * 0.92, sy: 1.2 }, 10));
+  parts.push(sphere(s * 0.07, BILE, { y: s * 1.0 }, 8));
+  parts.push(...tendrils(s * 0.5, c, { y: s * 0.8, count: 4, len: 0.45, spread: 0.4 }));
+  return { body: merge(parts) };
+}
+
+function blThorn(s, c, big) {
+  const parts = mound(s, c, big ? 0.13 : 0.1);
+  parts.push(sphere(s * (big ? 0.26 : 0.2), c.primary, { y: s * 0.22, sy: 0.8 }, 12));
+  return {
+    body: merge(parts),
+    turret: merge([
+      sphere(s * (big ? 0.2 : 0.15), CHITIN, { sy: 0.9 }, 10),
+      cone(s * (big ? 0.13 : 0.09), s * (big ? 0.8 : 0.6), CHITIN_LIGHT,
+        { x: s * (big ? 0.34 : 0.26), rz: -Math.PI / 2 }, 8),
+      cylinder(s * 0.05, s * 0.07, s * 0.1, BILE,
+        { x: s * (big ? 0.7 : 0.54), rz: Math.PI / 2 }, 8),
+      ...spines(s * 0.6, c, { y: s * 0.14, count: 3, len: 0.3, spacing: 0.22 }),
+    ]),
+    turretY: s * (big ? 0.42 : 0.34),
+  };
+}
+
+function blAntenna(s, c) {
+  const parts = mound(s, c, 0.08);
+  parts.push(cylinder(s * 0.05, s * 0.1, s * 0.6, CHITIN_DARK, { y: s * 0.34 }, 8));
+  return {
+    body: merge(parts),
+    spinner: merge([
+      sphere(s * 0.13, FLESH, { sy: 0.7 }, 10),
+      ...tendrils(s * 0.8, c, { count: 5, len: 0.75, spread: 0.55 }),
+      sphere(s * 0.06, BILE, { y: s * 0.08 }, 8),
+    ]),
+    spinnerY: s * 0.66,
+    spinSpeed: 0.5,
+  };
+}
+
 const BUILDERS = {
   commander: (d, c) => commander(d.radius, c, d.faction),
   conbot: (d, c) => conbot(d.radius, c),
@@ -901,6 +1227,27 @@ const BUILDERS = {
   con_missile: (d, c) => conMissile(d.radius, c),
   con_heavytank: (d, c) => conHeavyTank(d.radius, c),
   con_howitzer: (d, c) => conHowitzer(d.radius, c),
+  bl_hive: (d, c) => blHive(d.radius, c),
+  bl_tender: (d, c) => blTender(d.radius, c),
+  bl_tender2: (d, c) => blTender(d.radius, c),
+  bl_skitter: (d, c) => blSkitter(d.radius, c),
+  bl_husk: (d, c) => blHusk(d.radius, c),
+  bl_spitter: (d, c) => blSpitter(d.radius, c),
+  bl_brute: (d, c) => blBrute(d.radius, c),
+  bl_lobber: (d, c) => blLobber(d.radius, c),
+  bl_tap: (d, c) => blTap(d.footprintPx, c),
+  bl_vent: (d, c) => blVent(d.footprintPx, c),
+  bl_bloom: (d, c) => blBloom(d.footprintPx, c),
+  bl_gut: (d, c) => blGut(d.footprintPx, c),
+  bl_sac: (d, c) => blStore(d.footprintPx, c, true),
+  bl_bladder: (d, c) => blStore(d.footprintPx, c, false),
+  bl_pit: (d, c) => blPit(d.footprintPx, c, false),
+  bl_deeppit: (d, c) => blPit(d.footprintPx, c, true),
+  bl_spire: (d, c) => blSpire(d.footprintPx, c),
+  bl_thorn: (d, c) => blThorn(d.footprintPx, c, false),
+  bl_maw: (d, c) => blThorn(d.footprintPx, c, true),
+  bl_antenna: (d, c) => blAntenna(d.footprintPx, c),
+
   con_derrick: (d, c) => conDerrick(d.footprintPx, c),
   con_diesel: (d, c) => conDiesel(d.footprintPx, c),
   con_fusion: (d, c) => conFusion(d.footprintPx, c),
@@ -947,6 +1294,7 @@ export function buildRawModel(def, colors) {
 /** The palette an exported asset is authored in, so materials can be named. */
 export const PALETTE = {
   HULL, HULL_DARK, HULL_LIGHT, DARK, GLASS, GLOW, TRACK,
+  CHITIN, CHITIN_DARK, CHITIN_LIGHT, FLESH, BILE,
 };
 
 /** Build (and cache) the model for a definition rendered in a player colour. */

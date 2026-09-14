@@ -74,7 +74,8 @@ var income_multiplier: float = 1.0
 
 var defeated: bool = false
 var stats: Dictionary = {
-	"built": 0, "lost": 0, "killed": 0, "metal_produced": 0.0, "metal_reclaimed": 0.0,
+	"built": 0, "lost": 0, "killed": 0, "converted": 0,
+	"metal_produced": 0.0, "metal_reclaimed": 0.0,
 }
 
 var start_x: float = 0.0

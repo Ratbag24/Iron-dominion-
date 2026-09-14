@@ -8,6 +8,9 @@ extends RefCounted
 ## writes to it. That separation is what let the whole simulation move from the
 ## browser build to Godot without being rewritten.
 
+## How much health a converted unit keeps.
+const CONVERT_HP: float = 0.4
+
 const SIM_HZ: int = 30
 const SIM_DT: float = 1.0 / 30.0
 
@@ -188,7 +191,9 @@ func spawn(def_id: String, player_index: int, x: float, y: float, opts: Dictiona
 
 	entities.append(e)
 	by_id[e.id] = e
-	if complete:
+	# A converted unit was not built, and counting it as built would make the
+	# hive's production look like it out-produced everyone.
+	if complete and not bool(opts.get("converted", false)):
 		player.stats["built"] += 1
 	return e
 
@@ -209,7 +214,11 @@ func add_effect(fx: Dictionary) -> void:
 		effects = effects.slice(effects.size() - 900)
 
 
-func damage(target: IdEntity, amount: float, attacker: IdEntity) -> void:
+## `infect` is the chance, in [0, 1], that a killing blow takes the unit rather
+## than leaving a wreck. It rides in from the weapon that fired.
+func damage(
+	target: IdEntity, amount: float, attacker: IdEntity, infect: float = 0.0
+) -> void:
 	if not target.alive or amount <= 0.0:
 		return
 	# Things still being built take extra damage, as in BAR: nanoframes are
@@ -221,10 +230,10 @@ func damage(target: IdEntity, amount: float, attacker: IdEntity) -> void:
 	if attacker != null:
 		target.last_attacker_id = attacker.id
 	if target.hp <= 0.0:
-		kill(target, attacker)
+		kill(target, attacker, infect)
 
 
-func kill(e: IdEntity, killer: IdEntity) -> void:
+func kill(e: IdEntity, killer: IdEntity, infect: float = 0.0) -> void:
 	if not e.alive:
 		return
 	e.alive = false
@@ -234,6 +243,9 @@ func kill(e: IdEntity, killer: IdEntity) -> void:
 	player.stats["lost"] += 1
 	if killer != null:
 		players[killer.player].stats["killed"] += 1
+
+	if _convert(e, killer, infect):
+		return
 
 	if e.is_building:
 		var footprint: int = int(e.def.get("footprint", 0))
@@ -291,6 +303,41 @@ func kill(e: IdEntity, killer: IdEntity) -> void:
 			if d < 260.0:
 				damage(other, 2200.0 * (1.0 - d / 260.0), e)
 		player.defeated = true
+
+
+## Take a killed unit for the killer's side instead of leaving a wreck.
+##
+## Only mobile units, and never a commander: a hive that could eat the thing
+## the match is decided by would decide it on one lucky bite. The unit keeps
+## its own definition - a captured tank is still a tank, and still shoots what
+## a tank shoots - which also means it does not inherit the teeth that took it.
+## Conversion stops with the unit that was converted.
+func _convert(e: IdEntity, killer: IdEntity, infect: float) -> bool:
+	if infect <= 0.0 or killer == null or not killer.alive:
+		return false
+	if e.is_building or bool(e.def.get("isCommander", false)):
+		return false
+	if float(e.def.get("speed", 0.0)) <= 0.0:
+		return false
+	if not is_enemy(e, killer):
+		return false
+	if rng.next() >= infect:
+		return false
+
+	var taken: IdEntity = spawn(e.def_id, killer.player, e.x, e.y, {
+		"complete": true, "heading": e.heading, "converted": true,
+	})
+	# It comes over wounded. Taking a unit whole would make trading into the
+	# hive strictly worse than not fighting at all.
+	taken.hp = maxf(1.0, taken.max_hp * CONVERT_HP)
+	var taker: IdPlayer = players[killer.player]
+	taker.stats["converted"] = int(taker.stats.get("converted", 0)) + 1
+
+	add_effect({
+		"type": "convert", "x": e.x, "y": e.y,
+		"player": killer.player, "size": e.radius * 3.2,
+	})
+	return true
 
 
 ## Every living entity of a player, optionally filtered by definition id.

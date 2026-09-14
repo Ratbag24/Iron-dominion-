@@ -21,7 +21,11 @@ import { DEFS, getDef } from '../src/sim/defs.js';
 import { buildRawModel, PALETTE } from '../src/client/gfx/models.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const OUT = join(ROOT, 'assets/models');
+// Both builds need these, and Godot can only read what is inside its own
+// project directory, so they are written twice. Writing only the first copy is
+// how the two quietly drift apart.
+const OUTPUTS = [join(ROOT, 'assets/models'), join(ROOT, 'godot/assets/models')];
+const OUT = OUTPUTS[0];
 
 /** Authoring colours for the team slots; replaced at runtime by the engine. */
 const TEAM = { primary: '#8f8f8f', dark: '#5a5a5a', light: '#c4c4c4' };
@@ -57,6 +61,15 @@ name('#6a6f77', 'Steel');
 name('#3a3e44', 'Rubber');
 name('#9aa3ad', 'StoreMetal');
 name('#d8b24a', 'StoreEnergy');
+
+// The hive is grown rather than built, so it has its own shades. Without
+// these they export as anonymous Paint6D6456-style materials, which is the
+// one thing this naming exists to prevent.
+name(PALETTE.CHITIN, 'Chitin');
+name(PALETTE.CHITIN_DARK, 'ChitinDark');
+name(PALETTE.CHITIN_LIGHT, 'ChitinLight');
+name(PALETTE.FLESH, 'Flesh');
+name(PALETTE.BILE, 'Bile', { emissive: true });
 
 /**
  * Snap near-identical shades onto the named palette.
@@ -230,7 +243,7 @@ class GlbBuilder {
 }
 
 // ------------------------------------------------------------------ export
-await mkdir(OUT, { recursive: true });
+for (const dir of OUTPUTS) await mkdir(dir, { recursive: true });
 
 const manifest = {};
 let totalTris = 0;
@@ -267,12 +280,15 @@ for (const id of Object.keys(DEFS)) {
 
   for (const p of Object.values(parts)) for (const m of p.materials) allMaterials.add(m);
 
-  await writeFile(join(OUT, id + '.glb'), glb.build());
+  const bytes = glb.build();
+  for (const dir of OUTPUTS) await writeFile(join(dir, id + '.glb'), bytes);
   manifest[id] = { file: id + '.glb', parts, triangles: tris };
   totalTris += tris;
 }
 
-await writeFile(join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2));
+for (const dir of OUTPUTS) {
+  await writeFile(join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+}
 
 console.log(`exported ${Object.keys(manifest).length} models, ${totalTris} triangles`);
 console.log(`materials: ${[...allMaterials].sort().join(', ')}`);

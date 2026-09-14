@@ -45,6 +45,20 @@ npm install          # only needed for the build (esbuild)
 npm run build        # -> dist/iron-dominion.html
 ```
 
+## Factions
+
+Three of them build machines; the fourth grows. **Vanguard** are agile and
+long-reaching with thin armour, **Legion** slower and heavier, **Concord** the
+human remnant with crewed guns and splash as standard. The **Blight** is a hive:
+thick-skinned, short-ranged, and its weapons carry an infection chance, so a
+killing blow takes the unit instead of leaving a wreck. A captured unit comes
+over wounded, keeps its own hull — a taken tank is still a tank and still
+shoots what a tank shoots — and therefore does not inherit the teeth that took
+it. Commanders and buildings are never taken.
+
+Killing Blight units with your best troops feeds the hive. That is the whole
+point of it.
+
 ## The Godot build
 
 The game is being moved to **Godot 4**, so that the models are editable in

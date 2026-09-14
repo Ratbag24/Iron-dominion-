@@ -34,6 +34,10 @@ static func spawn_projectile(
 		"player": shooter.player,
 		"owner_id": shooter.id,
 		"target_id": target.id if target != null else 0,
+		# Carried from the weapon so the killing blow knows whether it takes
+		# what it kills; the shooter alone cannot say, since a unit may hold
+		# more than one weapon.
+		"infects": float(w.get("infects", 0.0)),
 		"life": clampf((float(w["range"]) * 1.6) / speed, 0.25, 6.0),
 		"z": 0.0,
 		"trail": 22.0 if kind == "laser" else 0.0,
@@ -152,7 +156,7 @@ static func _detonate(
 	var damage: float = float(p["damage"])
 
 	if direct_hit != null:
-		world.damage(direct_hit, damage, shooter)
+		world.damage(direct_hit, damage, shooter, float(p.get("infects", 0.0)))
 
 	var aoe: float = float(p["aoe"])
 	if aoe > 0.0:
@@ -167,6 +171,8 @@ static func _detonate(
 			if d > aoe:
 				continue
 			var falloff: float = 1.0 - clampf(d / aoe, 0.0, 1.0)
+			# Splash does not convert: a shell that took a whole group would
+			# make the hive's artillery the only weapon worth building.
 			world.damage(e, damage * falloff * 0.85, shooter)
 		world.add_effect({
 			"type": "explosion", "x": p["x"], "y": p["y"],

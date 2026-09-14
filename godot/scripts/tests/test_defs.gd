@@ -13,9 +13,20 @@ func _check(name: String, ok: bool, detail: String = "") -> void:
 func _init() -> void:
 	IdUnitDefs.load_data()
 	var ids := IdUnitDefs.all_ids()
-	_check("definitions loaded", ids.size() == 40, "%d definitions" % ids.size())
-	_check("factions loaded", IdUnitDefs.faction_ids().size() == 3,
-		", ".join(IdUnitDefs.faction_ids()))
+	# Counted against the shared data rather than a number written here: a
+	# hardcoded total fails the day a faction is added, which says nothing
+	# about whether the loader works.
+	var raw: Dictionary = JSON.parse_string(
+		FileAccess.open("res://data/units.json", FileAccess.READ).get_as_text())
+	_check("every definition in the data file loaded",
+		ids.size() == raw.size(), "%d of %d" % [ids.size(), raw.size()])
+
+	var faction_ids: Array = IdUnitDefs.faction_ids()
+	var raw_factions: Dictionary = JSON.parse_string(
+		FileAccess.open("res://data/factions.json", FileAccess.READ).get_as_text())
+	_check("every faction in the data file loaded",
+		faction_ids.size() == raw_factions["factions"].size(),
+		", ".join(faction_ids))
 
 	# Resolved stats must match the reference build exactly.
 	var f := FileAccess.open("res://data/parity-fixture.json", FileAccess.READ)
@@ -61,7 +72,7 @@ func _init() -> void:
 			if r[slot] != null and not t1.has(r[slot]):
 				problems.append("%s: factory cannot build %s" % [fid, slot])
 	_check("every roster slot resolves and is reachable", problems.is_empty(),
-		", ".join(problems) if not problems.is_empty() else "3 factions")
+		", ".join(problems) if not problems.is_empty() else "%d factions" % faction_ids.size())
 
 	# Commanders must be flagged and able to build.
 	var com_ok := true

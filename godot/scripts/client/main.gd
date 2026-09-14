@@ -17,6 +17,11 @@ const BLUE := {
 	"dark": Color(0.11, 0.31, 0.53),
 	"light": Color(0.66, 0.83, 1.0),
 }
+const GREEN := {
+	"primary": Color(0.42, 0.72, 0.30),
+	"dark": Color(0.16, 0.30, 0.12),
+	"light": Color(0.70, 0.88, 0.55),
+}
 const RED := {
 	"primary": Color(1.0, 0.35, 0.29),
 	"dark": Color(0.55, 0.16, 0.12),
@@ -81,9 +86,18 @@ func _place_showcase() -> void:
 	for i in concord.size():
 		spawn_model(concord[i], ox - 150.0 + float(i) * 62.0, oz + 70, BLUE, PI * 0.06)
 
-	var bots := ["commander", "rifle", "rifle", "rocket", "heavy", "siege", "scout"]
+	var bots := ["commander", "rifle", "rocket", "heavy", "siege", "scout"]
 	for i in bots.size():
 		spawn_model(bots[i], ox - 180.0 + float(i) * 62.0, oz + 190, RED, PI * 1.04)
+
+	# The hive, which is grown rather than built and should read that way.
+	var hive := ["bl_hive", "bl_skitter", "bl_husk", "bl_spitter", "bl_brute",
+		"bl_lobber", "bl_tender"]
+	for i in hive.size():
+		spawn_model(hive[i], ox - 200.0 + float(i) * 66.0, oz + 310, GREEN, PI * 0.98)
+	var hive_buildings := ["bl_pit", "bl_vent", "bl_bloom", "bl_thorn", "bl_spire"]
+	for i in hive_buildings.size():
+		spawn_model(hive_buildings[i], ox - 200.0 + float(i) * 92.0, oz + 430, GREEN)
 
 	# Structures behind the line, so the buildings read too.
 	spawn_model("con_yard", ox - 120, oz - 150, BLUE)
@@ -96,13 +110,14 @@ func _place_showcase() -> void:
 
 func _place_camera() -> void:
 	var start: Dictionary = map.start_positions[0]
-	var target := Vector3(start["x"], terrain.height_at(start["x"], start["y"]), start["y"] + 60.0)
+	# Centred on the line-up, which is now four rows deep rather than two.
+	var target := Vector3(start["x"], terrain.height_at(start["x"], start["y"]), start["y"] + 200.0)
 	var cam := Camera3D.new()
 	cam.name = "Camera"
 	cam.fov = 48.0
 	cam.far = 12000.0
-	var pitch := 0.86
-	var dist := 560.0
+	var pitch := 0.92
+	var dist := 860.0
 	cam.position = target + Vector3(0, sin(pitch) * dist, cos(pitch) * dist)
 	# look_at needs the node in the tree, so parent it first.
 	add_child(cam)

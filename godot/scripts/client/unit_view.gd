@@ -237,10 +237,14 @@ func _slope_basis(x: float, y: float, yaw: float) -> Basis:
 
 func _create(e: IdEntity) -> Node3D:
 	var scene: PackedScene = _scene_for(e.def_id)
+	var inst: Node3D
 	if scene == null:
-		return null
-	var inst: Node3D = scene.instantiate()
-	IdTeamColour.apply(inst, _team_colours[e.player])
+		# The placeholder carries its own team colour; IdTeamColour looks for
+		# named materials an untextured box does not have.
+		inst = _placeholder(e, _team_colours[e.player])
+	else:
+		inst = scene.instantiate()
+		IdTeamColour.apply(inst, _team_colours[e.player])
 	add_child(inst)
 	_nodes[e.id] = inst
 	var turret: Node = inst.get_node_or_null("turret")
@@ -255,12 +259,37 @@ func _scene_for(def_id: String) -> PackedScene:
 	if not ResourceLoader.exists(path):
 		if not _missing.has(def_id):
 			_missing[def_id] = true
-			push_warning("no model for %s" % def_id)
+			push_warning("no model for %s; drawing a placeholder" % def_id)
 		_scene_cache[def_id] = null
 		return null
 	var scene: PackedScene = load(path)
 	_scene_cache[def_id] = scene
 	return scene
+
+
+## A box the size of the thing it stands in for.
+##
+## A unit with no model used to be drawn as nothing at all, which looks exactly
+## like a bug in the simulation rather than a missing asset - the browser build
+## has always fallen back to a box, and this one should too.
+func _placeholder(e: IdEntity, colours: Dictionary) -> Node3D:
+	var size: float = (
+		float(e.def.get("footprintPx", e.radius * 2.0)) if e.is_building
+		else e.radius * 1.8
+	)
+	var box := BoxMesh.new()
+	box.size = Vector3(size, size * 0.7, size)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = colours["primary"]
+	mat.roughness = 0.6
+	box.material = mat
+	var mi := MeshInstance3D.new()
+	mi.mesh = box
+	mi.position.y = size * 0.35
+	var holder := Node3D.new()
+	holder.name = "body"
+	holder.add_child(mi)
+	return holder
 
 
 ## The node drawn for an entity, or null when it has none.
