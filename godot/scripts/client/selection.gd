@@ -25,6 +25,10 @@ var drag_end: Vector2 = Vector2.ZERO
 ## Definition id the player is placing, or "" when not in build mode.
 var build_def: String = ""
 
+## A command waiting for the player to click a target: attack-move, patrol and
+## the rest all pick their point the same way, so they share one slot.
+var pending_command: String = ""
+
 
 func setup(w: IdWorld, c: IdRtsCamera, index: int) -> void:
 	world = w
@@ -154,6 +158,9 @@ func _handle_left(mb: InputEventMouseButton, viewport: Vector2) -> bool:
 		if build_def != "":
 			place_building(mb.position, mb.shift_pressed)
 			return true
+		if pending_command != "":
+			_issue_pending(mb.position, mb.shift_pressed)
+			return true
 		if mb.double_click:
 			select_ids(pick_same_type(mb.position, viewport), mb.shift_pressed)
 			return true
@@ -181,6 +188,9 @@ func _handle_left(mb: InputEventMouseButton, viewport: Vector2) -> bool:
 func _handle_right(mb: InputEventMouseButton) -> bool:
 	if build_def != "":
 		build_def = ""
+		return true
+	if pending_command != "":
+		pending_command = ""
 		return true
 	if selected.is_empty():
 		return false
@@ -213,6 +223,62 @@ func issue_order(ground: Vector2, screen_pos: Vector2, queue: bool) -> void:
 			# A factory cannot move, so a right-click sets its rally point.
 			e.has_rally = true
 			e.rally = ground
+
+
+## Run the command the player armed with a hotkey at the point they clicked.
+func _issue_pending(screen_pos: Vector2, queue: bool) -> void:
+	var command := pending_command
+	pending_command = ""
+	var ground := cam.ground_at(screen_pos)
+	var target := _entity_under(screen_pos)
+
+	for e in selected_entities():
+		if not queue:
+			e.orders.clear()
+			e.has_move_goal = false
+			e.path = []
+			e.active_job = {}
+		match command:
+			IdOrders.ATTACK_MOVE:
+				if target != null and world.is_enemy(e, target):
+					e.orders.append({"type": IdOrders.ATTACK, "targetId": target.id})
+				else:
+					e.orders.append({
+						"type": IdOrders.ATTACK_MOVE, "x": ground.x, "y": ground.z,
+					})
+			IdOrders.PATROL:
+				# A patrol runs between where the unit is and where it was
+				# sent, which is how a patrol order is given in this kind of
+				# game: one click, two ends.
+				e.orders.append({
+					"type": IdOrders.PATROL,
+					"points": [Vector2(e.x, e.y), Vector2(ground.x, ground.z)],
+					"index": 0,
+				})
+			IdOrders.GUARD:
+				if target != null and target != e:
+					e.orders.append({"type": IdOrders.GUARD, "targetId": target.id})
+			IdOrders.RECLAIM:
+				var wreck := _wreck_under(ground)
+				if not wreck.is_empty():
+					e.orders.append({"type": IdOrders.RECLAIM, "wreckId": wreck["id"]})
+			IdOrders.REPAIR:
+				if target != null and not world.is_enemy(e, target):
+					e.orders.append({"type": IdOrders.REPAIR, "targetId": target.id})
+
+
+## The wreck nearest a ground point, within a generous grab radius.
+func _wreck_under(ground: Vector3) -> Dictionary:
+	var best: Dictionary = {}
+	var best_d: float = 90.0 * 90.0
+	for w in world.wrecks:
+		if float(w["metal_left"]) <= 0.0:
+			continue
+		var d: float = IdMath.dist2(ground.x, ground.z, w["x"], w["y"])
+		if d < best_d:
+			best_d = d
+			best = w
+	return best
 
 
 ## Any entity near the cursor, friendly or not.

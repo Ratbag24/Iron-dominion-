@@ -149,13 +149,15 @@ func update(dt: float, viewport_size: Vector2, mouse_pos: Vector2) -> void:
 	var dx: float = 0.0
 	var dz: float = 0.0
 
-	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+	# Arrow keys rather than WASD: the letters belong to the build menu and the
+	# unit commands, which is where a player of this kind of game expects them.
+	if Input.is_key_pressed(KEY_LEFT):
 		dx -= 1.0
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+	if Input.is_key_pressed(KEY_RIGHT):
 		dx += 1.0
-	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+	if Input.is_key_pressed(KEY_UP):
 		dz += 1.0
-	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+	if Input.is_key_pressed(KEY_DOWN):
 		dz -= 1.0
 
 	# Only edge-scroll once the pointer has actually moved: a mouse position

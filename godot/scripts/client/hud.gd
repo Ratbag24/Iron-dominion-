@@ -264,7 +264,9 @@ func _refresh_palette() -> void:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(102, 44)
 		b.clip_text = true
-		b.text = "%s\n%d m  %d e" % [
+		var key := IdUnitDefs.hotkey(id)
+		b.text = "%s%s\n%d m  %d e" % [
+			"[%s] " % key if key != "" else "",
 			String(def.get("short", def.get("name", id))),
 			int(def.get("metal", 0)), int(def.get("energy", 0)),
 		]
@@ -302,12 +304,14 @@ func _on_build_pressed(def_id: String) -> void:
 		selection.queue_unit(def_id)
 
 
-## Keyboard shortcut for the nth palette entry.
-func press_slot(index: int) -> bool:
-	if index < 0 or index >= _palette_ids.size():
-		return false
-	_on_build_pressed(_palette_ids[index])
-	return true
+## Act on a build hotkey. The keys come from the shared data file, so a
+## faction's equivalent structure sits on the same key slot for slot.
+func press_hotkey(key: String) -> bool:
+	for id in _palette_ids:
+		if IdUnitDefs.hotkey(id) == key:
+			_on_build_pressed(id)
+			return true
+	return false
 
 
 # ---------------------------------------------------------------- overlay

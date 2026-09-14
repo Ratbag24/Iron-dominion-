@@ -185,6 +185,41 @@ func _run() -> void:
 	check(closer >= 1, "and they are heading the right way",
 		"%d of %d closed on the goal" % [closer, made.size()])
 
+	# --- commands that wait for a click ------------------------------------
+	print("\nTargeted commands")
+	print("-----------------")
+	var viewport := Vector2(1600, 900)
+	var away := Vector2(me.start_x - 300.0, me.start_y - 220.0)
+	var away_screen := cam.unproject_position(
+		Vector3(away.x, terrain.height_at(away.x, away.y), away.y)
+	)
+
+	sel.pending_command = IdOrders.ATTACK_MOVE
+	_click(sel, away_screen, viewport)
+	check(not made[0].orders.is_empty()
+			and String(made[0].orders[0]["type"]) == IdOrders.ATTACK_MOVE,
+		"A then a click is an attack-move",
+		String(made[0].orders[0].get("type", "none")))
+	check(sel.pending_command == "", "the armed command is spent by the click")
+
+	sel.pending_command = IdOrders.PATROL
+	_click(sel, away_screen, viewport)
+	var patrol: Dictionary = made[0].orders[0]
+	check(String(patrol["type"]) == IdOrders.PATROL
+			and (patrol["points"] as Array).size() == 2,
+		"E then a click is a patrol between here and there",
+		"%d points" % (patrol.get("points", []) as Array).size())
+
+	sel.pending_command = IdOrders.ATTACK_MOVE
+	# A right-click cancels an armed command rather than issuing an order.
+	var cancel := InputEventMouseButton.new()
+	cancel.button_index = MOUSE_BUTTON_RIGHT
+	cancel.pressed = true
+	cancel.position = away_screen
+	sel.handle_input(cancel, viewport)
+	check(sel.pending_command == "" and String(made[0].orders[0]["type"]) == IdOrders.PATROL,
+		"right-click cancels an armed command and gives no order")
+
 	# Stop clears the queue without clearing the selection.
 	for e in sel.selected_entities():
 		e.orders.clear()
@@ -193,6 +228,20 @@ func _run() -> void:
 		"halting keeps the selection")
 
 	_finish(world)
+
+
+## A full press and release at a screen point, the way the mouse delivers it.
+func _click(sel: IdSelection, at: Vector2, viewport: Vector2) -> void:
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.pressed = true
+	down.position = at
+	sel.handle_input(down, viewport)
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.pressed = false
+	up.position = at
+	sel.handle_input(up, viewport)
 
 
 func _finish(world: IdWorld) -> void:

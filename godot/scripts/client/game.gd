@@ -48,6 +48,11 @@ var _generate_ms: int = 0
 var _terrain_mesh: Mesh
 var _minimap_image: Image
 
+## Control groups, keyed 0-8 for the number keys 1-9.
+var _groups: Dictionary = {}
+var _last_group: int = -1
+var _last_group_time: int = 0
+
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
@@ -269,20 +274,92 @@ func _handle_key(key: InputEventKey) -> bool:
 				return true
 			get_tree().change_scene_to_file("res://scenes/menu.tscn")
 			return true
-		KEY_H:
-			# Halt. Not S, which pans the camera.
+		KEY_S:
+			# Stop.
 			if selection == null:
 				return false
+			selection.pending_command = ""
+			selection.build_def = ""
 			for e in selection.selected_entities():
 				e.orders.clear()
 				e.has_move_goal = false
 				e.path = []
 			return true
 
-	# Number keys pick from the build palette.
-	if hud != null and key.keycode >= KEY_1 and key.keycode <= KEY_9:
-		return hud.press_slot(key.keycode - KEY_1)
+	# Commands that need a target: the key arms them, the next click runs them.
+	if selection != null:
+		var command := _command_for(key.keycode)
+		if command != "":
+			selection.build_def = ""
+			selection.pending_command = command
+			return true
+
+	# Number keys are control groups, as in every game of this kind.
+	if key.keycode >= KEY_1 and key.keycode <= KEY_9:
+		return _control_group(key.keycode - KEY_1, key.ctrl_pressed, key.shift_pressed)
+
+	# Everything else goes to the build palette, whose keys are in the shared
+	# data file so a faction's equivalent structure sits on the same one.
+	if hud != null and key.keycode >= KEY_A and key.keycode <= KEY_Z:
+		return hud.press_hotkey(char(key.keycode).to_upper())
 	return false
+
+
+## Ctrl assigns the current selection to a group, shift adds it to the current
+## selection, and a bare press selects it. Pressing the same group twice in
+## quick succession jumps the camera to it.
+## The commands that wait for a click. These keys are the ones the shared data
+## file deliberately keeps clear of the build menu.
+func _command_for(keycode: int) -> String:
+	match keycode:
+		KEY_A: return IdOrders.ATTACK_MOVE
+		KEY_D: return IdOrders.GUARD
+		KEY_E: return IdOrders.PATROL
+		KEY_R: return IdOrders.RECLAIM
+		KEY_F: return IdOrders.REPAIR
+	return ""
+
+
+func _control_group(index: int, assign: bool, additive: bool) -> bool:
+	if selection == null:
+		return false
+	if assign:
+		_groups[index] = selection.selected.duplicate()
+		return true
+
+	var ids: Array = _groups.get(index, [])
+	if ids.is_empty():
+		return false
+
+	var live: Array[int] = []
+	for id in ids:
+		if world.get_entity(id) != null:
+			live.append(id)
+	_groups[index] = live
+	if live.is_empty():
+		return true
+
+	selection.select_ids(live, additive)
+
+	var now := Time.get_ticks_msec()
+	if index == _last_group and now - _last_group_time < 400:
+		_centre_on(live)
+	_last_group = index
+	_last_group_time = now
+	return true
+
+
+func _centre_on(ids: Array) -> void:
+	var sum := Vector2.ZERO
+	var count := 0
+	for id in ids:
+		var e: IdEntity = world.get_entity(id)
+		if e == null:
+			continue
+		sum += Vector2(e.x, e.y)
+		count += 1
+	if count > 0:
+		cam.focus_on(sum / float(count))
 
 
 ## Per-frame diagnostics, for the HUD and the automated checks.

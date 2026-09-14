@@ -124,8 +124,11 @@ func _ready() -> void:
 	centre.add_child(start)
 
 	var hint := _heading(
-		"WASD or screen edge to pan   ·   wheel to zoom   ·   right-click to order"
-		+ "   ·   space to pause   ·   H to halt",
+		"Arrows or screen edge to pan   ·   wheel to zoom   ·   right-click to order\n"
+		+ "A attack-move   ·   D guard   ·   E patrol   ·   R reclaim   ·   F repair"
+		+ "   ·   S stop\n"
+		+ "Ctrl+1-9 sets a control group, 1-9 selects it, twice jumps to it"
+		+ "   ·   space pauses   ·   +/- speed",
 		12, DIM
 	)
 	centre.add_child(_spacer(8))
