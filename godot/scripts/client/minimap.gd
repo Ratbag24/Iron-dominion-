@@ -29,11 +29,16 @@ var _fog_texture: ImageTexture
 var _fog_version: int = -1
 
 
-func setup(w: IdWorld, terrain: IdTerrainBuilder, c: IdRtsCamera, viewer_index: int) -> void:
+func setup(
+	w: IdWorld, terrain: IdTerrainBuilder, c: IdRtsCamera, viewer_index: int,
+	prebuilt: Image = null
+) -> void:
 	world = w
 	cam = c
 	viewer = viewer_index
-	_texture = terrain.minimap_image(192)
+	_texture = ImageTexture.create_from_image(
+		prebuilt if prebuilt != null else terrain.minimap_image(192)
+	)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	if viewer_index >= 0:
 		var fog: IdFogMap = w.fog[viewer_index]

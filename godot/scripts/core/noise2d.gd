@@ -34,24 +34,40 @@ func _init(seed_value: int) -> void:
 		_grad_x[i] = cos(a)
 		_grad_y[i] = sin(a)
 
-static func _fade(t: float) -> float:
-	return t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
-
-func _dot_grad(gx: int, gy: int, dx: float, dy: float) -> float:
-	var g: int = _perm[_perm[gx] + gy] & 255
-	return _grad_x[g] * dx + _grad_y[g] * dy
-
+## One octave of gradient noise.
+##
+## The fade curve and the four gradient dot products are written out inline
+## rather than as helpers. Terrain generation calls this the better part of a
+## million times, and at that volume GDScript spends more on the five method
+## calls this would otherwise make than on the arithmetic inside them.
 func sample(x: float, y: float) -> float:
-	var xi: int = int(floor(x)) & 255
-	var yi: int = int(floor(y)) & 255
-	var xf: float = x - floor(x)
-	var yf: float = y - floor(y)
-	var u: float = _fade(xf)
-	var v: float = _fade(yf)
-	var n00: float = _dot_grad(xi, yi, xf, yf)
-	var n10: float = _dot_grad(xi + 1, yi, xf - 1.0, yf)
-	var n01: float = _dot_grad(xi, yi + 1, xf, yf - 1.0)
-	var n11: float = _dot_grad(xi + 1, yi + 1, xf - 1.0, yf - 1.0)
+	var fx: float = floor(x)
+	var fy: float = floor(y)
+	var xi: int = int(fx) & 255
+	var yi: int = int(fy) & 255
+	var xf: float = x - fx
+	var yf: float = y - fy
+
+	var u: float = xf * xf * xf * (xf * (xf * 6.0 - 15.0) + 10.0)
+	var v: float = yf * yf * yf * (yf * (yf * 6.0 - 15.0) + 10.0)
+
+	var p := _perm
+	var row0: int = p[xi]
+	var row1: int = p[xi + 1]
+	var g00: int = p[row0 + yi] & 255
+	var g10: int = p[row1 + yi] & 255
+	var g01: int = p[row0 + yi + 1] & 255
+	var g11: int = p[row1 + yi + 1] & 255
+
+	var gx := _grad_x
+	var gy := _grad_y
+	var xf1: float = xf - 1.0
+	var yf1: float = yf - 1.0
+	var n00: float = gx[g00] * xf + gy[g00] * yf
+	var n10: float = gx[g10] * xf1 + gy[g10] * yf
+	var n01: float = gx[g01] * xf + gy[g01] * yf1
+	var n11: float = gx[g11] * xf1 + gy[g11] * yf1
+
 	var nx0: float = n00 + u * (n10 - n00)
 	var nx1: float = n01 + u * (n11 - n01)
 	return nx0 + v * (nx1 - nx0)

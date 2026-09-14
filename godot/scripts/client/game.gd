@@ -39,6 +39,15 @@ var _autoplay: bool = false
 ## match already in progress.
 var _focus_action: bool = false
 
+## Generating a map takes a couple of seconds, so it runs on its own thread
+## behind a loading screen rather than freezing the window. Nothing it touches
+## is in the scene tree, which is what makes that safe.
+var _loader: Thread
+var _loading: IdLoadingScreen
+var _generate_ms: int = 0
+var _terrain_mesh: Mesh
+var _minimap_image: Image
+
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
@@ -47,12 +56,24 @@ func _ready() -> void:
 		elif arg == "--action":
 			_focus_action = true
 
+	_loading = IdLoadingScreen.new()
+	_loading.name = "Loading"
+	add_child(_loading)
+	_loading.show_message("Generating map")
+
+	_loader = Thread.new()
+	_loader.start(_generate)
+
+
+## Runs off the main thread: world generation and the ground mesh, neither of
+## which touches the scene tree.
+func _generate() -> void:
 	var t0 := Time.get_ticks_msec()
 	world = IdWorld.new({
 		"seed": map_seed,
 		"players": [
 			{
-				"name": "Vanguard AI" if _autoplay else "Commander",
+				"name": "%s AI" % IdUnitDefs.faction(player_faction)["name"] if _autoplay else "Commander",
 				"faction": player_faction,
 				"is_ai": _autoplay, "ai_level": difficulty,
 			},
@@ -63,10 +84,23 @@ func _ready() -> void:
 		],
 	})
 	terrain = IdTerrainBuilder.new(world.map, 2)
-	print("world generated in %dms" % (Time.get_ticks_msec() - t0))
+	# The ground mesh and the minimap are the two most expensive things left,
+	# so they are built here rather than on the far side of the loading screen.
+	_terrain_mesh = terrain.build_mesh()
+	_minimap_image = terrain.minimap_image(192)
+	IdTerrainBuilder.detail_normal_image()
+	_generate_ms = Time.get_ticks_msec() - t0
+
+
+func _build_scene() -> void:
+	_loader.wait_to_finish()
+	_loader = null
+	_loading.queue_free()
+	_loading = null
+	print("world generated in %dms" % _generate_ms)
 
 	IdSceneSetup.build_environment(self)
-	IdSceneSetup.build_terrain(self, terrain)
+	IdSceneSetup.build_terrain(self, terrain, false, _terrain_mesh)
 	IdSceneSetup.build_water(self, world.map, terrain)
 
 	units = IdUnitView.new()
@@ -95,7 +129,7 @@ func _ready() -> void:
 		hud = IdHud.new()
 		hud.name = "Hud"
 		add_child(hud)
-		hud.setup(world, selection, self, terrain)
+		hud.setup(world, selection, self, terrain, _minimap_image)
 		# Start with the commander picked, so the first click has something to
 		# build with rather than an empty palette.
 		selection.select_ids([me.commander_id], false)
@@ -146,6 +180,14 @@ func _parse_cmdline() -> void:
 
 
 func _process(dt: float) -> void:
+	if _loader != null:
+		# is_alive is the thread's own answer, rather than a flag it sets and
+		# this side hopes to see.
+		if _loader.is_alive():
+			return
+		_build_scene()
+		return
+
 	if _headless_ticks > 0:
 		# Deterministic path for screenshots and automated checks: run a fixed
 		# number of ticks in one go rather than chasing wall-clock time.

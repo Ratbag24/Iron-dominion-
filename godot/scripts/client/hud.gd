@@ -31,13 +31,14 @@ var _banner_panel: PanelContainer
 
 
 func setup(
-	w: IdWorld, sel: IdSelection, owner_game: Node, terrain: IdTerrainBuilder
+	w: IdWorld, sel: IdSelection, owner_game: Node, terrain: IdTerrainBuilder,
+	minimap_image: Image = null
 ) -> void:
 	world = w
 	selection = sel
 	game = owner_game
 	_build()
-	_build_minimap(terrain)
+	_build_minimap(terrain, minimap_image)
 	_build_banner()
 
 
@@ -100,7 +101,7 @@ func _panelled_label(preset: int, offset: Vector2, font_size: int) -> Label:
 	return l
 
 
-func _build_minimap(terrain: IdTerrainBuilder) -> void:
+func _build_minimap(terrain: IdTerrainBuilder, prebuilt: Image) -> void:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _panel_style())
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT, true)
@@ -112,7 +113,7 @@ func _build_minimap(terrain: IdTerrainBuilder) -> void:
 	add_child(panel)
 
 	_minimap = IdMinimap.new()
-	_minimap.setup(world, terrain, selection.cam, selection.player_index)
+	_minimap.setup(world, terrain, selection.cam, selection.player_index, prebuilt)
 	panel.add_child(_minimap)
 
 

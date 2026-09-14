@@ -46,10 +46,15 @@ static func build_environment(parent: Node) -> void:
 	parent.add_child(rim)
 
 
-static func build_terrain(parent: Node, terrain: IdTerrainBuilder, diag: bool = false) -> MeshInstance3D:
+## `prebuilt` is the ground mesh when it was generated ahead of time on the
+## loading thread; without it the mesh is built here, which is what the model
+## showcase does.
+static func build_terrain(
+	parent: Node, terrain: IdTerrainBuilder, diag: bool = false, prebuilt: Mesh = null
+) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.name = "Terrain"
-	mi.mesh = terrain.build_mesh()
+	mi.mesh = prebuilt if prebuilt != null else terrain.build_mesh()
 	var mat := StandardMaterial3D.new()
 	if diag:
 		mat.albedo_color = Color(1, 0.2, 0.2)
@@ -62,12 +67,25 @@ static func build_terrain(parent: Node, terrain: IdTerrainBuilder, diag: bool = 
 		# far too coarse to catch the light like ground. A tiling detail
 		# normal map puts the fine relief back without adding geometry.
 		mat.normal_enabled = true
-		mat.normal_texture = IdTerrainBuilder.detail_normal_map()
+		mat.normal_texture = detail_normal_texture()
 		mat.normal_scale = 0.85
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
 	return mi
+
+
+## The detail normal map, uploaded once per run. The image behind it is
+## generated on the loading thread; only this wrapping happens on the main one.
+static var _normal_texture: ImageTexture = null
+
+
+static func detail_normal_texture() -> ImageTexture:
+	if _normal_texture == null:
+		_normal_texture = ImageTexture.create_from_image(
+			IdTerrainBuilder.detail_normal_image()
+		)
+	return _normal_texture
 
 
 static func build_water(parent: Node, map: IdGameMap, terrain: IdTerrainBuilder) -> MeshInstance3D:

@@ -25,26 +25,47 @@ var _render_cols: int = 0
 var _render_rows: int = 0
 var _render_cell: float = 0.0
 var _render_heights: PackedFloat32Array = PackedFloat32Array()
+var _cell_f: float = 16.0
+
+## One colour per simulation cell, computed once. The mesh is four times finer
+## than the simulation grid and blends four cells per vertex, so without this
+## every cell's colour is worked out sixteen times over.
+var _cell_colours: PackedColorArray = PackedColorArray()
+
+## Per-cell surface-grain weight; see _build_fade.
+var _fade: PackedFloat32Array = PackedFloat32Array()
 
 func _init(map: IdGameMap, scale: int = 2) -> void:
 	_map = map
 	_detail = IdNoise2D.new(DETAIL_SEED)
 	_build_heightfield(scale)
+	_build_cell_colours()
 
+## The simulation heightfield sampled between cells.
+##
+## Written out longhand rather than with clamp helpers: this runs five times
+## per render vertex, a few million times per map, and each Callable invocation
+## in GDScript costs more than the arithmetic around it.
 func _bilinear_base(x: float, y: float) -> float:
-	var c := float(_map.cell)
-	var fx := x / c - 0.5
-	var fy := y / c - 0.5
+	var cols := _map.cols
+	var rows := _map.rows
+	var fx := x / _cell_f - 0.5
+	var fy := y / _cell_f - 0.5
 	var x0 := int(floor(fx))
 	var y0 := int(floor(fy))
 	var tx := fx - float(x0)
 	var ty := fy - float(y0)
-	var gx := func(i: int) -> int: return clampi(i, 0, _map.cols - 1)
-	var gy := func(i: int) -> int: return clampi(i, 0, _map.rows - 1)
-	var h00 := _map.heights[_map.idx(gx.call(x0), gy.call(y0))]
-	var h10 := _map.heights[_map.idx(gx.call(x0 + 1), gy.call(y0))]
-	var h01 := _map.heights[_map.idx(gx.call(x0), gy.call(y0 + 1))]
-	var h11 := _map.heights[_map.idx(gx.call(x0 + 1), gy.call(y0 + 1))]
+
+	var xa := clampi(x0, 0, cols - 1)
+	var xb := clampi(x0 + 1, 0, cols - 1)
+	var ya := clampi(y0, 0, rows - 1) * cols
+	var yb := clampi(y0 + 1, 0, rows - 1) * cols
+
+	var h := _map.heights
+	var h00 := h[ya + xa]
+	var h10 := h[ya + xb]
+	var h01 := h[yb + xa]
+	var h11 := h[yb + xb]
 	var a := h00 + (h10 - h00) * tx
 	var b := h01 + (h11 - h01) * tx
 	return a + (b - a) * ty
@@ -53,30 +74,80 @@ func _build_heightfield(scale: int) -> void:
 	_render_cols = _map.cols * scale + 1
 	_render_rows = _map.rows * scale + 1
 	_render_cell = float(_map.cell) / float(scale)
+	_cell_f = float(_map.cell)
 	_render_heights.resize(_render_cols * _render_rows)
 
 	var coarse := 0.085
 	var fine := 0.032
-	var smoothstep_f := func(a: float, b: float, t: float) -> float:
-		var k := clampf((t - a) / (b - a), 0.0, 1.0)
-		return k * k * (3.0 - 2.0 * k)
+	_build_fade()
 
 	for j in _render_rows:
+		var y := float(j) * _render_cell
+		var row := j * _render_cols
 		for i in _render_cols:
 			var x := float(i) * _render_cell
-			var y := float(j) * _render_cell
 			var base := _bilinear_base(x, y)
-			# Grain belongs on open ground: cliffs have shape of their own, and
-			# anything below the waterline would only poke through the surface.
-			var slope := sqrt(
-				pow(_bilinear_base(x + float(_map.cell), y) - _bilinear_base(x - float(_map.cell), y), 2.0)
-				+ pow(_bilinear_base(x, y + float(_map.cell)) - _bilinear_base(x, y - float(_map.cell)), 2.0))
-			var flatness: float = 1.0 - smoothstep_f.call(0.02, 0.075, slope)
-			var dry: float = smoothstep_f.call(_map.water_line - 0.01, _map.water_line + 0.04, base)
-			var fade: float = flatness * dry
+			var fade := _bilinear_fade(x, y)
 			var a := _detail.fbm(x * 0.020, y * 0.020, 3) - 0.5
 			var b := _detail.fbm(x * 0.085, y * 0.085, 2) - 0.5
-			_render_heights[j * _render_cols + i] = base + (a * coarse + b * fine) * fade
+			_render_heights[row + i] = base + (a * coarse + b * fine) * fade
+
+
+## How much surface grain each simulation cell takes.
+##
+## Grain belongs on open ground: cliffs have shape of their own, and anything
+## below the waterline would only poke through the surface. This varies at the
+## scale of the terrain itself, not of the render mesh, so it is worked out
+## once per simulation cell and interpolated - which is four fewer heightfield
+## samples and two fewer smoothsteps on every one of the render vertices.
+func _build_fade() -> void:
+	var cols := _map.cols
+	var rows := _map.rows
+	var cell := _cell_f
+	var water := _map.water_line
+	_fade.resize(cols * rows)
+
+	for cy in range(rows):
+		var y := (float(cy) + 0.5) * cell
+		var row := cy * cols
+		for cx in range(cols):
+			var x := (float(cx) + 0.5) * cell
+			var base := _map.heights[row + cx]
+			var dhx := _bilinear_base(x + cell, y) - _bilinear_base(x - cell, y)
+			var dhy := _bilinear_base(x, y + cell) - _bilinear_base(x, y - cell)
+			var slope := sqrt(dhx * dhx + dhy * dhy)
+			var flatness := 1.0 - _smoothstep(0.02, 0.075, slope)
+			var dry := _smoothstep(water - 0.01, water + 0.04, base)
+			_fade[row + cx] = flatness * dry
+
+
+func _bilinear_fade(x: float, y: float) -> float:
+	var cols := _map.cols
+	var rows := _map.rows
+	var fx := x / _cell_f - 0.5
+	var fy := y / _cell_f - 0.5
+	var x0 := int(floor(fx))
+	var y0 := int(floor(fy))
+	var tx := fx - float(x0)
+	var ty := fy - float(y0)
+
+	var xa := clampi(x0, 0, cols - 1)
+	var xb := clampi(x0 + 1, 0, cols - 1)
+	var ya := clampi(y0, 0, rows - 1) * cols
+	var yb := clampi(y0 + 1, 0, rows - 1) * cols
+
+	var f00 := _fade[ya + xa]
+	var f10 := _fade[ya + xb]
+	var f01 := _fade[yb + xa]
+	var f11 := _fade[yb + xb]
+	var a := f00 + (f10 - f00) * tx
+	var b := f01 + (f11 - f01) * tx
+	return a + (b - a) * ty
+
+
+static func _smoothstep(edge0: float, edge1: float, t: float) -> float:
+	var k := clampf((t - edge0) / (edge1 - edge0), 0.0, 1.0)
+	return k * k * (3.0 - 2.0 * k)
 
 ## Surface height in world units, at the resolution the player actually sees.
 func height_at(x: float, y: float) -> float:
@@ -94,6 +165,21 @@ func height_at(x: float, y: float) -> float:
 	var a := h00 + (h10 - h00) * tx
 	var b := h01 + (h11 - h01) * tx
 	return (a + (b - a) * ty) * HEIGHT_SCALE
+
+## Build the per-cell colour table. Called once, before anything samples it.
+func _build_cell_colours() -> void:
+	_cell_colours.resize(_map.cols * _map.rows)
+	for cy in range(_map.rows):
+		var row := cy * _map.cols
+		for cx in range(_map.cols):
+			_cell_colours[row + cx] = _terrain_colour(cx, cy)
+
+
+func _cell_colour(cx: int, cy: int) -> Color:
+	return _cell_colours[
+		clampi(cy, 0, _map.rows - 1) * _map.cols + clampi(cx, 0, _map.cols - 1)
+	]
+
 
 func _terrain_colour(cx: int, cy: int) -> Color:
 	var i := _map.idx(cx, cy)
@@ -151,19 +237,24 @@ func _terrain_colour(cx: int, cy: int) -> Color:
 ## interpolates between neighbours instead, which softens those boundaries into
 ## a gradient without touching the terrain classification itself.
 func _sample_colour(x: float, z: float) -> Color:
-	var c := float(_map.cell)
-	var fx := x / c - 0.5
-	var fz := z / c - 0.5
+	var cols := _map.cols
+	var rows := _map.rows
+	var fx := x / _cell_f - 0.5
+	var fz := z / _cell_f - 0.5
 	var x0 := int(floor(fx))
 	var z0 := int(floor(fz))
 	var tx := fx - float(x0)
 	var tz := fz - float(z0)
-	var gx := func(i: int) -> int: return clampi(i, 0, _map.cols - 1)
-	var gz := func(i: int) -> int: return clampi(i, 0, _map.rows - 1)
-	var c00 := _terrain_colour(gx.call(x0), gz.call(z0))
-	var c10 := _terrain_colour(gx.call(x0 + 1), gz.call(z0))
-	var c01 := _terrain_colour(gx.call(x0), gz.call(z0 + 1))
-	var c11 := _terrain_colour(gx.call(x0 + 1), gz.call(z0 + 1))
+
+	var xa := clampi(x0, 0, cols - 1)
+	var xb := clampi(x0 + 1, 0, cols - 1)
+	var za := clampi(z0, 0, rows - 1) * cols
+	var zb := clampi(z0 + 1, 0, rows - 1) * cols
+
+	var c00 := _cell_colours[za + xa]
+	var c10 := _cell_colours[za + xb]
+	var c01 := _cell_colours[zb + xa]
+	var c11 := _cell_colours[zb + xb]
 	return c00.lerp(c10, tx).lerp(c01.lerp(c11, tx), tz)
 
 ## The ground as a single mesh, vertex-coloured and smooth-shaded.
@@ -224,19 +315,22 @@ func water_level() -> float:
 ## A small image of the whole map, for the minimap. Brightened a little,
 ## because the ground palette is tuned for a lit 3D surface and reads as mud
 ## when it is shown flat.
-func minimap_image(size: int = 192) -> ImageTexture:
+##
+## Returns the Image rather than a texture: this is built on the loading
+## thread, and wrapping it for the GPU is the caller's job on the main one.
+func minimap_image(size: int = 192) -> Image:
 	var img := Image.create(size, size, false, Image.FORMAT_RGB8)
 	for y in range(size):
 		var cy := mini(_map.rows - 1, int(float(y) / float(size) * _map.rows))
 		for x in range(size):
 			var cx := mini(_map.cols - 1, int(float(x) / float(size) * _map.cols))
-			var c := _terrain_colour(cx, cy)
+			var c := _cell_colour(cx, cy)
 			img.set_pixel(x, y, Color(
 				minf(c.r * 1.45 + 0.03, 1.0),
 				minf(c.g * 1.45 + 0.03, 1.0),
 				minf(c.b * 1.45 + 0.03, 1.0)
 			))
-	return ImageTexture.create_from_image(img)
+	return img
 
 
 # ------------------------------------------------------ detail normal map
@@ -247,9 +341,9 @@ func minimap_image(size: int = 192) -> ImageTexture:
 ## only carries one vertex every eight world units, which is far too coarse to
 ## catch the light the way ground does. The lattice wraps, so every octave
 ## tiles and there is no seam where the texture repeats.
-static func detail_normal_map() -> ImageTexture:
-	if _normal_map != null:
-		return _normal_map
+static func detail_normal_image() -> Image:
+	if _normal_image != null:
+		return _normal_image
 
 	var rand := IdRng.new(0x5eed14)
 	var tiles := NORMAL_MAP_TILES
@@ -278,11 +372,11 @@ static func detail_normal_map() -> ImageTexture:
 				n.x * 0.5 + 0.5, n.y * 0.5 + 0.5, n.z * 0.5 + 0.5
 			))
 
-	_normal_map = ImageTexture.create_from_image(img)
-	return _normal_map
+	_normal_image = img
+	return img
 
 
-static var _normal_map: ImageTexture = null
+static var _normal_image: Image = null
 
 
 static func _detail_height(lattice: PackedFloat32Array, tiles: int, u: float, v: float) -> float:
