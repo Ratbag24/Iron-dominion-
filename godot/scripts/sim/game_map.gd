@@ -38,7 +38,38 @@ var start_positions: Array[Dictionary] = []
 
 var _reachable: PackedByteArray = PackedByteArray()
 
-func _init(seed_value: int = 12345, map_width: int = 3072, map_height: int = 3072) -> void:
+## How many start positions the map is built for. Two is a mirrored duel; four
+## is a square map in quarters. Anything else is clamped into that range.
+var start_count: int = 2
+
+
+## Whether the map is laid out in quarters rather than mirrored.
+##
+## Four-fold symmetry needs a square grid to rotate onto itself, so a
+## non-square map stays a duel however many starts were asked for.
+func four_fold() -> bool:
+	return start_count > 2 and cols == rows
+
+
+## The cell a quarter-turn clockwise about the centre of the map.
+func rotate90(cx: int, cy: int) -> Vector2i:
+	return Vector2i(rows - 1 - cy, cx)
+
+
+## Every cell this one maps onto under the map's symmetry, itself included.
+func symmetry_images(cx: int, cy: int) -> Array[Vector2i]:
+	if not four_fold():
+		return [Vector2i(cx, cy), Vector2i(cols - 1 - cx, rows - 1 - cy)]
+	var out: Array[Vector2i] = [Vector2i(cx, cy)]
+	var p := Vector2i(cx, cy)
+	for _i in range(3):
+		p = rotate90(p.x, p.y)
+		out.append(p)
+	return out
+
+
+func _init(seed_value: int = 12345, map_width: int = 3072, map_height: int = 3072,
+		starts: int = 2) -> void:
 	width = map_width
 	height = map_height
 	cols = int(float(width) / float(cell))
@@ -47,6 +78,10 @@ func _init(seed_value: int = 12345, map_width: int = 3072, map_height: int = 307
 	map_seed = seed_value & 0xFFFFFFFF
 	if map_seed == 0:
 		map_seed = 1
+	start_count = clampi(starts, 2, 4)
+	if start_count > 2 and cols != rows:
+		push_warning("a map in quarters has to be square; falling back to a duel")
+		start_count = 2
 
 	terrain.resize(cols * rows)
 	heights.resize(cols * rows)
@@ -137,20 +172,23 @@ func _generate() -> void:
 	var noise := IdNoise2D.new(map_seed)
 	var detail := IdNoise2D.new(map_seed ^ 0x9E3779B9)
 
-	# Averaging a sample with its 180-degree counterpart makes the field
-	# symmetric by construction.
+	# Averaging a sample with its counterparts under the map's symmetry makes
+	# the field symmetric by construction: two samples for a mirrored duel,
+	# four for a map in quarters. Every player then gets the same ground.
 	var scale := 3.4 / float(cols)
+	var quarters := four_fold()
 	for cy in rows:
 		for cx in cols:
-			var ox := cols - 1 - cx
-			var oy := rows - 1 - cy
-			var a := noise.fbm(float(cx) * scale, float(cy) * scale, 5)
-			var b := noise.fbm(float(ox) * scale, float(oy) * scale, 5)
-			var h := (a + b) * 0.5
-			var da := detail.fbm(float(cx) * scale * 4.0, float(cy) * scale * 4.0, 3)
-			var db := detail.fbm(float(ox) * scale * 4.0, float(oy) * scale * 4.0, 3)
-			h += ((da + db) * 0.5 - 0.5) * 0.09
-			heights[idx(cx, cy)] = h
+			var images := symmetry_images(cx, cy)
+			var coarse := 0.0
+			var fine := 0.0
+			for p in images:
+				coarse += noise.fbm(float(p.x) * scale, float(p.y) * scale, 5)
+				fine += detail.fbm(
+					float(p.x) * scale * 4.0, float(p.y) * scale * 4.0, 3
+				)
+			var n := float(images.size())
+			heights[idx(cx, cy)] = coarse / n + (fine / n - 0.5) * 0.09
 
 	# Classify by percentile. Averaging narrows the distribution by an amount
 	# that varies with the seed, so absolute cut-offs would give wildly
@@ -189,16 +227,13 @@ func _pick_start_positions() -> void:
 			cx += 2
 		cy += 2
 
-	_carve_clearing(best["cx"], best["cy"], 9)
-	var mirror := {"cx": cols - 1 - int(best["cx"]), "cy": rows - 1 - int(best["cy"])}
-	_carve_clearing(mirror["cx"], mirror["cy"], 9)
-
 	start_positions.clear()
-	for p in [best, mirror]:
+	for p in symmetry_images(int(best["cx"]), int(best["cy"])):
+		_carve_clearing(p.x, p.y, 9)
 		start_positions.append({
-			"cx": p["cx"], "cy": p["cy"],
-			"x": (float(p["cx"]) + 0.5) * float(cell),
-			"y": (float(p["cy"]) + 0.5) * float(cell),
+			"cx": p.x, "cy": p.y,
+			"x": (float(p.x) + 0.5) * float(cell),
+			"y": (float(p.y) + 0.5) * float(cell),
 		})
 
 func _openness_score(cx: int, cy: int, r: int) -> float:
@@ -286,7 +321,8 @@ func _place_metal_spots(rng: IdRng) -> void:
 		})
 		return true
 
-	# Guaranteed spots around each start, mirrored automatically.
+	# Guaranteed spots around each start, copied to the other starts
+	# automatically.
 	var start: Dictionary = start_positions[0]
 	var ring := [
 		Vector2i(-4, -4), Vector2i(4, -4), Vector2i(-4, 4), Vector2i(4, 4),
@@ -295,42 +331,57 @@ func _place_metal_spots(rng: IdRng) -> void:
 	for offset in ring:
 		var cx: int = int(start["cx"]) + offset.x
 		var cy: int = int(start["cy"]) + offset.y
-		if try_add.call(cx, cy, 1.0):
-			try_add.call(cols - 1 - cx, rows - 1 - cy, 1.0)
+		var images := symmetry_images(cx, cy)
+		if try_add.call(images[0].x, images[0].y, 1.0):
+			for i in range(1, images.size()):
+				try_add.call(images[i].x, images[i].y, 1.0)
 
-	# Contested spots over the rest of the map, always in pairs.
+	# Contested spots over the rest of the map, always in complete sets: a
+	# spot that only some players can reach is an unearned advantage.
+	var target := 40 if not four_fold() else 64
 	var attempts := 0
-	while spots.size() < 40 and attempts < 4000:
+	while spots.size() < target and attempts < 4000:
 		attempts += 1
 		var cx := rng.range_i(3, cols - 4)
 		var cy := rng.range_i(3, rows - 4)
-		var mx := cols - 1 - cx
-		var my := rows - 1 - cy
 		# Skip the exact centre cell, which maps onto itself.
 		if absf(float(cx) - centre_x) < 1.0 and absf(float(cy) - centre_y) < 1.0:
 			continue
 		var yield_value := 1.6 if rng.chance(0.22) else 1.0
 		var before := spots.size()
-		if try_add.call(cx, cy, yield_value):
-			if not try_add.call(mx, my, yield_value):
-				spots.resize(before)  # keep pairs honest
+		var images := symmetry_images(cx, cy)
+		if not try_add.call(images[0].x, images[0].y, yield_value):
+			continue
+		var complete := true
+		for i in range(1, images.size()):
+			if not try_add.call(images[i].x, images[i].y, yield_value):
+				complete = false
+				break
+		if not complete:
+			spots.resize(before)  # keep the sets honest
 
 	metal_spots = spots
 
-## Guarantee the two starts are connected by land, carving a corridor rather
-## than rerolling the whole map.
+## Guarantee every start is connected by land to the first, carving a corridor
+## rather than rerolling the whole map.
 func _ensure_connectivity() -> void:
 	var a: Dictionary = start_positions[0]
-	var b: Dictionary = start_positions[1]
+	for i in range(1, start_positions.size()):
+		_connect_to_first(a, start_positions[i])
+
+	var reach := _flood_fill(int(a["cx"]), int(a["cy"]))
+	_reachable = reach
+	_prune_unreachable_spots(reach)
+
+
+## Carve a corridor from `a` to `b` if there is not already a way. Pruning is
+## left to the caller: with more than two starts, spots must not be discarded
+## until every corridor has been cut.
+func _connect_to_first(a: Dictionary, b: Dictionary) -> void:
 	var reach := _flood_fill(int(a["cx"]), int(a["cy"]))
 	if reach[idx(int(b["cx"]), int(b["cy"]))] == 1:
-		_reachable = reach
-		_prune_unreachable_spots(reach)
 		return
 	_carve_corridor(a, b)
-	var reach2 := _flood_fill(int(a["cx"]), int(a["cy"]))
-	_reachable = reach2
-	_prune_unreachable_spots(reach2)
 
 func _flood_fill(sx: int, sy: int) -> PackedByteArray:
 	var seen := PackedByteArray()

@@ -20,6 +20,7 @@ const ACCENT := Color(0.42, 0.72, 1.0)
 var _faction: String = "vanguard"
 var _enemy: String = "legion"
 var _difficulty: String = "normal"
+var _opponents: int = 1
 var _seed: int = 12345
 
 var _faction_blurb: Label
@@ -71,7 +72,23 @@ func _ready() -> void:
 	_faction_blurb = _heading("", 13, DIM)
 	centre.add_child(_faction_blurb)
 
-	# --- opponent ---------------------------------------------------------
+	# --- how many opponents ----------------------------------------------
+	centre.add_child(_spacer(6))
+	centre.add_child(_section("OPPONENTS"))
+	var counts := HBoxContainer.new()
+	counts.add_theme_constant_override("separation", 8)
+	centre.add_child(counts)
+	var count_group := ButtonGroup.new()
+	for n in [1, 2, 3]:
+		var b := _choice_button("%d" % n if n > 1 else "1 (duel)")
+		b.button_group = count_group
+		b.button_pressed = n == _opponents
+		b.pressed.connect(func():
+			_opponents = n
+			_refresh())
+		counts.add_child(b)
+
+	# --- opponent factions ------------------------------------------------
 	centre.add_child(_spacer(6))
 	centre.add_child(_section("OPPONENT"))
 	var theirs := HBoxContainer.new()
@@ -207,13 +224,24 @@ func _refresh() -> void:
 	for id in _enemy_buttons:
 		_enemy_buttons[id].button_pressed = id == _enemy
 	_faction_blurb.text = String(IdUnitDefs.faction(_faction).get("blurb", ""))
-	_enemy_blurb.text = String(IdUnitDefs.faction(_enemy).get("blurb", ""))
-	_seed_label.text = "Map seed %d" % _seed
+	if _opponents > 1:
+		# The rest take the other factions in turn, so a free-for-all is a mix.
+		_enemy_blurb.text = "%s  ·  the other %s take the remaining factions" % [
+			String(IdUnitDefs.faction(_enemy).get("blurb", "")),
+			"opponent" if _opponents == 2 else "opponents",
+		]
+	else:
+		_enemy_blurb.text = String(IdUnitDefs.faction(_enemy).get("blurb", ""))
+	_seed_label.text = "Map seed %d   ·   %s" % [
+		_seed,
+		"mirrored duel" if _opponents == 1 else "four quarters, every side alike",
+	]
 
 
 func _start() -> void:
 	IdMatchSettings.player_faction = _faction
 	IdMatchSettings.enemy_faction = _enemy
 	IdMatchSettings.difficulty = _difficulty
+	IdMatchSettings.opponents = _opponents
 	IdMatchSettings.map_seed = _seed
 	get_tree().change_scene_to_file("res://scenes/game.tscn")

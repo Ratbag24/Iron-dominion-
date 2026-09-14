@@ -65,6 +65,13 @@ Needs Godot 4.3 or later. The first run imports the models, which takes a
 moment; after that it starts straight into the front end. The suites run in CI
 on every push, headless — no display and no GPU.
 
+The front end takes a faction, one to three AI opponents, a difficulty and a
+map. A duel is generated as a mirrored pair; a free-for-all is generated in
+quarters, so every side gets the same ground, the same metal within reach, and
+a way to everyone else. That fairness is measured rather than assumed — the
+test compares the height field under a quarter turn and counts the spots
+nearest each start.
+
 The models live in `godot/assets/models` as glTF binaries, one per unit, with a
 named material per colour — open any of them in Blender, edit, and export over
 the top. `tools/export-models.mjs` regenerates them from the procedural source

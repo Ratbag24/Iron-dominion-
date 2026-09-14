@@ -13,7 +13,6 @@ const CATCH_UP_LIMIT: int = 5  ## ticks a single frame may run before giving up
 ## IdMatchSettings when the scene is run on its own.
 var map_seed: int = IdMatchSettings.map_seed
 var player_faction: String = IdMatchSettings.player_faction
-var enemy_faction: String = IdMatchSettings.enemy_faction
 var difficulty: String = IdMatchSettings.difficulty
 
 var world: IdWorld
@@ -59,6 +58,8 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--ai":
 			_autoplay = true
+		elif arg.begins_with("--opponents="):
+			IdMatchSettings.opponents = int(arg.substr(12))
 		elif arg == "--action":
 			_focus_action = true
 
@@ -77,17 +78,7 @@ func _generate() -> void:
 	var t0 := Time.get_ticks_msec()
 	world = IdWorld.new({
 		"seed": map_seed,
-		"players": [
-			{
-				"name": "%s AI" % IdUnitDefs.faction(player_faction)["name"] if _autoplay else "Commander",
-				"faction": player_faction,
-				"is_ai": _autoplay, "ai_level": difficulty,
-			},
-			{
-				"name": "%s AI" % IdUnitDefs.faction(enemy_faction)["name"],
-				"faction": enemy_faction, "is_ai": true, "ai_level": difficulty,
-			},
-		],
+		"players": IdMatchSettings.player_specs(_autoplay),
 	})
 	terrain = IdTerrainBuilder.new(world.map, 2)
 	# The ground mesh and the minimap are the two most expensive things left,
@@ -172,10 +163,7 @@ func _look_at_the_fighting() -> void:
 	if count > 0:
 		centre = sum / float(count)
 	else:
-		centre = Vector2(
-			(world.players[0].start_x + world.players[1].start_x) * 0.5,
-			(world.players[0].start_y + world.players[1].start_y) * 0.5
-		)
+		centre = Vector2(world.map.width * 0.5, world.map.height * 0.5)
 	cam.distance = 520.0
 	cam.setup(terrain, centre)
 	print("focus: %s (%d contacts)" % [str(centre.round()), count])

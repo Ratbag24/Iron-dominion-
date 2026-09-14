@@ -63,17 +63,20 @@ var phase_us: Dictionary = {}
 func _init(opts: Dictionary = {}) -> void:
 	world_seed = int(opts.get("seed", 12345)) & 0xFFFFFFFF
 	rng = IdRng.new(world_seed ^ 0x51ed2701)
+	var specs: Array = opts.get("players", [
+		{"name": "Commander", "faction": "vanguard"},
+		{"name": "Legion AI", "faction": "legion", "is_ai": true},
+	])
+	# The map is laid out for however many sides are playing, so every one of
+	# them gets the same ground and the same spots within reach.
 	map = IdGameMap.new(
-		world_seed, int(opts.get("width", 3072)), int(opts.get("height", 3072))
+		world_seed, int(opts.get("width", 3072)), int(opts.get("height", 3072)),
+		specs.size()
 	)
 	pathfinder = IdPathfinder.new(map)
 	grid = IdSpatialGrid.new(map.width, map.height, 96)
 	commander_ends = bool(opts.get("commander_ends", true))
 
-	var specs: Array = opts.get("players", [
-		{"name": "Commander", "faction": "vanguard"},
-		{"name": "Legion AI", "faction": "legion", "is_ai": true},
-	])
 	for i in range(specs.size()):
 		players.append(IdPlayer.new(i, specs[i]))
 		fog.append(IdFogMap.new(map))
