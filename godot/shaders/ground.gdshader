@@ -24,6 +24,10 @@ uniform sampler2D creep_normal : hint_normal, filter_linear_mipmap_anisotropic, 
 // One texel per simulation cell, 0..1, written by the simulation. Sampled with
 // linear filtering so the edge of the infection is a gradient, not a staircase.
 uniform sampler2D corruption : hint_default_black, filter_linear, repeat_disable;
+// Fog of war, one texel per fog cell: 0 never seen, 0.5 seen once, 1 in
+// sight now. Filtered, so the edge of vision is soft. Defaults to white so a
+// scene with no viewer (the showcase, the close-up tool) shows everything.
+uniform sampler2D fog_map : hint_default_white, filter_linear, repeat_disable;
 uniform vec2 map_size = vec2(3072.0, 3072.0);
 
 // World units per texture repeat, near and far. Two scales blended by
@@ -121,6 +125,17 @@ void fragment() {
 		SPECULAR = 0.5;
 		ROUGHNESS = 0.92;
 	}
+
+	// Fog of war last, over everything: unexplored ground is near-black
+	// with a cold cast, explored-but-unseen ground is dimmed and desaturated,
+	// and only what a unit can see right now is shown as it is.
+	float f = texture(fog_map, world_pos.xz / map_size).r;
+	float seen = smoothstep(0.0, 0.45, f);
+	float now = smoothstep(0.5, 0.95, f);
+	vec3 grey = vec3(dot(alb, vec3(0.3, 0.59, 0.11)));
+	vec3 dim = mix(grey, alb, 0.45) * 0.55;
+	vec3 dark = vec3(0.02, 0.025, 0.04);
+	alb = mix(dark, mix(dim, alb, now), seen);
 
 	ALBEDO = alb;
 	NORMAL_MAP = nrm;

@@ -128,12 +128,15 @@ func _build_scene() -> void:
 
 	IdSceneSetup.build_environment(self)
 	var ground_mesh := IdSceneSetup.build_terrain(self, terrain, false, _terrain_mesh)
-	IdSceneSetup.build_water(self, world.map, terrain)
+	var water_mesh := IdSceneSetup.build_water(self, world.map, terrain)
 
 	ground = IdGroundView.new()
 	ground.name = "Ground"
 	add_child(ground)
-	ground.setup(world, ground_mesh.material_override as ShaderMaterial)
+	var extra: Array[ShaderMaterial] = [water_mesh.material_override as ShaderMaterial]
+	# A self-playing render sees everything; a real match sees what the local
+	# player's units and radar can, on the ground as well as in the unit list.
+	ground.setup(world, ground_mesh.material_override as ShaderMaterial, -1 if _autoplay else 0, extra)
 
 	units = IdUnitView.new()
 	units.name = "Units"

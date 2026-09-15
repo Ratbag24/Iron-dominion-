@@ -14,6 +14,9 @@ uniform float wave_speed = 0.6;
 uniform float depth_fade = 12.0;
 
 uniform sampler2D depth_texture : hint_depth_texture, filter_linear;
+// Fog of war, as on the ground: see ground.gdshader.
+uniform sampler2D fog_map : hint_default_white, filter_linear, repeat_disable;
+uniform vec2 map_size = vec2(3072.0, 3072.0);
 
 varying vec3 world_pos;
 
@@ -71,4 +74,10 @@ void fragment() {
 	// Foam-ish brightening on the crests, where the slope is steepest.
 	float crest = smoothstep(0.55, 0.9, h0 * 0.5 + 0.5);
 	ALBEDO += vec3(0.05) * crest * (1.0 - depth);
+
+	float f = texture(fog_map, world_pos.xz / map_size).r;
+	float seen = smoothstep(0.0, 0.45, f);
+	float now = smoothstep(0.5, 0.95, f);
+	ALBEDO = mix(vec3(0.01, 0.015, 0.03), mix(ALBEDO * 0.45, ALBEDO, now), seen);
+	ROUGHNESS = mix(0.6, ROUGHNESS, seen);
 }

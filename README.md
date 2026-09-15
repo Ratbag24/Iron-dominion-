@@ -187,8 +187,10 @@ reclaim wreckage back into metal, and assist factories.
 heavy brawlers and long-range siege artillery. Construction turrets and extra
 labs turn a strong economy into army faster.
 
-**Intel.** You see what your units see. Radar towers reveal moving contacts as
-blips without identifying them, and structures you have seen stay on the map as
+**Intel.** You see what your units see, and the ground shows it: never-seen
+terrain is dark, terrain you have seen but cannot see now is dimmed, and only
+what a unit is looking at is lit. Radar towers reveal moving contacts as blips
+without identifying them, and structures you have seen stay on the map as
 ghosts until you look again.
 
 **Victory.** Kill the enemy commander. Losing yours ends the match, and a dying
