@@ -12,6 +12,10 @@ extends RefCounted
 const CONVERT_HP: float = 0.4
 
 const SIM_HZ: int = 30
+## Cell size of the separation grid: a little over the widest reach a
+## separation query has (radius + 22 for the largest ground unit), so a
+## query touches four cells at most.
+const NEAR_CELL: int = 40
 const SIM_DT: float = 1.0 / 30.0
 
 static var _next_entity_id: int = 1
@@ -21,6 +25,8 @@ var rng: IdRng
 var map: IdGameMap
 var pathfinder: IdPathfinder
 var grid: IdSpatialGrid
+## Moving units only, on fine cells, for separation. See spatial_grid.gd.
+var near: IdSpatialGrid
 
 var entities: Array[IdEntity] = []
 var by_id: Dictionary = {}
@@ -90,6 +96,7 @@ func _init(opts: Dictionary = {}) -> void:
 	# The grid buckets by player and the allies table is read by every enemy
 	# search, so both come after the players exist.
 	grid = IdSpatialGrid.new(map.width, map.height, 96, players.size())
+	near = IdSpatialGrid.new(map.width, map.height, NEAR_CELL, 0)
 	_allies.resize(players.size())
 	for i in players.size():
 		var same := PackedInt32Array()
@@ -183,8 +190,18 @@ func spawn(def_id: String, player_index: int, x: float, y: float, opts: Dictiona
 	e.last_x = x
 	e.last_y = y
 
+	e.mass = float(def.get("mass", 1.0))
+	e.is_air = String(def.get("layer", "ground")) == "air"
+	e.max_range = float(def.get("maxWeaponRange", 0.0))
+	e.build_power = float(def.get("buildPower", 0.0))
+
 	for w in def.get("weapons", []):
 		e.weapons.append(IdWeapon.new(w, rng.range_f(0.0, float(w.get("reload", 1.0)))))
+		var targets: String = String(w.get("targets", "ground"))
+		if targets != "ground":
+			e.hits_air = true
+		if targets != "air":
+			e.hits_ground = true
 
 	if bool(def.get("needsMetalSpot", false)):
 		var spot: Dictionary = map.metal_spot_near(x, y, IdGameMap.BUILD_CELL * 2)
@@ -381,9 +398,12 @@ func tick(dt: float = SIM_DT) -> void:
 
 	pathfinder.begin_tick()
 	grid.clear()
+	near.clear()
 	for e in entities:
 		if e.alive:
 			grid.insert(e)
+			if not e.is_building:
+				near.insert(e)
 	if profile:
 		t0 = _mark("grid", t0)
 
@@ -471,34 +491,18 @@ func _update_fog(player_index: int) -> void:
 	var f: IdFogMap = fog[player_index]
 	f.begin_frame()
 	var team: int = players[player_index].team
-	# Reveals are deduplicated by fog cell: an army is a clump, and forty
-	# units on the same few cells revealing the same disc forty times was
-	# the largest unexplained cost in the tick at scale. Per cell the widest
-	# sight wins; radar is rare and goes through as it is.
-	var seen: Dictionary = {}
-	var cs: float = float(f.cell)
+	# Reveals are batched: the fog map merges the discs into row spans and
+	# writes each cell once, however many units can see it. Radar is rare
+	# and goes through as it is.
+	f.begin_batch()
 	for e in entities:
 		if not e.alive or players[e.player].team != team:
 			continue
-		var los: float = float(e.def.get("los", 200.0))
-		var key: int = int(e.y / cs) * 100000 + int(e.x / cs)
-		var prev: float = float(seen.get(key, -1.0))
-		if los > prev:
-			if prev < 0.0:
-				# First unit on this cell: remember its exact position.
-				seen[key] = los
-				seen[-key - 1] = Vector2(e.x, e.y)
-			else:
-				seen[key] = los
-				seen[-key - 1] = Vector2(e.x, e.y)
+		f.add_circle(e.x, e.y, float(e.def.get("los", 200.0)))
 		var radar: float = float(e.def.get("radar", 0.0))
 		if radar > 0.0:
 			f.reveal_radar(e.x, e.y, radar)
-	for key in seen.keys():
-		if key < 0:
-			continue
-		var at: Vector2 = seen[-key - 1]
-		f.reveal_circle(at.x, at.y, float(seen[key]))
+	f.end_batch()
 
 	# Remember enemy structures we can currently see, and forget the ones we
 	# can now see are gone.

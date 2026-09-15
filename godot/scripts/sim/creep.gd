@@ -137,7 +137,7 @@ static func apply_creep_effects(world: IdWorld, dt: float) -> void:
 	for e in world.entities:
 		if not e.alive or e.is_building or float(e.def.get("speed", 0.0)) <= 0.0:
 			continue
-		if String(e.def.get("layer", "ground")) == "air":
+		if e.is_air:
 			e.speed_scale = 1.0
 			continue
 		var c := creep_at(map, e.x, e.y)

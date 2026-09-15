@@ -1105,37 +1105,8 @@
   },
   "con_tank": {
     "file": "con_tank.glb",
-    "parts": {
-      "body": {
-        "materials": [
-          "Track",
-          "TeamDark",
-          "Rubber",
-          "Concrete",
-          "Webbing",
-          "Hull",
-          "HullDark",
-          "Steel",
-          "Team"
-        ]
-      },
-      "turret": {
-        "pivotY": 12.24,
-        "materials": [
-          "Hull",
-          "HullDark",
-          "Rubber",
-          "Steel",
-          "HullLight",
-          "TeamDark",
-          "Trim",
-          "Glow",
-          "Glass",
-          "Team"
-        ]
-      }
-    },
-    "triangles": 4192
+    "handmade": true,
+    "parts": {}
   },
   "con_missile": {
     "file": "con_missile.glb",

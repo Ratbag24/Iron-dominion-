@@ -146,7 +146,9 @@ down to a stance), `--only low.001` keeps one figure out of a pack, and
 textures did not come with the file. Its id goes in `assets/models/handmade.json` so the
 procedural exporter leaves the file alone, and its licence goes in
 `assets/CREDITS.md`, which must ship with the game. Painted models take a
-tint of the team colour until they carry a team mask of their own.
+tint of the team colour until they carry a team mask of their own: a third
+on a textured surface, less on the flat paint `--recolour` gives, which has
+no detail to carry more.
 
 ## Controls
 

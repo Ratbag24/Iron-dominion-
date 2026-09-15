@@ -13,16 +13,14 @@ static func can_hit(weapon_def: Dictionary, target: IdEntity) -> bool:
 	var targets: String = String(weapon_def.get("targets", "ground"))
 	if targets == "both":
 		return true
-	var flying: bool = String(target.def.get("layer", "ground")) == "air"
-	return flying if targets == "air" else not flying
+	return target.is_air if targets == "air" else not target.is_air
 
 
 ## Does this entity have any weapon that could engage that target?
 static func can_engage(e: IdEntity, target: IdEntity) -> bool:
-	for w in e.weapons:
-		if can_hit(w.def, target):
-			return true
-	return false
+	# Summed over the weapons at spawn (see world.spawn): this is asked for
+	# every candidate of every target scan.
+	return e.hits_air if target.is_air else e.hits_ground
 
 const TURRET_TURN_UNIT: float = 7.0  ## radians/second
 const TURRET_TURN_BUILDING: float = 3.2
@@ -113,9 +111,17 @@ static func _acquire(world: IdWorld, e: IdEntity, max_range: float, buf: Array) 
 	var reach: float = max_range + 40.0
 	world.grid.query_enemies(e.x, e.y, reach, world.allies_of(e.player), buf)
 	var fog: IdFogMap = world.fog[e.player]
+	# Fog lookups inlined: a method call per candidate is most of what a
+	# candidate costs in GDScript.
+	var fog_cs: float = float(fog.cell)
+	var fog_cols: int = fog.cols
+	var fog_last_col: int = fog.cols - 1
+	var fog_last_row: int = fog.rows - 1
+	var visible: PackedByteArray = fog.visible_cells
 	var best: IdEntity = null
 	var best_score: float = -INF
 	var reach2: float = reach * reach
+	var from_air: bool = e.is_air
 
 	for o in buf:
 		if not o.alive:
@@ -128,17 +134,19 @@ static func _acquire(world: IdWorld, e: IdEntity, max_range: float, buf: Array) 
 		var d: float = sqrt(d2) - o.radius
 		if d > max_range:
 			continue
-		if not can_engage(e, o):
+		if not (e.hits_air if o.is_air else e.hits_ground):
 			continue
-		if not fog.is_visible_at(o.x, o.y):
+		var fx: int = clampi(int(o.x / fog_cs), 0, fog_last_col)
+		var fy: int = clampi(int(o.y / fog_cs), 0, fog_last_row)
+		if visible[fy * fog_cols + fx] == 0:
 			continue
 
 		# Shoot the thing that matters most: threats first, then builders,
 		# then whatever is closest to dying.
 		var score: float = 1000.0 - d
-		if float(o.def.get("maxWeaponRange", 0.0)) > 0.0:
+		if o.max_range > 0.0:
 			score += 400.0
-		if float(o.def.get("buildPower", 0.0)) > 0.0:
+		if o.build_power > 0.0:
 			score += 260.0
 		if o.under_construction:
 			score += 220.0
@@ -149,7 +157,7 @@ static func _acquire(world: IdWorld, e: IdEntity, max_range: float, buf: Array) 
 			score -= 300.0  # prefer live targets
 		# Anything that can shoot back at aircraft is the first thing an
 		# aircraft should be killing.
-		if String(e.def.get("layer", "ground")) == "air" and bool(o.def.get("hitsAir", false)):
+		if from_air and o.hits_air:
 			score += 500.0
 
 		if score > best_score:

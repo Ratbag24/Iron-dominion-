@@ -22,6 +22,11 @@ This work is based on "Military RTS Character 1 (CC0)"
 by britdawgmasterfunk (https://sketchfab.com/britdawgmasterfunk) licensed under
 CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
 
+This work is based on "Futuristic Tank"
+(https://sketchfab.com/3d-models/futuristic-tank-f059495c88f54c8ba290046106bb294d)
+by Tom Zimmermann (https://sketchfab.com/tomm8) licensed under
+CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
+
 The Blight test creature (`mainfile.blend` / `skeleton.x3d`) was supplied by
 the project owner; its licence and author are to be recorded here before any
 release.

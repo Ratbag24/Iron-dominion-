@@ -16,6 +16,11 @@ export class FogMap {
     /** Last known enemy structures, keyed by entity id. */
     this.memory = new Map();
     this.version = 0;
+    /**
+     * Row spans queued by addCircle, each packed as row << 24 | x0 << 12 | x1,
+     * so one numeric sort groups them by row and a single pass can merge them.
+     */
+    this._spans = [];
   }
 
   beginFrame() {
@@ -46,6 +51,70 @@ export class FogMap {
         const i = row + gx;
         this.visible[i] = 1;
         this.explored[i] = 1;
+      }
+    }
+  }
+
+  /**
+   * Batched reveals: queue discs with addCircle, then write them once with
+   * endBatch. An army is a clump, and forty units on the same few cells
+   * stamping the same disc forty times was the largest cost in the tick at
+   * scale. Merging the discs into row spans first means each revealed cell is
+   * written once however many units can see it. The cells revealed are
+   * exactly those revealCircle would reveal for the same discs.
+   */
+  beginBatch() {
+    this._spans.length = 0;
+  }
+
+  addCircle(x, y, radius) {
+    const cs = this.cell;
+    const r = radius / cs;
+    const cx = x / cs;
+    const cy = y / cs;
+    const minY = this._clampRow(Math.floor(cy - r));
+    const maxY = this._clampRow(Math.ceil(cy + r));
+    const r2 = r * r;
+    const last = this.cols - 1;
+    for (let gy = minY; gy <= maxY; gy++) {
+      const dy = gy + 0.5 - cy;
+      const rem = r2 - dy * dy;
+      if (rem < 0) continue;
+      // A cell is in the disc when (gx + 0.5 - cx)^2 <= rem, so the row's
+      // run is the integers within half of cx - 0.5.
+      const half = Math.sqrt(rem);
+      let x0 = Math.ceil(cx - 0.5 - half);
+      let x1 = Math.floor(cx - 0.5 + half);
+      if (x1 < 0 || x0 > last || x1 < x0) continue;
+      if (x0 < 0) x0 = 0;
+      if (x1 > last) x1 = last;
+      this._spans.push((gy << 24) | (x0 << 12) | x1);
+    }
+  }
+
+  endBatch() {
+    const spans = this._spans;
+    spans.sort((a, b) => a - b);
+    const n = spans.length;
+    let i = 0;
+    while (i < n) {
+      const s = spans[i];
+      const row = s >> 24;
+      const x0 = (s >> 12) & 0xfff;
+      let x1 = s & 0xfff;
+      i++;
+      // Swallow every later span on this row that touches or overlaps.
+      while (i < n) {
+        const t = spans[i];
+        if ((t >> 24) !== row || ((t >> 12) & 0xfff) > x1 + 1) break;
+        const e = t & 0xfff;
+        if (e > x1) x1 = e;
+        i++;
+      }
+      const base = row * this.cols;
+      for (let gx = x0; gx <= x1; gx++) {
+        this.visible[base + gx] = 1;
+        this.explored[base + gx] = 1;
       }
     }
   }

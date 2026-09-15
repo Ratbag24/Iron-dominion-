@@ -24,6 +24,16 @@ var alive: bool = true
 var max_hp: float = 1.0
 ## Set every tick by creep.gd; movement multiplies by it.
 var speed_scale: float = 1.0
+## Read off the def once at spawn. The hot loops (separation, target scans)
+## visit hundreds of neighbours per unit, and a dictionary lookup per visit
+## was a measurable share of the tick at scale.
+var mass: float = 1.0
+var is_air: bool = false
+var max_range: float = 0.0
+var build_power: float = 0.0
+## Whether any weapon this entity carries can reach each layer.
+var hits_air: bool = false
+var hits_ground: bool = false
 var hp: float = 1.0
 var under_construction: bool = false
 var build_progress: float = 1.0

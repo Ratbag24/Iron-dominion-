@@ -24,7 +24,7 @@ static func update_movement(world: IdWorld, dt: float) -> void:
 			continue
 		if float(e.def.get("speed", 0.0)) <= 0.0:
 			continue
-		if String(e.def.get("layer", "ground")) == "air":
+		if e.is_air:
 			_update_aircraft(world, e, dt, neighbours)
 			continue
 
@@ -136,12 +136,12 @@ static func _update_aircraft(world: IdWorld, e: IdEntity, dt: float, buf: Array)
 ## Aircraft push apart from each other only; the ground is not in their way.
 static func _separate_air(world: IdWorld, e: IdEntity, buf: Array, dt: float) -> void:
 	var reach: float = e.radius * 3.2 + 20.0
-	world.grid.query(e.x, e.y, reach, buf)
+	world.near.query(e.x, e.y, reach, buf)
 	var px: float = 0.0
 	var py: float = 0.0
 	for i in range(buf.size()):
 		var o: IdEntity = buf[i]
-		if o == e or not o.alive or String(o.def.get("layer", "ground")) != "air":
+		if o == e or not o.alive or not o.is_air:
 			continue
 		var dx: float = e.x - o.x
 		var dy: float = e.y - o.y
@@ -231,15 +231,16 @@ static func _decelerate(e: IdEntity, dt: float) -> void:
 static func _separate(world: IdWorld, e: IdEntity, buf: Array, dt: float) -> void:
 	# Just past the largest collision distance a neighbour could have. The
 	# first version reached more than twice that and paid for every unit in
-	# the extra ring for nothing.
+	# the extra ring for nothing. The fine grid holds moving units only, so
+	# there are no buildings to skip.
 	var reach: float = e.radius + 22.0
-	world.grid.query(e.x, e.y, reach, buf)
+	world.near.query(e.x, e.y, reach, buf)
 	var px: float = 0.0
 	var py: float = 0.0
-	var my_mass: float = float(e.def.get("mass", 1.0))
+	var my_mass: float = e.mass
 	for i in range(buf.size()):
 		var o: IdEntity = buf[i]
-		if o == e or not o.alive or o.is_building:
+		if o == e or not o.alive:
 			continue
 		var dx: float = e.x - o.x
 		var dy: float = e.y - o.y
@@ -249,8 +250,7 @@ static func _separate(world: IdWorld, e: IdEntity, buf: Array, dt: float) -> voi
 			continue
 		var d: float = sqrt(d2)
 		var overlap: float = (min_dist - d) / min_dist
-		var other_mass: float = float(o.def.get("mass", 1.0))
-		var mass_ratio: float = other_mass / (my_mass + other_mass)
+		var mass_ratio: float = o.mass / (my_mass + o.mass)
 		px += (dx / d) * overlap * mass_ratio
 		py += (dy / d) * overlap * mass_ratio
 	if px != 0.0 or py != 0.0:

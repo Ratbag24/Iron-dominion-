@@ -391,6 +391,11 @@ def main():
                 if flag == "emissive":
                     bsdf.inputs["Emission Color"].default_value = (*lin, 1.0)
                     bsdf.inputs["Emission Strength"].default_value = 2.0
+                # Named so the game knows this surface is paint rather than
+                # a palette slot, and gives it the team tint a textured
+                # surface gets. See team_colour.gd.
+                if not mat.name.startswith("Painted_"):
+                    mat.name = "Painted_" + mat.name
                 log("recoloured", mat.name, hexcol, flag)
 
     # Pack textures so the .glb is self-contained.

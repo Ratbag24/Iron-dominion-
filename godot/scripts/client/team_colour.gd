@@ -9,6 +9,9 @@ extends RefCounted
 
 ## How far a painted (textured) surface is pulled towards the team colour.
 const TEXTURE_TINT := 0.32
+## Flat paint has no detail to carry a stronger tint: at the texture's share
+## an olive hull came out as pale team-coloured grey.
+const PAINT_TINT := 0.18
 
 const SLOTS := {
 	"Team": "primary",
@@ -36,9 +39,21 @@ static func _apply_to_mesh(mi: MeshInstance3D, colours: Dictionary) -> void:
 			# An artist's model has no Team slots; it is painted. Until those
 			# carry a team mask, the whole surface takes a tint of the team
 			# colour, which is what most RTS games did before masks anyway.
-			if base is BaseMaterial3D and (base as BaseMaterial3D).albedo_texture != null:
+			# Paint is a texture, or a flat colour the importer gave a
+			# material whose textures did not arrive (Painted_*).
+			if base is BaseMaterial3D and (
+				(base as BaseMaterial3D).albedo_texture != null
+				or base.resource_name.begins_with("Painted_")
+			):
 				var tinted: BaseMaterial3D = base.duplicate()
-				tinted.albedo_color = Color.WHITE.lerp(colours["primary"], TEXTURE_TINT)
+				# Blended over the material's own colour: on a painted
+				# surface that colour is the paint, and replacing it with
+				# a near-white tint left the whole model bleached.
+				var share: float = (
+					TEXTURE_TINT if (base as BaseMaterial3D).albedo_texture != null
+					else PAINT_TINT
+				)
+				tinted.albedo_color = tinted.albedo_color.lerp(colours["primary"], share)
 				mi.set_surface_override_material(s, tinted)
 			continue
 		var mat: StandardMaterial3D = base.duplicate()

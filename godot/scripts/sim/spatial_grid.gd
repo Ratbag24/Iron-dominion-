@@ -3,6 +3,11 @@ extends RefCounted
 
 ## Uniform spatial hash used for neighbour queries (target acquisition, unit
 ## separation, splash damage, selection). Rebuilt every simulation tick.
+##
+## The world keeps two: a coarse one over every entity for the wide searches
+## (weapons range, splash, selection), and a fine one over moving units only
+## for separation, whose reach is a few unit radii. A separation query on the
+## coarse grid returned ten times the units it could possibly touch.
 
 var cell_size: int = 96
 var cols: int = 0
@@ -11,15 +16,20 @@ var _cells: Array = []
 ## The same entities bucketed by owning player, so a search for enemies can
 ## skip its own side's cells entirely. Target acquisition at scale spent most
 ## of its time rejecting friends; this rejects them by not visiting them.
+## Empty when the grid was built without players: then query_enemies finds
+## nothing, and clearing costs nothing.
 var _by_player: Array = []
 var _players: int = 0
+## Cells written since the last clear, so clearing visits those rather than
+## every cell of the map: a fine grid has tens of thousands.
+var _touched: PackedInt32Array = PackedInt32Array()
 
 
 func _init(width: int, height: int, size: int = 96, players: int = 2) -> void:
 	cell_size = size
 	cols = ceili(float(width) / float(size))
 	rows = ceili(float(height) / float(size))
-	_players = maxi(players, 1)
+	_players = maxi(players, 0)
 	_cells.resize(cols * rows)
 	for i in range(_cells.size()):
 		_cells[i] = []
@@ -33,16 +43,13 @@ func _init(width: int, height: int, size: int = 96, players: int = 2) -> void:
 
 
 func clear() -> void:
-	for i in range(_cells.size()):
-		var cell: Array = _cells[i]
-		if not cell.is_empty():
-			cell.clear()
-	for pi in _players:
-		var arr: Array = _by_player[pi]
-		for i in range(arr.size()):
-			var cell: Array = arr[i]
+	for i in _touched:
+		(_cells[i] as Array).clear()
+		for pi in _players:
+			var cell: Array = _by_player[pi][i]
 			if not cell.is_empty():
 				cell.clear()
+	_touched.clear()
 
 
 func _index(x: float, y: float) -> int:
@@ -53,7 +60,10 @@ func _index(x: float, y: float) -> int:
 
 func insert(ent: IdEntity) -> void:
 	var i: int = _index(ent.x, ent.y)
-	_cells[i].append(ent)
+	var cell: Array = _cells[i]
+	if cell.is_empty():
+		_touched.append(i)
+	cell.append(ent)
 	if ent.player >= 0 and ent.player < _players:
 		_by_player[ent.player][i].append(ent)
 

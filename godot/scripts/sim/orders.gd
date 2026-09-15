@@ -484,6 +484,11 @@ static func find_nearby_enemy(world: IdWorld, e: IdEntity, radius: float) -> IdE
 	var my_team: int = world.players[e.player].team
 	world.grid.query_enemies(e.x, e.y, radius, world.allies_of(e.player), found)
 	var fog: IdFogMap = world.fog[e.player]
+	var fog_cs: float = float(fog.cell)
+	var fog_cols: int = fog.cols
+	var fog_last_col: int = fog.cols - 1
+	var fog_last_row: int = fog.rows - 1
+	var visible: PackedByteArray = fog.visible_cells
 	var best: IdEntity = null
 	var best_score: float = -INF
 	var r2: float = radius * radius
@@ -491,7 +496,8 @@ static func find_nearby_enemy(world: IdWorld, e: IdEntity, radius: float) -> IdE
 	for other in found:
 		# Cheapest rejects first: most of what a wide query returns is our
 		# own army or out of range, and every method call here is paid for
-		# hundreds of times per sweep.
+		# hundreds of times per sweep, so the layer and fog checks are
+		# inlined too.
 		if not other.alive or world.players[other.player].team == my_team:
 			continue
 		var ddx: float = other.x - e.x
@@ -500,16 +506,18 @@ static func find_nearby_enemy(world: IdWorld, e: IdEntity, radius: float) -> IdE
 		if d2 > r2:
 			continue
 		# No sense walking towards something none of our weapons can reach.
-		if has_weapons and not IdCombat.can_engage(e, other):
+		if has_weapons and not (e.hits_air if other.is_air else e.hits_ground):
 			continue
-		if not fog.is_visible_at(other.x, other.y):
+		var fx: int = clampi(int(other.x / fog_cs), 0, fog_last_col)
+		var fy: int = clampi(int(other.y / fog_cs), 0, fog_last_row)
+		if visible[fy * fog_cols + fx] == 0:
 			continue
 		var d: float = sqrt(d2)
 		# Prefer close, dangerous, and nearly-dead things.
 		var score: float = -d
-		if float(other.def.get("maxWeaponRange", 0.0)) > 0.0:
+		if other.max_range > 0.0:
 			score += 220.0
-		if float(other.def.get("buildPower", 0.0)) > 0.0:
+		if other.build_power > 0.0:
 			score += 140.0
 		if other.under_construction:
 			score += 180.0

@@ -152,8 +152,7 @@ static func _reaches(p: Dictionary, e: IdEntity) -> bool:
 	var targets: String = String(p.get("targets", "ground"))
 	if targets == "both":
 		return true
-	var flying: bool = String(e.def.get("layer", "ground")) == "air"
-	return flying if targets == "air" else not flying
+	return e.is_air if targets == "air" else not e.is_air
 
 
 static func _segment_hits_circle(

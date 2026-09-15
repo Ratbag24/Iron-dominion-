@@ -399,11 +399,16 @@ export class World {
     const fog = this.fog[playerIndex];
     fog.beginFrame();
     const team = this.players[playerIndex].team;
+    // Reveals are batched: the fog map merges the discs into row spans and
+    // writes each cell once, however many units can see it. Radar is rare
+    // and goes through as it is.
+    fog.beginBatch();
     for (const e of this.entities) {
       if (!e.alive || this.players[e.player].team !== team) continue;
-      fog.revealCircle(e.x, e.y, e.def.los || 200);
+      fog.addCircle(e.x, e.y, e.def.los || 200);
       if (e.def.radar) fog.revealRadar(e.x, e.y, e.def.radar);
     }
+    fog.endBatch();
     // Remember enemy structures we can currently see, and forget the ones we
     // can now see are gone.
     const liveIds = new Set();
