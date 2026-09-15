@@ -63,11 +63,27 @@ export function creepAt(map, x, y) {
 /**
  * One spread pass. Runs every CREEP_INTERVAL ticks; per-tick effects on units
  * (speed, regen) are applied in applyCreepEffects below, every tick.
+ *
+ * Only cells that are corrupted or next to a corrupted cell are visited: the
+ * rest are zero with zero neighbours and cannot change, so the pass costs
+ * what the creep covers rather than the whole map. Seeds add their cells and
+ * the ring around them before the pass; the pass builds the next list from
+ * what it leaves non-zero. The first pass walks everything. The values are
+ * exactly those of the full walk.
  */
 export function updateCreep(world, dt) {
   const map = world.map;
   const corr = map.corruption;
   if (world.tickCount % CREEP_INTERVAL !== 0) return;
+  const { cols, rows } = map;
+  const count = cols * rows;
+
+  if (!world._creepMark || world._creepMark.length !== count) {
+    world._creepMark = new Uint8Array(count).fill(1);
+    world._creepGen = 1;
+    world._creepActive = [];
+    for (let i = 0; i < count; i++) world._creepActive.push(i);
+  }
 
   // Sources first: the hive's own things push the ground under them up.
   for (const e of world.entities) {
@@ -75,46 +91,70 @@ export function updateCreep(world, dt) {
     if (!spreadsCreep(world, e.player)) continue;
     // Under construction a structure has only begun to take: half strength.
     const strength = e.underConstruction ? 0.5 : 1;
-    seed(map, e.x, e.y, e.def.creep, SOURCE_RATE * strength);
+    seed(world, e.x, e.y, e.def.creep, SOURCE_RATE * strength);
   }
 
   // Then spread from established cells and decay everywhere. Reads from a
   // snapshot so a pass cannot chase itself across a row.
-  const { cols, rows } = map;
   const snap = world._creepSnap || (world._creepSnap = new Float32Array(corr.length));
   snap.set(corr);
-  for (let cy = 0; cy < rows; cy++) {
-    const row = cy * cols;
-    for (let cx = 0; cx < cols; cx++) {
-      const i = row + cx;
-      let v = snap[i] - DECAY;
-      if (map.terrain[i] === TERRAIN_WATER) { corr[i] = 0; continue; }
-      // The strongest established neighbour sets this cell's ceiling. All
-      // eight neighbours, with the diagonals a longer step: with only the
-      // four the front grew as a diamond, which on the map read as a square
-      // stain with corners.
-      let ceiling = 0;
-      const left = cx > 0;
-      const right = cx < cols - 1;
-      const up = cy > 0;
-      const down = cy < rows - 1;
-      if (left && snap[i - 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i - 1] - STEP);
-      if (right && snap[i + 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i + 1] - STEP);
-      if (up && snap[i - cols] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i - cols] - STEP);
-      if (down && snap[i + cols] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i + cols] - STEP);
-      if (up && left && snap[i - cols - 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i - cols - 1] - STEP_DIAG);
-      if (up && right && snap[i - cols + 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i - cols + 1] - STEP_DIAG);
-      if (down && left && snap[i + cols - 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i + cols - 1] - STEP_DIAG);
-      if (down && right && snap[i + cols + 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i + cols + 1] - STEP_DIAG);
-      if (ceiling > v) v = Math.min(ceiling, snap[i] + GROW);
-      corr[i] = v < 0 ? 0 : v > 1 ? 1 : v;
+  const active = world._creepActive;
+  const mark = world._creepMark;
+  let nextGen = world._creepGen + 1;
+  if (nextGen > 250) { mark.fill(0); nextGen = 1; }
+  const next = [];
+  for (let k = 0; k < active.length; k++) {
+    const i = active[k];
+    if (map.terrain[i] === TERRAIN_WATER) { corr[i] = 0; continue; }
+    const cx = i % cols;
+    const cy = (i / cols) | 0;
+    let v = snap[i] - DECAY;
+    // The strongest established neighbour sets this cell's ceiling. All
+    // eight neighbours, with the diagonals a longer step: with only the
+    // four the front grew as a diamond, which on the map read as a square
+    // stain with corners.
+    let ceiling = 0;
+    const left = cx > 0;
+    const right = cx < cols - 1;
+    const up = cy > 0;
+    const down = cy < rows - 1;
+    if (left && snap[i - 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i - 1] - STEP);
+    if (right && snap[i + 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i + 1] - STEP);
+    if (up && snap[i - cols] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i - cols] - STEP);
+    if (down && snap[i + cols] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i + cols] - STEP);
+    if (up && left && snap[i - cols - 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i - cols - 1] - STEP_DIAG);
+    if (up && right && snap[i - cols + 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i - cols + 1] - STEP_DIAG);
+    if (down && left && snap[i + cols - 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i + cols - 1] - STEP_DIAG);
+    if (down && right && snap[i + cols + 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i + cols + 1] - STEP_DIAG);
+    if (ceiling > v) v = Math.min(ceiling, snap[i] + GROW);
+    v = v < 0 ? 0 : v > 1 ? 1 : v;
+    corr[i] = v;
+    if (v <= 0) continue;
+    // Still corrupted: it and its ring are visited next pass.
+    const x0 = left ? cx - 1 : cx;
+    const x1 = right ? cx + 1 : cx;
+    const y0 = up ? cy - 1 : cy;
+    const y1 = down ? cy + 1 : cy;
+    for (let ny = y0; ny <= y1; ny++) {
+      const row = ny * cols;
+      for (let nx = x0; nx <= x1; nx++) {
+        const n = row + nx;
+        if (mark[n] !== nextGen) { mark[n] = nextGen; next.push(n); }
+      }
     }
   }
+  world._creepActive = next;
+  world._creepGen = nextGen;
 }
 
 /** Push the corruption within `radius` cells of (x, y) towards 1. */
-function seed(map, x, y, radius, rate) {
+function seed(world, x, y, radius, rate) {
+  const map = world.map;
   const corr = map.corruption;
+  const mark = world._creepMark;
+  const active = world._creepActive;
+  const gen = world._creepGen;
+  const { cols, rows } = map;
   const cx0 = (x / map.cell) | 0;
   const cy0 = (y / map.cell) | 0;
   const r = Math.ceil(radius);
@@ -131,6 +171,18 @@ function seed(map, x, y, radius, rate) {
       // source makes a mound of corruption rather than a plateau.
       const w = 1 - d * d;
       corr[i] = Math.min(1, corr[i] + rate * w * (1.2 - corr[i]));
+      // The pass must see this cell and the ring its ceiling reaches.
+      const y0 = cy > 0 ? cy - 1 : cy;
+      const y1 = cy < rows - 1 ? cy + 1 : cy;
+      const x0 = cx > 0 ? cx - 1 : cx;
+      const x1 = cx < cols - 1 ? cx + 1 : cx;
+      for (let ny = y0; ny <= y1; ny++) {
+        const row = ny * cols;
+        for (let nx = x0; nx <= x1; nx++) {
+          const n = row + nx;
+          if (mark[n] !== gen) { mark[n] = gen; active.push(n); }
+        }
+      }
     }
   }
 }

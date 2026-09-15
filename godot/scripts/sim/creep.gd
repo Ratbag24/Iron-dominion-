@@ -49,11 +49,31 @@ static func creep_at(map: IdGameMap, x: float, y: float) -> float:
 
 
 ## One spread pass, every CREEP_INTERVAL ticks.
+##
+## Only cells that are corrupted or next to a corrupted cell are visited:
+## the rest are zero with zero neighbours and cannot change, so the pass
+## costs what the creep covers rather than the whole map, which at 192x192
+## was a 15ms hitch twice a second. Seeds add their cells and the ring
+## around them before the pass; the pass builds the next list from what it
+## leaves non-zero. The first pass walks everything. The values are exactly
+## those of the full walk.
 static func update_creep(world: IdWorld, _dt: float) -> void:
 	if world.tick_count % CREEP_INTERVAL != 0:
 		return
 	var map: IdGameMap = world.map
-	var corr: PackedFloat32Array = map.corruption
+	var cols: int = map.cols
+	var rows: int = map.rows
+	var count: int = cols * rows
+
+	if world.creep_mark.size() != count:
+		var mark0 := PackedByteArray()
+		mark0.resize(count)
+		mark0.fill(1)
+		world.creep_mark = mark0
+		world.creep_gen = 1
+		world.creep_active.clear()
+		for i in count:
+			world.creep_active.append(i)
 
 	for e in world.entities:
 		if not e.alive:
@@ -62,55 +82,82 @@ static func update_creep(world: IdWorld, _dt: float) -> void:
 		if radius <= 0.0 or not spreads_creep(world, e.player):
 			continue
 		var strength := 0.5 if e.under_construction else 1.0
-		_seed(map, e.x, e.y, radius, SOURCE_RATE * strength)
+		_seed(world, e.x, e.y, radius, SOURCE_RATE * strength)
 
 	# Spread from established cells and decay everywhere, reading a snapshot
-	# so the pass cannot chase itself across a row. The whole grid is walked
-	# here: at 192x192 that is 37k cells twice a second, which is the single
-	# most expensive thing left in GDScript and the first candidate for C#.
-	var cols: int = map.cols
-	var rows: int = map.rows
+	# so the pass cannot chase itself across a row.
+	var corr: PackedFloat32Array = map.corruption
 	var snap: PackedFloat32Array = corr.duplicate()
 	var terrain: PackedByteArray = map.terrain
-	for cy in rows:
-		var row := cy * cols
-		for cx in cols:
-			var i := row + cx
-			if terrain[i] == IdGameMap.TERRAIN_WATER:
-				corr[i] = 0.0
-				continue
-			var v: float = snap[i] - DECAY
-			# All eight neighbours, the diagonals a longer step: with only
-			# four the front grew as a diamond and read as a square stain.
-			var ceiling := 0.0
-			var left := cx > 0
-			var right := cx < cols - 1
-			var up := cy > 0
-			var down := cy < rows - 1
-			if left and snap[i - 1] >= SPREAD_FROM:
-				ceiling = maxf(ceiling, snap[i - 1] - STEP)
-			if right and snap[i + 1] >= SPREAD_FROM:
-				ceiling = maxf(ceiling, snap[i + 1] - STEP)
-			if up and snap[i - cols] >= SPREAD_FROM:
-				ceiling = maxf(ceiling, snap[i - cols] - STEP)
-			if down and snap[i + cols] >= SPREAD_FROM:
-				ceiling = maxf(ceiling, snap[i + cols] - STEP)
-			if up and left and snap[i - cols - 1] >= SPREAD_FROM:
-				ceiling = maxf(ceiling, snap[i - cols - 1] - STEP_DIAG)
-			if up and right and snap[i - cols + 1] >= SPREAD_FROM:
-				ceiling = maxf(ceiling, snap[i - cols + 1] - STEP_DIAG)
-			if down and left and snap[i + cols - 1] >= SPREAD_FROM:
-				ceiling = maxf(ceiling, snap[i + cols - 1] - STEP_DIAG)
-			if down and right and snap[i + cols + 1] >= SPREAD_FROM:
-				ceiling = maxf(ceiling, snap[i + cols + 1] - STEP_DIAG)
-			if ceiling > v:
-				v = minf(ceiling, snap[i] + GROW)
-			corr[i] = clampf(v, 0.0, 1.0)
+	var active: Array = world.creep_active
+	var mark: PackedByteArray = world.creep_mark
+	var next_gen: int = world.creep_gen + 1
+	if next_gen > 250:
+		mark.fill(0)
+		next_gen = 1
+	var next: Array = []
+	for i in active:
+		if terrain[i] == IdGameMap.TERRAIN_WATER:
+			corr[i] = 0.0
+			continue
+		var cx: int = i % cols
+		var cy: int = i / cols
+		var v: float = snap[i] - DECAY
+		# All eight neighbours, the diagonals a longer step: with only
+		# four the front grew as a diamond and read as a square stain.
+		var ceiling := 0.0
+		var left := cx > 0
+		var right := cx < cols - 1
+		var up := cy > 0
+		var down := cy < rows - 1
+		if left and snap[i - 1] >= SPREAD_FROM:
+			ceiling = maxf(ceiling, snap[i - 1] - STEP)
+		if right and snap[i + 1] >= SPREAD_FROM:
+			ceiling = maxf(ceiling, snap[i + 1] - STEP)
+		if up and snap[i - cols] >= SPREAD_FROM:
+			ceiling = maxf(ceiling, snap[i - cols] - STEP)
+		if down and snap[i + cols] >= SPREAD_FROM:
+			ceiling = maxf(ceiling, snap[i + cols] - STEP)
+		if up and left and snap[i - cols - 1] >= SPREAD_FROM:
+			ceiling = maxf(ceiling, snap[i - cols - 1] - STEP_DIAG)
+		if up and right and snap[i - cols + 1] >= SPREAD_FROM:
+			ceiling = maxf(ceiling, snap[i - cols + 1] - STEP_DIAG)
+		if down and left and snap[i + cols - 1] >= SPREAD_FROM:
+			ceiling = maxf(ceiling, snap[i + cols - 1] - STEP_DIAG)
+		if down and right and snap[i + cols + 1] >= SPREAD_FROM:
+			ceiling = maxf(ceiling, snap[i + cols + 1] - STEP_DIAG)
+		if ceiling > v:
+			v = minf(ceiling, snap[i] + GROW)
+		v = clampf(v, 0.0, 1.0)
+		corr[i] = v
+		if v <= 0.0:
+			continue
+		# Still corrupted: it and its ring are visited next pass.
+		var x0: int = cx - 1 if left else cx
+		var x1: int = cx + 1 if right else cx
+		var y0: int = cy - 1 if up else cy
+		var y1: int = cy + 1 if down else cy
+		for ny in range(y0, y1 + 1):
+			var row: int = ny * cols
+			for nx in range(x0, x1 + 1):
+				var n: int = row + nx
+				if mark[n] != next_gen:
+					mark[n] = next_gen
+					next.append(n)
+	world.creep_active = next
+	world.creep_mark = mark
+	world.creep_gen = next_gen
 	map.corruption = corr
 
 
-static func _seed(map: IdGameMap, x: float, y: float, radius: float, rate: float) -> void:
+static func _seed(world: IdWorld, x: float, y: float, radius: float, rate: float) -> void:
+	var map: IdGameMap = world.map
 	var corr: PackedFloat32Array = map.corruption
+	var mark: PackedByteArray = world.creep_mark
+	var active: Array = world.creep_active
+	var gen: int = world.creep_gen
+	var cols: int = map.cols
+	var rows: int = map.rows
 	var cx0 := int(x / float(map.cell))
 	var cy0 := int(y / float(map.cell))
 	var r := int(ceil(radius))
@@ -128,7 +175,16 @@ static func _seed(map: IdGameMap, x: float, y: float, radius: float, rate: float
 				continue
 			var w := 1.0 - d * d
 			corr[i] = minf(1.0, corr[i] + rate * w * (1.2 - corr[i]))
+			# The pass must see this cell and the ring its ceiling reaches.
+			for ny in range(maxi(cy - 1, 0), mini(cy + 1, rows - 1) + 1):
+				var row: int = ny * cols
+				for nx in range(maxi(cx - 1, 0), mini(cx + 1, cols - 1) + 1):
+					var n: int = row + nx
+					if mark[n] != gen:
+						mark[n] = gen
+						active.append(n)
 	map.corruption = corr
+	world.creep_mark = mark
 
 
 ## Per-tick effects of standing on corrupted ground.

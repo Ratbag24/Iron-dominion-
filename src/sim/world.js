@@ -388,8 +388,11 @@ export class World {
 
     this._cleanup();
 
-    if ((this.tickCount & 3) === 0) {
-      for (let i = 0; i < this.players.length; i++) this._updateFog(i);
+    // Each player's fog is redrawn every fourth tick, on a different tick
+    // from the next player's, so the cost lands as a small step every tick
+    // rather than one tall one every fourth.
+    for (let i = 0; i < this.players.length; i++) {
+      if (((this.tickCount + i) & 3) === 0) this._updateFog(i);
     }
 
     this._checkVictory();

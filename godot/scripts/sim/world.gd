@@ -27,6 +27,11 @@ var pathfinder: IdPathfinder
 var grid: IdSpatialGrid
 ## Moving units only, on fine cells, for separation. See spatial_grid.gd.
 var near: IdSpatialGrid
+## Cells the next creep pass visits, and the marks that keep the list
+## without duplicates. See creep.gd; empty until the first pass.
+var creep_active: Array = []
+var creep_mark: PackedByteArray = PackedByteArray()
+var creep_gen: int = 0
 
 var entities: Array[IdEntity] = []
 var by_id: Dictionary = {}
@@ -436,8 +441,11 @@ func tick(dt: float = SIM_DT) -> void:
 	if profile:
 		t1 = _mark("cleanup", t1)
 
-	if (tick_count & 3) == 0:
-		for i in range(players.size()):
+	# Each player's fog is redrawn every fourth tick, on a different tick
+	# from the next player's, so the cost lands as a small step every tick
+	# rather than one tall one every fourth.
+	for i in range(players.size()):
+		if ((tick_count + i) & 3) == 0:
 			_update_fog(i)
 	if profile:
 		_mark("fog", t1)

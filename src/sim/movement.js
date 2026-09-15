@@ -246,7 +246,9 @@ function separate(world, e, buf, dt) {
   let py = 0;
   for (let i = 0; i < buf.length; i++) {
     const o = buf[i];
-    if (o === e || !o.alive || o.isBuilding) continue;
+    // Aircraft are overhead, not in the way: a tank used to sidestep every
+    // gunship that flew over it.
+    if (o === e || !o.alive || o.isBuilding || o.def.layer === 'air') continue;
     const dx = e.x - o.x;
     const dy = e.y - o.y;
     const minDist = e.radius + o.radius;

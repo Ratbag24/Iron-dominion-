@@ -240,7 +240,9 @@ static func _separate(world: IdWorld, e: IdEntity, buf: Array, dt: float) -> voi
 	var my_mass: float = e.mass
 	for i in range(buf.size()):
 		var o: IdEntity = buf[i]
-		if o == e or not o.alive:
+		# Aircraft are overhead, not in the way: a tank used to sidestep
+		# every gunship that flew over it.
+		if o == e or not o.alive or o.is_air:
 			continue
 		var dx: float = e.x - o.x
 		var dy: float = e.y - o.y

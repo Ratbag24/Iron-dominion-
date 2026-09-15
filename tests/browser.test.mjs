@@ -300,9 +300,16 @@ try {
   const moved = await page.evaluate(() => {
     const g = window.game;
     const rifles = g.world.unitsOf(0, g.player.roster.assault);
-    return rifles.filter((r) => r.speed > 1).length;
+    const state = rifles.map((r) => `spd${r.speed.toFixed(1)} ord${r.orders.length}${r.orders[0] ? r.orders[0].type : ''} goal${r.moveGoal ? 1 : 0} pend${r.pathPending ? 1 : 0} path${r.path ? r.path.length : '-'} tgt${r.targetId || 0} uc${r.underConstruction ? 1 : 0} at${r.x | 0},${r.y | 0}`);
+    // An attack-move that meets an enemy in range stands and fights, which
+    // is the order working, not failing: an AI raid at the base at this
+    // moment is why this check used to flake.
+    return {
+      count: rifles.filter((r) => r.speed > 1 || r.targetId).length,
+      state: state.join(' | '),
+    };
   });
-  check('ordered units are actually moving', moved > 0, moved + ' under way');
+  check('ordered units are moving or fighting', moved.count > 0, moved.count + ' acting' + (moved.count ? '' : ': ' + moved.state));
   await shot('04-army.png');
 
   // Let the match run on so the AI meets us somewhere in the middle.
