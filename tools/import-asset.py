@@ -86,6 +86,10 @@ def main():
     ap.add_argument("--decimate", type=float, default=1.0, help="keep this fraction of faces")
     ap.add_argument("--flat", action="store_true", help="drop the hierarchy: one body mesh")
     ap.add_argument("--only", default=None, help="keep only meshes whose name contains this")
+    ap.add_argument("--pose", default="",
+        help='"bone=x,y,z;bone=..." pose-bone rotations in degrees, applied before baking')
+    ap.add_argument("--legs-from-bones", default="",
+        help='"thigh.L:a,thigh.R:b" split a rigged mesh into leg nodes by bone weight')
     ap.add_argument("--recolour", default="",
         help='"Material=#rrggbb[:emissive],..." base colours for materials that lost their textures')
     ap.add_argument("--out", action="append", default=None)
@@ -103,6 +107,43 @@ def main():
     if not meshes:
         sys.exit("no meshes found")
     log(f"loaded {len(meshes)} meshes, {sum(len(m.data.polygons) for m in meshes)} polygons")
+
+    armature = next((o for o in bpy.data.objects if o.type == "ARMATURE"), None)
+
+    # A rigged model arrives in whatever pose it was saved in - usually a
+    # T-pose. --pose turns named bones before anything is baked.
+    if args.pose and armature is not None:
+        for spec in args.pose.split(";"):
+            bone, _, angles = spec.strip().partition("=")
+            pb = armature.pose.bones.get(bone)
+            if pb is None:
+                log("WARNING: no bone", bone)
+                continue
+            x, y, z = (math.radians(float(v)) for v in angles.split(","))
+            pb.rotation_mode = "XYZ"
+            pb.rotation_euler = (x, y, z)
+        bpy.context.view_layer.update()
+
+    # Legs cut out of a rigged mesh: every vertex whose heaviest weight is on
+    # the named bone or one of its children goes into its own object, pivoted
+    # at the bone's head. That is what the view needs to swing it, and it is
+    # how a humanoid rig becomes the same two-node walker as a procedural bot.
+    leg_specs = []
+    if args.legs_from_bones and armature is not None:
+        for i, spec in enumerate(args.legs_from_bones.split(",")):
+            bone, _, phase = spec.strip().partition(":")
+            root_bone = armature.data.bones.get(bone)
+            if root_bone is None:
+                log("WARNING: no bone", bone)
+                continue
+            family = {root_bone.name}
+            stack = list(root_bone.children)
+            while stack:
+                b = stack.pop()
+                family.add(b.name)
+                stack.extend(b.children)
+            head = armature.matrix_world @ root_bone.head_local
+            leg_specs.append((f"leg_{i}_{phase or 'a'}", family, head))
 
     # Anything that came in with an armature is baked as a static pose: the
     # game animates parts, not bones. Applying the modifiers keeps the pose.
@@ -123,6 +164,41 @@ def main():
             c.parent = None
             c.matrix_world = m
         bpy.data.objects.remove(o, do_unlink=True)
+
+    for name, family, head in leg_specs:
+        src = meshes[0]
+        idx = {g.index: g.name for g in src.vertex_groups}
+        bpy.ops.object.select_all(action="DESELECT")
+        src.select_set(True)
+        bpy.context.view_layer.objects.active = src
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="DESELECT")
+        bpy.ops.object.mode_set(mode="OBJECT")
+        picked = 0
+        for v in src.data.vertices:
+            best = max(v.groups, key=lambda g: g.weight, default=None)
+            v.select = best is not None and idx.get(best.group) in family
+            picked += 1 if v.select else 0
+        if picked == 0:
+            log("WARNING: no vertices weighted to", name)
+            continue
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_mode(type="VERT")
+        bpy.ops.mesh.separate(type="SELECTED")
+        bpy.ops.object.mode_set(mode="OBJECT")
+        leg = [o for o in mesh_objects() if o is not src and o.name not in [s[0] for s in leg_specs]][-1]
+        leg.name = name
+        # Pivot at the bone head, parented to the body so it moves with it.
+        bpy.context.scene.cursor.location = head
+        bpy.ops.object.select_all(action="DESELECT")
+        leg.select_set(True)
+        bpy.context.view_layer.objects.active = leg
+        bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+        m = leg.matrix_world.copy()
+        leg.parent = src
+        leg.matrix_world = m
+        log("leg", name, "from", picked, "vertices, pivot", tuple(round(v, 2) for v in head))
+    meshes = mesh_objects()
 
     if args.decimate < 1.0:
         for o in meshes:
@@ -189,12 +265,25 @@ def main():
             log("leg:", n.name, "pivot", tuple(round(v, 2) for v in n.matrix_world.translation))
 
     if args.flat:
+        # Everything that is not a named part joins into the largest mesh,
+        # which becomes the body. The join target has to be chosen, not
+        # taken as "the first object": after a leg split that was a leg,
+        # and the body vanished into it.
+        parts = [o for o in meshes if o.name.startswith("leg_") or o.name == "turret"]
+        rest = [o for o in meshes if o not in parts]
+        body = max(rest, key=lambda o: len(o.data.vertices))
         bpy.ops.object.select_all(action="DESELECT")
-        for o in meshes:
+        for o in rest:
             o.select_set(True)
-        bpy.context.view_layer.objects.active = meshes[0]
-        bpy.ops.object.join()
-        bpy.context.view_layer.objects.active.name = "body"
+        bpy.context.view_layer.objects.active = body
+        if len(rest) > 1:
+            bpy.ops.object.join()
+        body.name = "body"
+        for o in parts:
+            if o.parent is not body:
+                m = o.matrix_world.copy()
+                o.parent = body
+                o.matrix_world = m
 
     # A model whose textures did not come with it exports as bare white. Give
     # its materials flat colours instead, so it at least reads as a thing.

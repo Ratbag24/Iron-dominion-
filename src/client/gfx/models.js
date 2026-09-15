@@ -1650,10 +1650,10 @@ function blHive(r, c) {
   parts.push(cylinder(r * 0.5, r * 0.5, r * 0.4, CHITIN_DARK, { x: -r * 0.42, y: r * 1.5, rz: Math.PI / 2 }, 10));
 
   parts.push(...segments(r, {
-    from: [r * 0.7, r * 2.2, 0], to: [-r * 1.4, r * 1.95, 0], count: 7, width: 1.3, rise: 0.11,
+    from: [r * 0.7, r * 2.62, 0], to: [-r * 1.4, r * 2.52, 0], count: 7, width: 1.3, rise: 0.11,
   }));
-  parts.push(...spines(r, c, { x: -r * 0.3, y: r * 2.4, count: 5, len: 0.8, spacing: 0.26 }));
-  parts.push(...hiveMark(r, c, { x: r * 0.15, y: r * 2.28, scale: 1.5 }));
+  parts.push(...spines(r, c, { x: -r * 0.3, y: r * 2.61, count: 5, len: 0.8, spacing: 0.26 }));
+  parts.push(...hiveMark(r, c, { x: r * 0.15, y: r * 2.65, scale: 1.5 }));
   parts.push(...pores(r, { x: -r * 0.5, y: r * 1.5, z: r * 0.88, count: 5, spacing: 0.32, size: 0.07 }));
   parts.push(...pores(r, { x: -r * 0.5, y: r * 1.5, z: -r * 0.88, count: 5, spacing: 0.32, size: 0.07 }));
   parts.push(...vein(r, { from: [r * 0.6, r * 1.9, r * 0.5], to: [-r * 1.1, r * 1.6, r * 0.7], thickness: 0.05 }));
@@ -1694,9 +1694,9 @@ function blTender(r, c) {
   parts.push(...carapace(r, CHITIN, { y: r * 0.95, scale: 0.95, squash: 0.68 }));
   parts.push(...carapace(r, CHITIN_DARK, { x: -r * 0.52, y: r * 0.88, scale: 0.6, squash: 0.85 }));
   parts.push(...segments(r, {
-    from: [r * 0.4, r * 1.32, 0], to: [-r * 0.7, r * 1.15, 0], count: 5, width: 0.85, rise: 0.08,
+    from: [r * 0.4, r * 1.64, 0], to: [-r * 0.7, r * 1.54, 0], count: 5, width: 0.85, rise: 0.08,
   }));
-  parts.push(...hiveMark(r, c, { x: 0, y: r * 1.34, scale: 0.95 }));
+  parts.push(...hiveMark(r, c, { x: 0, y: r * 1.67, scale: 0.95 }));
   parts.push(...pores(r, { x: -r * 0.2, y: r * 0.95, z: r * 0.62, count: 4, spacing: 0.24, size: 0.05 }));
   parts.push(...pores(r, { x: -r * 0.2, y: r * 0.95, z: -r * 0.62, count: 4, spacing: 0.24, size: 0.05 }));
   // Head and the feeding tendrils it builds with.
@@ -1714,9 +1714,9 @@ function blSkitter(r, c) {
   const parts = [];
   parts.push(...carapace(r, CHITIN, { y: r * 0.8, scale: 0.78, squash: 0.48 }));
   parts.push(...segments(r, {
-    from: [r * 0.3, r * 1.04, 0], to: [-r * 0.6, r * 0.9, 0], count: 4, width: 0.6, rise: 0.07,
+    from: [r * 0.3, r * 1.21, 0], to: [-r * 0.6, r * 1.11, 0], count: 4, width: 0.6, rise: 0.07,
   }));
-  parts.push(...hiveMark(r, c, { x: -r * 0.05, y: r * 1.06, scale: 0.7, flanks: false }));
+  parts.push(...hiveMark(r, c, { x: -r * 0.05, y: r * 1.24, scale: 0.7, flanks: false }));
   parts.push(...maw(r, { x: r * 0.74, y: r * 0.78, radius: 0.3, count: 6, len: 0.3 }));
   for (const side of [-1, 1]) {
     parts.push(sphere(r * 0.075, BILE, { x: r * 0.52, y: r * 0.98, z: side * r * 0.13 }, 6, 5));
@@ -1736,10 +1736,10 @@ function blHusk(r, c) {
   parts.push(...carapace(r, CHITIN, { y: r * 1.0, scale: 1.05, squash: 0.66 }));
   parts.push(...carapace(r, CHITIN_LIGHT, { x: r * 0.5, y: r * 1.12, scale: 0.6, squash: 0.72 }));
   parts.push(...segments(r, {
-    from: [r * 0.5, r * 1.44, 0], to: [-r * 0.75, r * 1.22, 0], count: 6, width: 0.95, rise: 0.1,
+    from: [r * 0.5, r * 1.73, 0], to: [-r * 0.75, r * 1.63, 0], count: 6, width: 0.95, rise: 0.1,
   }));
-  parts.push(...spines(r, c, { x: -r * 0.25, y: r * 1.5, count: 4, len: 0.46 }));
-  parts.push(...hiveMark(r, c, { x: r * 0.05, y: r * 1.46, scale: 1.0 }));
+  parts.push(...spines(r, c, { x: -r * 0.25, y: r * 1.72, count: 4, len: 0.46 }));
+  parts.push(...hiveMark(r, c, { x: r * 0.05, y: r * 1.76, scale: 1.0 }));
   parts.push(...pores(r, { x: -r * 0.2, y: r * 1.0, z: r * 0.68, count: 4, spacing: 0.26, size: 0.055 }));
   parts.push(...pores(r, { x: -r * 0.2, y: r * 1.0, z: -r * 0.68, count: 4, spacing: 0.26, size: 0.055 }));
   parts.push(...vein(r, { from: [r * 0.55, r * 1.25, r * 0.4], to: [-r * 0.6, r * 1.05, r * 0.55] }));
@@ -1765,9 +1765,9 @@ function blSpitter(r, c) {
   const parts = [];
   parts.push(...carapace(r, CHITIN, { y: r * 1.0, scale: 1.0, squash: 0.62 }));
   parts.push(...segments(r, {
-    from: [r * 0.45, r * 1.34, 0], to: [-r * 0.5, r * 1.2, 0], count: 4, width: 0.8, rise: 0.08,
+    from: [r * 0.45, r * 1.66, 0], to: [-r * 0.5, r * 1.56, 0], count: 4, width: 0.8, rise: 0.08,
   }));
-  parts.push(...hiveMark(r, c, { x: r * 0.3, y: r * 1.36, scale: 0.85, flanks: false }));
+  parts.push(...hiveMark(r, c, { x: r * 0.3, y: r * 1.69, scale: 0.85, flanks: false }));
   // The bile sac, ribbed so it reads as full rather than as a green ball.
   parts.push(sphere(r * 0.46, BILE, { x: -r * 0.34, y: r * 1.42, sy: 0.85 }, 12));
   parts.push(sphere(r * 0.3, FLESH, { x: -r * 0.34, y: r * 1.5, sy: 0.7 }, 10));
@@ -1803,10 +1803,10 @@ function blBrute(r, c) {
   parts.push(...carapace(r, CHITIN, { y: r * 1.35, scale: 1.5, squash: 0.7 }));
   parts.push(...carapace(r, CHITIN_LIGHT, { x: r * 0.7, y: r * 1.5, scale: 0.8, squash: 0.76 }));
   parts.push(...segments(r, {
-    from: [r * 0.8, r * 2.02, 0], to: [-r * 1.0, r * 1.76, 0], count: 7, width: 1.35, rise: 0.12,
+    from: [r * 0.8, r * 2.44, 0], to: [-r * 1.0, r * 2.34, 0], count: 7, width: 1.35, rise: 0.12,
   }));
-  parts.push(...spines(r, c, { x: -r * 0.3, y: r * 2.1, count: 6, len: 0.8, spacing: 0.24 }));
-  parts.push(...hiveMark(r, c, { x: r * 0.1, y: r * 2.06, scale: 1.45 }));
+  parts.push(...spines(r, c, { x: -r * 0.3, y: r * 2.43, count: 6, len: 0.8, spacing: 0.24 }));
+  parts.push(...hiveMark(r, c, { x: r * 0.1, y: r * 2.47, scale: 1.45 }));
   parts.push(...pores(r, { x: -r * 0.3, y: r * 1.35, z: r * 1.0, count: 5, spacing: 0.3, size: 0.07 }));
   parts.push(...pores(r, { x: -r * 0.3, y: r * 1.35, z: -r * 1.0, count: 5, spacing: 0.3, size: 0.07 }));
   parts.push(...vein(r, { from: [r * 0.8, r * 1.8, r * 0.6], to: [-r * 0.9, r * 1.45, r * 0.8], thickness: 0.05 }));
@@ -1841,9 +1841,9 @@ function blLobber(r, c) {
   const parts = [];
   parts.push(...carapace(r, CHITIN, { y: r * 1.0, scale: 1.25, squash: 0.55 }));
   parts.push(...segments(r, {
-    from: [r * 0.6, r * 1.3, 0], to: [-r * 0.2, r * 1.2, 0], count: 4, width: 1.05, rise: 0.09,
+    from: [r * 0.6, r * 1.73, 0], to: [-r * 0.2, r * 1.63, 0], count: 4, width: 1.05, rise: 0.09,
   }));
-  parts.push(...hiveMark(r, c, { x: r * 0.5, y: r * 1.32, scale: 1.0, flanks: false }));
+  parts.push(...hiveMark(r, c, { x: r * 0.5, y: r * 1.76, scale: 1.0, flanks: false }));
   parts.push(sphere(r * 0.5, BILE, { x: -r * 0.5, y: r * 1.3, sy: 0.9 }, 12));
   parts.push(sphere(r * 0.34, FLESH, { x: -r * 0.55, y: r * 1.42, sy: 0.8 }, 10));
   for (let i = 0; i < 4; i++) {

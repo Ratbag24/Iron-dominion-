@@ -18,6 +18,7 @@ const CREEP_INTERVAL: int = 15
 ## rise to STEP below its strongest established neighbour, by at most GROW per
 ## pass, and no higher.
 const STEP: float = 0.06
+const STEP_DIAG: float = STEP * 1.414
 const GROW: float = 0.08
 const SPREAD_FROM: float = 0.55
 const DECAY: float = 0.035
@@ -25,9 +26,11 @@ const SOURCE_RATE: float = 0.22
 
 ## Corruption at which a cell counts as the hive's ground.
 const CREEP_HELD: float = 0.4
-const CREEP_SPEED_OWN: float = 1.25
+## Corruption a hive structure needs under it to be grown.
+const CREEP_BUILD: float = 0.3
+const CREEP_SPEED_OWN: float = 1.18
 const CREEP_SPEED_OTHER: float = 0.8
-const CREEP_REGEN: float = 0.012
+const CREEP_REGEN: float = 0.008
 
 
 static func spreads_creep(world: IdWorld, player_index: int) -> bool:
@@ -77,16 +80,29 @@ static func update_creep(world: IdWorld, _dt: float) -> void:
 				corr[i] = 0.0
 				continue
 			var v: float = snap[i] - DECAY
-			var best := 0.0
-			if cx > 0 and snap[i - 1] >= SPREAD_FROM:
-				best = maxf(best, snap[i - 1])
-			if cx < cols - 1 and snap[i + 1] >= SPREAD_FROM:
-				best = maxf(best, snap[i + 1])
-			if cy > 0 and snap[i - cols] >= SPREAD_FROM:
-				best = maxf(best, snap[i - cols])
-			if cy < rows - 1 and snap[i + cols] >= SPREAD_FROM:
-				best = maxf(best, snap[i + cols])
-			var ceiling := best - STEP
+			# All eight neighbours, the diagonals a longer step: with only
+			# four the front grew as a diamond and read as a square stain.
+			var ceiling := 0.0
+			var left := cx > 0
+			var right := cx < cols - 1
+			var up := cy > 0
+			var down := cy < rows - 1
+			if left and snap[i - 1] >= SPREAD_FROM:
+				ceiling = maxf(ceiling, snap[i - 1] - STEP)
+			if right and snap[i + 1] >= SPREAD_FROM:
+				ceiling = maxf(ceiling, snap[i + 1] - STEP)
+			if up and snap[i - cols] >= SPREAD_FROM:
+				ceiling = maxf(ceiling, snap[i - cols] - STEP)
+			if down and snap[i + cols] >= SPREAD_FROM:
+				ceiling = maxf(ceiling, snap[i + cols] - STEP)
+			if up and left and snap[i - cols - 1] >= SPREAD_FROM:
+				ceiling = maxf(ceiling, snap[i - cols - 1] - STEP_DIAG)
+			if up and right and snap[i - cols + 1] >= SPREAD_FROM:
+				ceiling = maxf(ceiling, snap[i - cols + 1] - STEP_DIAG)
+			if down and left and snap[i + cols - 1] >= SPREAD_FROM:
+				ceiling = maxf(ceiling, snap[i + cols - 1] - STEP_DIAG)
+			if down and right and snap[i + cols + 1] >= SPREAD_FROM:
+				ceiling = maxf(ceiling, snap[i + cols + 1] - STEP_DIAG)
 			if ceiling > v:
 				v = minf(ceiling, snap[i] + GROW)
 			corr[i] = clampf(v, 0.0, 1.0)

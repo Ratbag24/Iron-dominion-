@@ -132,11 +132,8 @@ static func build_water(parent: Node, map: IdGameMap, terrain: IdTerrainBuilder)
 	var mi := MeshInstance3D.new()
 	mi.name = "Water"
 	mi.mesh = plane
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.1, 0.27, 0.4, 0.86)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.roughness = 0.12
-	mat.metallic = 0.35
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/water.gdshader")
 	mi.material_override = mat
 	mi.position = Vector3(map.width * 0.5, terrain.water_level() + 1.0, map.height * 0.5)
 	parent.add_child(mi)

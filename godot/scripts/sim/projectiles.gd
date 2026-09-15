@@ -66,6 +66,8 @@ static func spawn_projectile(
 	world.add_effect({
 		"type": "muzzle", "x": p["x"], "y": p["y"], "angle": angle,
 		"color": p["color"], "size": minf(26.0, 6.0 + float(w["damage"]) * 0.05),
+		# Who fired, so the view can kick the gun back.
+		"owner": shooter.id,
 	})
 	return p
 

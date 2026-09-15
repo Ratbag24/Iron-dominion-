@@ -7,6 +7,7 @@
 import { dist, dist2 } from '../core/math.js';
 import { getDef, BUILD_CELL } from './defs.js';
 import { canEngage } from './combat.js';
+import { creepAt, CREEP_BUILD } from './creep.js';
 
 export const ORDER = {
   MOVE: 'move',
@@ -392,6 +393,13 @@ export function canBuildHere(world, playerIndex, def, cx, cy) {
     const y = (cy + def.footprint / 2) * BUILD_CELL;
     const spot = map.metalSpotNear(x, y, BUILD_CELL * 1.6);
     if (!spot || spot.taken) return false;
+  }
+  // The hive grows on its own ground: see needsCreep in defs.js. Judged at
+  // the centre of the footprint, so a structure can straddle the frontier.
+  if (def.needsCreep) {
+    const x = (cx + def.footprint / 2) * BUILD_CELL;
+    const y = (cy + def.footprint / 2) * BUILD_CELL;
+    if (creepAt(map, x, y) < CREEP_BUILD) return false;
   }
   return true;
 }

@@ -47,14 +47,28 @@ npm run build        # -> dist/iron-dominion.html
 
 ## Factions
 
-Three of them build machines; the fourth grows. **Vanguard** are agile and
-long-reaching with thin armour, **Legion** slower and heavier, **Concord** the
-human remnant with crewed guns and splash as standard. The **Blight** is a hive:
-thick-skinned, short-ranged, and its weapons carry an infection chance, so a
-killing blow takes the unit instead of leaving a wreck. A captured unit comes
-over wounded, keeps its own hull — a taken tank is still a tank and still
-shoots what a tank shoots — and therefore does not inherit the teeth that took
-it. Commanders and buildings are never taken.
+Three of them build machines; the fourth grows. **Vanguard** and **Legion**
+are the machine factions: energy weapons, tech, and the tier ladder — Vanguard
+agile and long-reaching with thin armour, Legion slower and heavier.
+**Concord** is the human remnant, and fights the way people do: kinetic guns
+that hit hard, armour that takes it, dug-in positions, and infantry by the
+platoon — slower and dearer than the machines, and unpleasant to attack. The
+**Blight** is a hive: cheap, fast and fragile, with a far heavier bite than
+anyone, and it dies in numbers and comes back in greater ones. Its weapons
+carry an infection chance, so a killing blow takes the unit instead of leaving
+a wreck; a captured unit comes over wounded and keeps its own hull. And it
+infects the ground: every hive structure and body seeps corruption into the
+cells around it, which spreads, feeds its units (faster, and healing) and
+slows everyone else, and dies back when the source is killed. The hive can
+only grow its structures on that ground; the one exception is the metal tap,
+which can be sunk anywhere and is itself a source — so expanding *is*
+spreading the infection, one foothold at a time. Commanders and buildings are
+never taken.
+
+Every faction fields three arms: **infantry** in squads that cross rock no
+vehicle can and are cut down by small arms but shrugged off by tank shells,
+**vehicles and walkers**, and **aircraft** on their own layer that only
+anti-air can answer.
 
 Killing Blight units with your best troops feeds the hive. That is the whole
 point of it.

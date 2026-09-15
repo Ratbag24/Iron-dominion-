@@ -521,6 +521,13 @@ static func can_build_here(
 		var spot: Dictionary = map.metal_spot_near(x, y, IdGameMap.BUILD_CELL * 1.6)
 		if spot.is_empty() or bool(spot.get("taken", false)):
 			return false
+	# The hive grows on its own ground: see needsCreep in defs.js. Judged at
+	# the centre of the footprint, so a structure can straddle the frontier.
+	if bool(def.get("needsCreep", false)):
+		var x: float = (cx + footprint / 2.0) * IdGameMap.BUILD_CELL
+		var y: float = (cy + footprint / 2.0) * IdGameMap.BUILD_CELL
+		if IdCreep.creep_at(map, x, y) < IdCreep.CREEP_BUILD:
+			return false
 	return true
 
 

@@ -34,6 +34,9 @@ var _turrets: Dictionary = {}     ## entity id -> Node3D (or null)
 ## from its hip. See _animate_walk.
 var _legs: Dictionary = {}
 var _walk: Dictionary = {}        ## entity id -> gait phase, radians
+## entity id -> simulation time of its last shot, for recoil. See _recoil.
+var _fired: Dictionary = {}
+const RECOIL_TIME: float = 0.22
 var _scene_cache: Dictionary = {} ## def id -> PackedScene
 var _missing: Dictionary = {}     ## def ids we have already warned about
 var _team_colours: Array[Dictionary] = []
@@ -111,8 +114,16 @@ func sync() -> void:
 				_slope_basis(e.x, e.y, yaw), Vector3(e.x, ground + bob, e.y)
 			)
 		var turret: Node3D = _turrets.get(e.id)
+		var kick: float = _recoil(e)
 		if turret != null:
 			turret.rotation.y = -e.turret_angle + e.heading
+			# Recoil: the turret slides back along its own barrel and eases
+			# home. A gun that fires without moving is a light on a stick.
+			turret.position.x = -kick * e.radius * 0.18
+			turret.position.z = 0.0
+		elif kick > 0.0:
+			# No turret: the whole body rocks back instead.
+			node.position -= node.transform.basis.x * kick * e.radius * 0.1
 		if e.under_construction:
 			node.scale = Vector3.ONE * maxf(0.35, e.build_progress)
 
@@ -131,6 +142,7 @@ func sync() -> void:
 		_turrets.erase(id)
 		_legs.erase(id)
 		_walk.erase(id)
+		_fired.erase(id)
 
 
 ## Wrecks are the dead unit's own model, darkened and sunk into the ground.
@@ -287,6 +299,25 @@ func _create(e: IdEntity) -> Node3D:
 		_legs[e.id] = legs
 		_walk[e.id] = 0.0
 	return inst
+
+
+## How far back this unit's gun should be right now, 0..1.
+##
+## Muzzle events carry the shooter; the latest one per unit is remembered and
+## decays over RECOIL_TIME. Scanned once per sync rather than indexed, since
+## the effects list is short-lived and small.
+func _recoil(e: IdEntity) -> float:
+	for fx in world.effects:
+		if String(fx.get("type", "")) == "muzzle" and int(fx.get("owner", -1)) == e.id:
+			var t: float = float(fx["t"])
+			if t > float(_fired.get(e.id, -1.0)):
+				_fired[e.id] = t
+	var since: float = world.time - float(_fired.get(e.id, -100.0))
+	if since < 0.0 or since > RECOIL_TIME:
+		return 0.0
+	var k: float = since / RECOIL_TIME
+	# Snap back fast, return slowly.
+	return (1.0 - k) * (1.0 - k)
 
 
 ## Swing the legs in time with how fast the unit is actually moving.

@@ -139,9 +139,9 @@
       "mods": {
         "hp": 0.78,
         "speed": 1.16,
-        "damage": 1.42,
+        "damage": 1.32,
         "range": 0.95,
-        "cost": 0.88
+        "cost": 0.9
       },
       "spreadsCreep": true,
       "roster": {
@@ -241,6 +241,33 @@
     "bl_spitter": "Y",
     "bl_tender2": "Q",
     "bl_brute": "T",
-    "bl_lobber": "Y"
+    "bl_lobber": "Y",
+    "barracks": "G",
+    "airpad": "H",
+    "aatower": "J",
+    "con_barracks": "G",
+    "con_apron": "H",
+    "con_battery_aa": "J",
+    "bl_brood": "G",
+    "bl_roost": "H",
+    "bl_spitter_aa": "J",
+    "trooper": "G",
+    "lancer": "H",
+    "marksman": "J",
+    "con_rifles": "G",
+    "con_at": "H",
+    "con_aa_team": "J",
+    "bl_swarmer": "G",
+    "bl_barbs": "H",
+    "bl_screamer": "J",
+    "gnat": "G",
+    "harrier": "H",
+    "hammerhead": "J",
+    "con_needle": "G",
+    "con_vulture": "H",
+    "con_anvil": "J",
+    "bl_midge": "G",
+    "bl_wing": "H",
+    "bl_gorger": "J"
   }
 }

@@ -2,6 +2,7 @@
 // which is how we prove the simulation works independently of the UI.
 
 import { World, SIM_DT } from '../src/sim/world.js';
+import { canBuildHere } from '../src/sim/orders.js';
 import { getDef, DEFS, FACTIONS, FACTION_IDS, rosterOf, armourScale } from '../src/sim/defs.js';
 import { GameMap, TERRAIN_ROCK, TERRAIN_LAND } from '../src/sim/map.js';
 import { creepAt, CREEP_HELD, CREEP_SPEED_OWN, CREEP_SPEED_OTHER } from '../src/sim/creep.js';
@@ -696,11 +697,14 @@ section('Infection of the ground');
     return n;
   };
   check('the ground starts clean', held() === 0);
-  run(world, 20);
+  // Measured while the front is still moving: from one source it reaches
+  // its full extent in about forty seconds, after which only new sources
+  // grow it.
+  run(world, 10);
   const early = held();
   check('the hive infects the ground it stands on', creepAt(map, hive.x, hive.y) >= CREEP_HELD,
     `${creepAt(map, hive.x, hive.y).toFixed(2)} under the hive`);
-  run(world, 40);
+  run(world, 30);
   const later = held();
   check('and it keeps spreading', later > early * 1.3, `${early} -> ${later} cells held`);
 
@@ -762,6 +766,41 @@ section('Infection of the ground');
   run(world, 60);
   check('and the stain dies back once the pit is gone', around() < peak * 0.25,
     `${peak} -> ${around()} cells`);
+
+  // The hive builds on its own ground only; the tap is the exception that
+  // carries the ground somewhere new.
+  {
+    const w3 = new World({ seed: 13, players: [
+      { name: 'Hive', faction: 'blight' },
+      { name: 'Humans', faction: 'concord' },
+    ]});
+    const m3 = w3.map;
+    const h3 = w3.unitsOf(0).find((e) => e.def.isCommander);
+    run(w3, 20);
+    const pit = getDef('bl_pit', 'blight');
+    const tap = getDef('bl_tap', 'blight');
+    check('a pit needs creep and a tap does not', pit.needsCreep === true && !tap.needsCreep);
+    // Beside the hive: on its stain.
+    const near = m3.snapFootprint(h3.x + 90, h3.y, pit.footprint);
+    const nearOk = m3.canPlace(near.cx, near.cy, pit.footprint);
+    check('a pit can be grown beside the hive', !nearOk || canBuildHere(w3, 0, pit, near.cx, near.cy),
+      nearOk ? 'on the stain' : 'no room beside the hive to test');
+    // Far away on clean land: not until the ground is taken.
+    let fx = 0;
+    let fy = 0;
+    outer2: for (let cy = 4; cy < m3.rows - 4; cy++) {
+      for (let cx = 4; cx < m3.cols - 4; cx++) {
+        const x = (cx + 0.5) * m3.cell;
+        const y = (cy + 0.5) * m3.cell;
+        if (Math.hypot(x - h3.x, y - h3.y) < 1200) continue;
+        const s = m3.snapFootprint(x, y, pit.footprint);
+        if (!m3.canPlace(s.cx, s.cy, pit.footprint)) continue;
+        fx = s.cx; fy = s.cy;
+        break outer2;
+      }
+    }
+    check('and not on clean ground far from it', !canBuildHere(w3, 0, pit, fx, fy));
+  }
 
   // Water is never taken.
   let wet = 0;

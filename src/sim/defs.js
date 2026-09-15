@@ -1184,7 +1184,7 @@ export const FACTIONS = {
     // this faction was the thickest-skinned in the game, which made it a
     // slow wall with a bite; that is the opposite of the thing it is meant
     // to be.
-    mods: { hp: 0.78, speed: 1.16, damage: 1.42, range: 0.95, cost: 0.88 },
+    mods: { hp: 0.78, speed: 1.16, damage: 1.32, range: 0.95, cost: 0.9 },
     // Its structures and bodies infect the ground they stand on; see creep.js.
     spreadsCreep: true,
     roster: {
@@ -1215,6 +1215,11 @@ export const FACTION_IDS = Object.keys(FACTIONS);
 // to each other.
 for (const [id, d] of Object.entries(DEFS)) {
   if (!id.startsWith('bl_')) continue;
+  // The hive grows on its own ground and nowhere else - except the metal
+  // tap, which can be sunk anywhere and is itself a source. Expanding is
+  // therefore how the infection reaches the rest of the map: a tap is a
+  // foothold, and everything else follows the stain out from it.
+  if (d.kind === 'building' && !d.needsMetalSpot) d.needsCreep = true;
   if (d.isCommander) d.creep = 7;
   else if (d.kind === 'building') d.creep = Math.round(((d.footprint || 2) * 0.9 + 2.2) * 10) / 10;
   else if (d.layer === 'air') d.creep = 0;
@@ -1298,4 +1303,17 @@ export const BUILD_HOTKEYS = {
   bl_thorn: 'V', bl_maw: 'B', bl_antenna: 'N',
   bl_tender: 'Q', bl_skitter: 'W', bl_husk: 'T', bl_spitter: 'Y',
   bl_tender2: 'Q', bl_brute: 'T', bl_lobber: 'Y',
+
+  // The three arms added later, on G/H/J for every faction: barracks, air
+  // plant and anti-air on the build menu; the squads and the aircraft on the
+  // factory menus.
+  barracks: 'G', airpad: 'H', aatower: 'J',
+  con_barracks: 'G', con_apron: 'H', con_battery_aa: 'J',
+  bl_brood: 'G', bl_roost: 'H', bl_spitter_aa: 'J',
+  trooper: 'G', lancer: 'H', marksman: 'J',
+  con_rifles: 'G', con_at: 'H', con_aa_team: 'J',
+  bl_swarmer: 'G', bl_barbs: 'H', bl_screamer: 'J',
+  gnat: 'G', harrier: 'H', hammerhead: 'J',
+  con_needle: 'G', con_vulture: 'H', con_anvil: 'J',
+  bl_midge: 'G', bl_wing: 'H', bl_gorger: 'J',
 };

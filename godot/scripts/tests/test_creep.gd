@@ -48,12 +48,14 @@ func _init() -> void:
 	var map: IdGameMap = world.map
 	var hive := commander_of(world, 0)
 	check(held(map) == 0, "the ground starts clean")
-	run(world, 20)
+	# Measured while the front is still moving: from one source it reaches
+	# its full extent in about forty seconds.
+	run(world, 10)
 	var early := held(map)
 	check(IdCreep.creep_at(map, hive.x, hive.y) >= IdCreep.CREEP_HELD,
 		"the hive infects the ground it stands on",
 		"%.2f under the hive" % IdCreep.creep_at(map, hive.x, hive.y))
-	run(world, 40)
+	run(world, 30)
 	var later := held(map)
 	check(later > int(float(early) * 1.3), "and it keeps spreading", "%d -> %d cells held" % [early, later])
 	var human := commander_of(world, 1)
@@ -118,6 +120,48 @@ func _init() -> void:
 	run(world, 60)
 	check(around.call() < int(float(peak) * 0.25), "and the stain dies back once the pit is gone",
 		"%d -> %d cells" % [peak, around.call()])
+	print("\nGrowing on it")
+	print("-------------")
+	# The hive builds on its own ground only; the tap is the exception.
+	var w3 := IdWorld.new({
+		"seed": 13,
+		"players": [
+			{"name": "Hive", "faction": "blight"},
+			{"name": "Humans", "faction": "concord"},
+		],
+	})
+	var m3: IdGameMap = w3.map
+	var h3 := commander_of(w3, 0)
+	run(w3, 20)
+	var pit_def: Dictionary = IdUnitDefs.get_def("bl_pit", "blight")
+	var tap_def: Dictionary = IdUnitDefs.get_def("bl_tap", "blight")
+	check(bool(pit_def.get("needsCreep", false)) and not bool(tap_def.get("needsCreep", false)),
+		"a pit needs creep and a tap does not")
+	var fp: int = int(pit_def["footprint"])
+	var near: Dictionary = m3.snap_footprint(h3.x + 90.0, h3.y, fp)
+	var near_ok: bool = m3.can_place(near["cx"], near["cy"], fp)
+	check(not near_ok or IdOrders.can_build_here(w3, 0, pit_def, near["cx"], near["cy"]),
+		"a pit can be grown beside the hive", "on the stain" if near_ok else "no room beside the hive to test")
+	var fx := -1
+	var fy := -1
+	for cy in range(4, m3.rows - 4):
+		for cx in range(4, m3.cols - 4):
+			var x := (float(cx) + 0.5) * float(m3.cell)
+			var y := (float(cy) + 0.5) * float(m3.cell)
+			if IdMath.dist(x, y, h3.x, h3.y) < 1200.0:
+				continue
+			var s: Dictionary = m3.snap_footprint(x, y, fp)
+			if not m3.can_place(s["cx"], s["cy"], fp):
+				continue
+			fx = s["cx"]
+			fy = s["cy"]
+			break
+		if fx >= 0:
+			break
+	check(fx >= 0 and not IdOrders.can_build_here(w3, 0, pit_def, fx, fy),
+		"and not on clean ground far from it")
+	w3.dispose()
+
 	var wet := 0
 	for i in map.corruption.size():
 		if map.terrain[i] == IdGameMap.TERRAIN_WATER and map.corruption[i] > 0.0:

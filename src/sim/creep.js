@@ -25,6 +25,7 @@ export const CREEP_INTERVAL = 15;
  * "recedes" has to mean.
  */
 const STEP = 0.06;
+const STEP_DIAG = STEP * 1.414;
 /** How fast a cell rises towards its ceiling per pass. This is what makes
  * the front visibly creep rather than snap out to its full extent. */
 const GROW = 0.08;
@@ -36,11 +37,14 @@ const SOURCE_RATE = 0.22;
 
 /** Corruption at which a cell counts as the hive's ground. */
 export const CREEP_HELD = 0.4;
+/** Corruption a hive structure needs under it to be grown. A little below
+ * HELD, so the frontier just past the last building is buildable. */
+export const CREEP_BUILD = 0.3;
 /** Speed multipliers on held ground, for its own and for everyone else. */
-export const CREEP_SPEED_OWN = 1.25;
+export const CREEP_SPEED_OWN = 1.18;
 export const CREEP_SPEED_OTHER = 0.8;
 /** Fraction of max hp regained per second on held ground, own units only. */
-export const CREEP_REGEN = 0.012;
+export const CREEP_REGEN = 0.008;
 
 /** Does this player's faction spread corruption? */
 export function spreadsCreep(world, playerIndex) {
@@ -85,13 +89,23 @@ export function updateCreep(world, dt) {
       const i = row + cx;
       let v = snap[i] - DECAY;
       if (map.terrain[i] === TERRAIN_WATER) { corr[i] = 0; continue; }
-      // The strongest established neighbour sets this cell's ceiling.
-      let best = 0;
-      if (cx > 0 && snap[i - 1] >= SPREAD_FROM) best = Math.max(best, snap[i - 1]);
-      if (cx < cols - 1 && snap[i + 1] >= SPREAD_FROM) best = Math.max(best, snap[i + 1]);
-      if (cy > 0 && snap[i - cols] >= SPREAD_FROM) best = Math.max(best, snap[i - cols]);
-      if (cy < rows - 1 && snap[i + cols] >= SPREAD_FROM) best = Math.max(best, snap[i + cols]);
-      const ceiling = best - STEP;
+      // The strongest established neighbour sets this cell's ceiling. All
+      // eight neighbours, with the diagonals a longer step: with only the
+      // four the front grew as a diamond, which on the map read as a square
+      // stain with corners.
+      let ceiling = 0;
+      const left = cx > 0;
+      const right = cx < cols - 1;
+      const up = cy > 0;
+      const down = cy < rows - 1;
+      if (left && snap[i - 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i - 1] - STEP);
+      if (right && snap[i + 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i + 1] - STEP);
+      if (up && snap[i - cols] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i - cols] - STEP);
+      if (down && snap[i + cols] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i + cols] - STEP);
+      if (up && left && snap[i - cols - 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i - cols - 1] - STEP_DIAG);
+      if (up && right && snap[i - cols + 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i - cols + 1] - STEP_DIAG);
+      if (down && left && snap[i + cols - 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i + cols - 1] - STEP_DIAG);
+      if (down && right && snap[i + cols + 1] >= SPREAD_FROM) ceiling = Math.max(ceiling, snap[i + cols + 1] - STEP_DIAG);
       if (ceiling > v) v = Math.min(ceiling, snap[i] + GROW);
       corr[i] = v < 0 ? 0 : v > 1 ? 1 : v;
     }

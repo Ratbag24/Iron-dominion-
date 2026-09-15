@@ -1471,6 +1471,7 @@
       "bl_wing",
       "bl_gorger"
     ],
+    "needsCreep": true,
     "creep": 7.6
   },
   "bl_spitter_aa": {
@@ -1503,6 +1504,7 @@
       }
     ],
     "desc": "Throws spores at anything overhead. Rapid, and short of reach.",
+    "needsCreep": true,
     "creep": 4
   },
   "bl_midge": {
@@ -2008,6 +2010,7 @@
     "los": 160,
     "energyPerSecond": 22,
     "desc": "Steady energy, and the only structure that costs none to grow.",
+    "needsCreep": true,
     "creep": 5.8
   },
   "bl_bloom": {
@@ -2024,6 +2027,7 @@
     "los": 240,
     "energyPerSecond": 240,
     "desc": "A mid-game commitment. Pays for a war once the metal is flowing.",
+    "needsCreep": true,
     "creep": 6.7
   },
   "bl_gut": {
@@ -2041,6 +2045,7 @@
     "convertsEnergy": 70,
     "convertsToMetal": 1,
     "desc": "Turns surplus energy into metal. Worth it only once energy is spare.",
+    "needsCreep": true,
     "creep": 4.9
   },
   "bl_sac": {
@@ -2057,6 +2062,7 @@
     "los": 140,
     "metalStorage": 3000,
     "desc": "Room to bank metal instead of wasting it.",
+    "needsCreep": true,
     "creep": 4.9
   },
   "bl_bladder": {
@@ -2073,6 +2079,7 @@
     "los": 140,
     "energyStorage": 3000,
     "desc": "Room to bank energy. Cheap, and it stops a stall becoming a stop.",
+    "needsCreep": true,
     "creep": 4.9
   },
   "bl_antenna": {
@@ -2089,6 +2096,7 @@
     "los": 320,
     "radar": 1500,
     "desc": "Feels movement well beyond sight, without seeing what it is.",
+    "needsCreep": true,
     "creep": 4
   },
   "bl_pit": {
@@ -2112,6 +2120,7 @@
       "bl_husk",
       "bl_spitter"
     ],
+    "needsCreep": true,
     "creep": 7.6
   },
   "bl_deeppit": {
@@ -2134,6 +2143,7 @@
       "bl_brute",
       "bl_lobber"
     ],
+    "needsCreep": true,
     "creep": 8.5
   },
   "bl_spire": {
@@ -2152,6 +2162,7 @@
     "buildRange": 300,
     "assistOnly": true,
     "desc": "Fixed build power. Grow them beside a pit to hurry the brood along.",
+    "needsCreep": true,
     "creep": 4
   },
   "bl_thorn": {
@@ -2183,6 +2194,7 @@
       }
     ],
     "desc": "A cheap spine that holds ground against raiders.",
+    "needsCreep": true,
     "creep": 4
   },
   "bl_maw": {
@@ -2214,6 +2226,7 @@
       }
     ],
     "desc": "Heavy emplacement. Outranges most things that walk at it.",
+    "needsCreep": true,
     "creep": 4.9
   },
   "bl_tender": {
@@ -2481,6 +2494,7 @@
       "bl_barbs",
       "bl_screamer"
     ],
+    "needsCreep": true,
     "creep": 6.7
   },
   "bl_swarmer": {
