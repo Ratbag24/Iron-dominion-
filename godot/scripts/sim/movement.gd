@@ -67,7 +67,11 @@ static func update_movement(world: IdWorld, dt: float) -> void:
 				aim = e.path[e.path_index]
 
 		_steer(e, aim.x, aim.y, dt)
-		_separate(world, e, neighbours, dt)
+		# Separation on alternate ticks per unit, at double strength. It is
+		# the most expensive thing a moving unit does, and at 15Hz instead of
+		# 30 it looks the same: the push is a correction, not a motion.
+		if ((e.id + world.tick_count) & 1) == 0:
+			_separate(world, e, neighbours, dt * 2.0)
 		_integrate(world, e, dt)
 		_check_stuck(world, e, dt)
 
@@ -225,7 +229,10 @@ static func _decelerate(e: IdEntity, dt: float) -> void:
 
 ## Push overlapping units apart, weighted by mass.
 static func _separate(world: IdWorld, e: IdEntity, buf: Array, dt: float) -> void:
-	var reach: float = e.radius * 2.6 + 18.0
+	# Just past the largest collision distance a neighbour could have. The
+	# first version reached more than twice that and paid for every unit in
+	# the extra ring for nothing.
+	var reach: float = e.radius + 22.0
 	world.grid.query(e.x, e.y, reach, buf)
 	var px: float = 0.0
 	var py: float = 0.0

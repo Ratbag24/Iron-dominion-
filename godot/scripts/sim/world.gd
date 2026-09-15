@@ -56,6 +56,9 @@ var job_groups: Dictionary = {}
 ## than the searches do.
 var assist_buf: Array = []
 var enemy_buf: Array = []
+## Per player, the indices of every player on its team (itself included), for
+## the grid's enemy query. Fixed for the match, so built once.
+var _allies: Array = []
 
 ## Per-phase microseconds from the last tick, when profiling is on. Off by
 ## default: reading the clock eight times a tick is not free.
@@ -77,13 +80,23 @@ func _init(opts: Dictionary = {}) -> void:
 		specs.size()
 	)
 	pathfinder = IdPathfinder.new(map)
-	grid = IdSpatialGrid.new(map.width, map.height, 96)
 	commander_ends = bool(opts.get("commander_ends", true))
 
 	for i in range(specs.size()):
 		players.append(IdPlayer.new(i, specs[i]))
 		fog.append(IdFogMap.new(map))
 	_assign_colours()
+
+	# The grid buckets by player and the allies table is read by every enemy
+	# search, so both come after the players exist.
+	grid = IdSpatialGrid.new(map.width, map.height, 96, players.size())
+	_allies.resize(players.size())
+	for i in players.size():
+		var same := PackedInt32Array()
+		for j in players.size():
+			if players[j].team == players[i].team:
+				same.append(j)
+		_allies[i] = same
 
 	# Start positions must exist before the AI reads them.
 	_spawn_start(opts)
@@ -398,11 +411,16 @@ func tick(dt: float = SIM_DT) -> void:
 		IdProjectiles.update_projectiles(self, dt)
 		pathfinder.process_requests()
 
+	var t1 := Time.get_ticks_usec() if profile else 0
 	_cleanup()
+	if profile:
+		t1 = _mark("cleanup", t1)
 
 	if (tick_count & 3) == 0:
 		for i in range(players.size()):
 			_update_fog(i)
+	if profile:
+		_mark("fog", t1)
 
 	_check_victory()
 
@@ -445,17 +463,42 @@ func _mark(name: String, since: int) -> int:
 	return now
 
 
+func allies_of(player_index: int) -> PackedInt32Array:
+	return _allies[player_index]
+
+
 func _update_fog(player_index: int) -> void:
 	var f: IdFogMap = fog[player_index]
 	f.begin_frame()
 	var team: int = players[player_index].team
+	# Reveals are deduplicated by fog cell: an army is a clump, and forty
+	# units on the same few cells revealing the same disc forty times was
+	# the largest unexplained cost in the tick at scale. Per cell the widest
+	# sight wins; radar is rare and goes through as it is.
+	var seen: Dictionary = {}
+	var cs: float = float(f.cell)
 	for e in entities:
 		if not e.alive or players[e.player].team != team:
 			continue
-		f.reveal_circle(e.x, e.y, float(e.def.get("los", 200.0)))
+		var los: float = float(e.def.get("los", 200.0))
+		var key: int = int(e.y / cs) * 100000 + int(e.x / cs)
+		var prev: float = float(seen.get(key, -1.0))
+		if los > prev:
+			if prev < 0.0:
+				# First unit on this cell: remember its exact position.
+				seen[key] = los
+				seen[-key - 1] = Vector2(e.x, e.y)
+			else:
+				seen[key] = los
+				seen[-key - 1] = Vector2(e.x, e.y)
 		var radar: float = float(e.def.get("radar", 0.0))
 		if radar > 0.0:
 			f.reveal_radar(e.x, e.y, radar)
+	for key in seen.keys():
+		if key < 0:
+			continue
+		var at: Vector2 = seen[-key - 1]
+		f.reveal_circle(at.x, at.y, float(seen[key]))
 
 	# Remember enemy structures we can currently see, and forget the ones we
 	# can now see are gone.

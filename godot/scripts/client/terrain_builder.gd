@@ -226,9 +226,10 @@ func _terrain_splat(cx: int, cy: int) -> Color:
 		# Slopes shed their grass; rock shows through as the ground climbs.
 		earth = maxf(earth, steepness * 0.85)
 		rock = smoothstep(0.62, 1.0, rise) * 0.7 + steepness * steepness * 0.5
-		# Bare patches, so a plain is a plain and not a lawn.
-		earth = maxf(earth, smoothstep(0.62, 0.8, patch) * 0.55 * (1.0 - rock))
-	var macro := clampf(0.35 + broad * 0.55 + (patch - 0.5) * 0.15, 0.0, 1.0)
+		# Bare patches, so a plain is a plain and not a lawn. Kept sparse: at
+		# the first strength the fields read as blotched.
+		earth = maxf(earth, smoothstep(0.7, 0.84, patch) * 0.4 * (1.0 - rock))
+	var macro := clampf(0.4 + broad * 0.45 + (patch - 0.5) * 0.08, 0.0, 1.0)
 	return Color(clampf(earth, 0.0, 1.0), clampf(rock, 0.0, 1.0), clampf(sand, 0.0, 1.0), macro)
 
 

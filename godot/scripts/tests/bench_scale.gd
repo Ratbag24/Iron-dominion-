@@ -65,8 +65,12 @@ func _measure(per_side: int) -> void:
 		world.dispose()
 		return
 
+	# Every phase the tick recorded, not a fixed list: a phase added later
+	# that this did not know about was 12ms of unexplained time at scale.
 	var parts: Array[String] = []
-	for name in ["orders", "combat", "movement", "grid", "projectiles", "economy", "ai", "pathfinding"]:
+	var names: Array = world.phase_us.keys()
+	names.sort()
+	for name in names:
 		var ms: float = float(world.phase_us.get(name, 0)) / 1000.0 / float(ticks)
 		if ms >= 0.05:
 			parts.append("%s %.1f" % [name, ms])

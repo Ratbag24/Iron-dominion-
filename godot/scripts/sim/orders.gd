@@ -18,7 +18,11 @@ const PATROL: String = "patrol"
 const ARRIVE_SLACK: float = 26.0
 
 ## Ticks between target searches for a unit that has nothing to shoot at.
-const SCAN_INTERVAL: int = 3
+## Ticks between a unit's fresh searches for something to shoot. Five is a
+## sixth of a second: nothing a player can see, and it is 40% fewer sweeps
+## than three, which at several hundred units is the difference between
+## inside the tick budget and outside it.
+const SCAN_INTERVAL: int = 5
 
 
 static func update_orders(world: IdWorld, e: IdEntity, _dt: float) -> void:
@@ -477,21 +481,30 @@ static func take_scan_turn(world: IdWorld, e: IdEntity) -> bool:
 
 static func find_nearby_enemy(world: IdWorld, e: IdEntity, radius: float) -> IdEntity:
 	var found: Array = world.enemy_buf
-	world.grid.query(e.x, e.y, radius, found)
+	var my_team: int = world.players[e.player].team
+	world.grid.query_enemies(e.x, e.y, radius, world.allies_of(e.player), found)
 	var fog: IdFogMap = world.fog[e.player]
 	var best: IdEntity = null
 	var best_score: float = -INF
+	var r2: float = radius * radius
+	var has_weapons: bool = not e.weapons.is_empty()
 	for other in found:
-		if not other.alive or not world.is_enemy(e, other):
+		# Cheapest rejects first: most of what a wide query returns is our
+		# own army or out of range, and every method call here is paid for
+		# hundreds of times per sweep.
+		if not other.alive or world.players[other.player].team == my_team:
+			continue
+		var ddx: float = other.x - e.x
+		var ddy: float = other.y - e.y
+		var d2: float = ddx * ddx + ddy * ddy
+		if d2 > r2:
 			continue
 		# No sense walking towards something none of our weapons can reach.
-		if not e.weapons.is_empty() and not IdCombat.can_engage(e, other):
-			continue
-		var d: float = IdMath.dist(e.x, e.y, other.x, other.y)
-		if d > radius:
+		if has_weapons and not IdCombat.can_engage(e, other):
 			continue
 		if not fog.is_visible_at(other.x, other.y):
 			continue
+		var d: float = sqrt(d2)
 		# Prefer close, dangerous, and nearly-dead things.
 		var score: float = -d
 		if float(other.def.get("maxWeaponRange", 0.0)) > 0.0:
