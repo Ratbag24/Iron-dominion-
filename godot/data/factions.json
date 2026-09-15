@@ -32,7 +32,16 @@
         "assault": "rifle",
         "skirmisher": "rocket",
         "heavy": "heavy",
-        "artillery": "siege"
+        "artillery": "siege",
+        "airFactory": "airpad",
+        "antiAir": "aatower",
+        "fighter": "gnat",
+        "gunship": "harrier",
+        "bomber": "hammerhead",
+        "barracks": "barracks",
+        "trooper": "trooper",
+        "lancer": "lancer",
+        "aaInfantry": "marksman"
       }
     },
     "legion": {
@@ -67,7 +76,16 @@
         "assault": "rifle",
         "skirmisher": "rocket",
         "heavy": "heavy",
-        "artillery": "siege"
+        "artillery": "siege",
+        "airFactory": "airpad",
+        "antiAir": "aatower",
+        "fighter": "gnat",
+        "gunship": "harrier",
+        "bomber": "hammerhead",
+        "barracks": "barracks",
+        "trooper": "trooper",
+        "lancer": "lancer",
+        "aaInfantry": "marksman"
       }
     },
     "concord": {
@@ -102,7 +120,16 @@
         "assault": "con_tank",
         "skirmisher": "con_missile",
         "heavy": "con_heavytank",
-        "artillery": "con_howitzer"
+        "artillery": "con_howitzer",
+        "airFactory": "con_apron",
+        "antiAir": "con_battery_aa",
+        "fighter": "con_needle",
+        "gunship": "con_vulture",
+        "bomber": "con_anvil",
+        "barracks": "con_barracks",
+        "trooper": "con_rifles",
+        "lancer": "con_at",
+        "aaInfantry": "con_aa_team"
       }
     },
     "blight": {
@@ -116,6 +143,7 @@
         "range": 0.95,
         "cost": 1
       },
+      "spreadsCreep": true,
       "roster": {
         "commander": "bl_hive",
         "builder": "bl_tender",
@@ -137,7 +165,16 @@
         "assault": "bl_husk",
         "skirmisher": "bl_spitter",
         "heavy": "bl_brute",
-        "artillery": "bl_lobber"
+        "artillery": "bl_lobber",
+        "airFactory": "bl_roost",
+        "antiAir": "bl_spitter_aa",
+        "fighter": "bl_midge",
+        "gunship": "bl_wing",
+        "bomber": "bl_gorger",
+        "barracks": "bl_brood",
+        "trooper": "bl_swarmer",
+        "lancer": "bl_barbs",
+        "aaInfantry": "bl_screamer"
       }
     }
   },

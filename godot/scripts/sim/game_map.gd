@@ -26,6 +26,8 @@ var map_seed: int = 1
 
 var terrain: PackedByteArray = PackedByteArray()
 var heights: PackedFloat32Array = PackedFloat32Array()
+## The hive's infection, 0..1 per cell. See creep.gd.
+var corruption: PackedFloat32Array = PackedFloat32Array()
 var blocked: PackedByteArray = PackedByteArray()
 
 var water_line: float = 0.0
@@ -85,6 +87,7 @@ func _init(seed_value: int = 12345, map_width: int = 3072, map_height: int = 307
 
 	terrain.resize(cols * rows)
 	heights.resize(cols * rows)
+	corruption.resize(cols * rows)
 	blocked.resize(cols * rows)
 	_generate()
 
@@ -116,6 +119,23 @@ func is_passable_cell(cx: int, cy: int) -> bool:
 
 func is_passable(x: float, y: float) -> bool:
 	return is_passable_cell(int(x / float(cell)), int(y / float(cell)))
+
+## As above, but `on_foot` units also cross rock.
+##
+## Rock is scree and broken slab: nothing with wheels, tracks or a metre-long
+## stride gets over it, but troops scramble across. That single difference is
+## what makes infantry worth building on maps this broken. Water still stops
+## everyone, and a building still blocks its own footprint.
+func is_passable_cell_for(cx: int, cy: int, on_foot: bool) -> bool:
+	if not on_foot:
+		return is_passable_cell(cx, cy)
+	if not in_bounds(cx, cy):
+		return false
+	var i := idx(cx, cy)
+	return terrain[i] != TERRAIN_WATER and blocked[i] == 0
+
+func is_passable_for(x: float, y: float, on_foot: bool) -> bool:
+	return is_passable_cell_for(int(x / float(cell)), int(y / float(cell)), on_foot)
 
 func set_blocked(cx0: int, cy0: int, size: int, value: int) -> void:
 	for cy in range(cy0, cy0 + size):

@@ -7,10 +7,16 @@
 # is how it runs on a machine with no GPU.
 set -uo pipefail
 
-GODOT="${GODOT:-godot}"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/godot-bin.sh"
 OUT="${1:-shots}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+# Re-import before rendering. Godot caches imported meshes, and a .glb that has
+# been re-exported since the last import is silently ignored -- which looks
+# exactly like a model change that did not work, and cost an hour of chasing
+# one that had.
+"$GODOT" --headless --path godot --import >/dev/null 2>&1
 mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
 

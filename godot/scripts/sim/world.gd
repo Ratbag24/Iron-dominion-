@@ -391,8 +391,10 @@ func tick(dt: float = SIM_DT) -> void:
 		IdEconomy.run_economy(self, dt)
 		IdConstruction.apply_construction(self, dt)
 		IdEconomy.settle_economy(self, dt)
+		IdCreep.apply_creep_effects(self, dt)
 		IdMovement.update_movement(self, dt)
 		IdCombat.update_combat(self, dt)
+		IdCreep.update_creep(self, dt)
 		IdProjectiles.update_projectiles(self, dt)
 		pathfinder.process_requests()
 
@@ -420,11 +422,15 @@ func _tick_profiled(dt: float) -> void:
 	IdEconomy.settle_economy(self, dt)
 	t = _mark("economy", t)
 
+	IdCreep.apply_creep_effects(self, dt)
 	IdMovement.update_movement(self, dt)
 	t = _mark("movement", t)
 
 	IdCombat.update_combat(self, dt)
 	t = _mark("combat", t)
+
+	IdCreep.update_creep(self, dt)
+	t = _mark("creep", t)
 
 	IdProjectiles.update_projectiles(self, dt)
 	t = _mark("projectiles", t)

@@ -30,6 +30,10 @@ var viewer: int = 0
 
 var _nodes: Dictionary = {}       ## entity id -> Node3D
 var _turrets: Dictionary = {}     ## entity id -> Node3D (or null)
+## entity id -> Array of {node, phase}: the legs the model exported, each hung
+## from its hip. See _animate_walk.
+var _legs: Dictionary = {}
+var _walk: Dictionary = {}        ## entity id -> gait phase, radians
 var _scene_cache: Dictionary = {} ## def id -> PackedScene
 var _missing: Dictionary = {}     ## def ids we have already warned about
 var _team_colours: Array[Dictionary] = []
@@ -55,6 +59,7 @@ func setup(w: IdWorld, t: IdTerrainBuilder, viewer_index: int = 0) -> void:
 ## rendered frame, not once per simulation tick: interpolation is cheap and
 ## the tick rate is deliberately lower than the frame rate.
 func sync() -> void:
+	var frame_dt: float = get_process_delta_time()
 	var seen: Dictionary = {}
 
 	var fog: IdFogMap = world.fog[viewer] if viewer >= 0 else null
@@ -78,6 +83,19 @@ func sync() -> void:
 			if node == null:
 				continue
 		var ground := terrain.height_at(e.x, e.y)
+		# Aircraft fly above the ground rather than on it, and lean into their
+		# turns. Without the altitude they taxi through the terrain; without
+		# the bank they slide round corners flat, which is the thing that most
+		# makes a flying model look like a ground one.
+		if e.def.get("layer", "ground") == "air":
+			node.transform = Transform3D(
+				Basis(Vector3.UP, -e.heading) * Basis(Vector3.RIGHT, -e.bank),
+				Vector3(e.x, ground + e.altitude, e.y)
+			)
+			var air_turret: Node3D = _turrets.get(e.id)
+			if air_turret != null:
+				air_turret.rotation.y = -e.turret_angle + e.heading
+			continue
 		# Simulation headings are measured in the XZ plane with +X at zero and
 		# y growing "south"; Godot's yaw runs the other way round.
 		var yaw := -e.heading
@@ -88,8 +106,9 @@ func sync() -> void:
 			# Mobile units lie along the slope they are standing on. Without
 			# this they stay bolt upright on a hillside, which reads as
 			# hovering rather than as driving.
+			var bob: float = _animate_walk(e, node, frame_dt)
 			node.transform = Transform3D(
-				_slope_basis(e.x, e.y, yaw), Vector3(e.x, ground, e.y)
+				_slope_basis(e.x, e.y, yaw), Vector3(e.x, ground + bob, e.y)
 			)
 		var turret: Node3D = _turrets.get(e.id)
 		if turret != null:
@@ -110,6 +129,8 @@ func sync() -> void:
 			node.queue_free()
 		_nodes.erase(id)
 		_turrets.erase(id)
+		_legs.erase(id)
+		_walk.erase(id)
 
 
 ## Wrecks are the dead unit's own model, darkened and sunk into the ground.
@@ -249,7 +270,47 @@ func _create(e: IdEntity) -> Node3D:
 	_nodes[e.id] = inst
 	var turret: Node = inst.get_node_or_null("turret")
 	_turrets[e.id] = turret if turret is Node3D else null
+	var legs: Array = []
+	for child in inst.get_children():
+		if child is Node3D and child.name.begins_with("leg_"):
+			legs.append({
+				"node": child,
+				# The exporter names each leg with the half of the gait it is
+				# on: "a" swings forward while "b" plants, then they trade.
+				"phase": PI if child.name.ends_with("_b") else 0.0,
+			})
+	if not legs.is_empty():
+		_legs[e.id] = legs
+		_walk[e.id] = 0.0
 	return inst
+
+
+## Swing the legs in time with how fast the unit is actually moving.
+##
+## A walker that glides is a chess piece; this is the whole of what turns
+## exported geometry into something that walks. Each leg rocks about its hip
+## (the model's sideways axis, Z: models face +X) by an angle that scales with
+## speed, and the body bobs twice per stride. Stopped units settle back to
+## their rest pose rather than freezing mid-step.
+func _animate_walk(e: IdEntity, node: Node3D, dt: float) -> float:
+	var legs: Array = _legs.get(e.id, [])
+	if legs.is_empty():
+		return 0.0
+	var top: float = maxf(1.0, float(e.def.get("speed", 1.0)))
+	var pace: float = clampf(e.speed / top, 0.0, 1.4)
+	# Stride length scales with the unit, so a squad of infantry patters and
+	# a hive lumbers, from the same rule.
+	var stride: float = maxf(6.0, e.radius * 1.6)
+	var phase: float = _walk[e.id] + e.speed * dt * TAU / (stride * 2.0)
+	_walk[e.id] = fmod(phase, TAU)
+	var amp: float = 0.55 * pace
+	for leg in legs:
+		var n: Node3D = leg["node"]
+		var swing: float = sin(phase + float(leg["phase"])) * amp
+		n.rotation = Vector3(0.0, 0.0, swing)
+	# The bob: up on each planted step. Small, or units look like they are
+	# on springs.
+	return absf(sin(phase)) * e.radius * 0.05 * pace
 
 
 func _scene_for(def_id: String) -> PackedScene:

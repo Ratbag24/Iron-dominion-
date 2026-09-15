@@ -121,9 +121,11 @@ func _place_closeup(ids: PackedStringArray) -> void:
 	var start: Dictionary = map.start_positions[0]
 	var ox: float = start["x"]
 	var oz: float = start["y"]
-	var spacing := 70.0
-	var span := spacing * float(maxi(ids.size() - 1, 1))
 
+	# Spacing and camera distance are measured off the models rather than
+	# fixed. A frame sized for a tank puts a six-unit soldier twenty pixels
+	# tall, which is the game view -- useful, but not what a close-up is for.
+	var spawned: Array[Node3D] = []
 	for i in ids.size():
 		var id := ids[i].strip_edges()
 		if id == "":
@@ -133,19 +135,45 @@ func _place_closeup(ids: PackedStringArray) -> void:
 			colours = GREEN
 		elif not id.begins_with("con_"):
 			colours = RED
-		spawn_model(id, ox - span * 0.5 + float(i) * spacing, oz, colours, PI * 0.15)
+		var node := spawn_model(id, ox, oz, colours, PI * 0.15)
+		if node != null:
+			spawned.append(node)
 
-	var target := Vector3(ox, terrain.height_at(ox, oz), oz)
+	var biggest := 0.0
+	for node in spawned:
+		biggest = maxf(biggest, _model_extent(node))
+	biggest = maxf(biggest, 1.0)
+
+	var spacing: float = biggest * 2.6
+	var span: float = spacing * float(maxi(spawned.size() - 1, 1))
+	for i in spawned.size():
+		var node := spawned[i]
+		node.position.x = ox - span * 0.5 + float(i) * spacing
+		node.position.z = oz
+
+	var target := Vector3(ox, terrain.height_at(ox, oz) + biggest * 0.5, oz)
 	var cam := Camera3D.new()
 	cam.name = "Camera"
 	cam.fov = 34.0
 	cam.far = 12000.0
 	var pitch := 0.55
-	var dist := maxf(150.0, span * 1.5 + 120.0)
+	# Enough to hold the whole row, with the tallest model filling the frame
+	# when there is only one.
+	var dist: float = maxf(biggest * 4.0, span * 1.6 + biggest * 2.0)
 	cam.position = target + Vector3(0, sin(pitch) * dist, cos(pitch) * dist)
 	add_child(cam)
-	cam.look_at(target + Vector3(0, 14, 0), Vector3.UP)
+	cam.look_at(target, Vector3.UP)
 	cam.make_current()
+
+
+## Half the largest side of a spawned model's visual bounds, in world units.
+func _model_extent(node: Node3D) -> float:
+	var extent := 0.0
+	for child in node.get_children():
+		if child is VisualInstance3D:
+			var box: AABB = (child as VisualInstance3D).get_aabb()
+			extent = maxf(extent, maxf(box.size.x, maxf(box.size.y, box.size.z)) * 0.5)
+	return extent
 
 
 func _place_camera() -> void:

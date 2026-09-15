@@ -15,6 +15,18 @@ var map: IdGameMap
 var budget_per_tick: int = 12
 
 var _grid: AStarGrid2D
+## A second search grid on which rock is open, for infantry.
+##
+## The JS side passes a predicate down into its own A*; AStarGrid2D bakes
+## solidity into the grid, so the port keeps two of them instead. A grid is one
+## byte per cell over a 192x192 map, which is cheaper than it sounds and much
+## cheaper than re-baking one grid every time a squad asks for a route.
+var _grid_foot: AStarGrid2D
+## How many route requests have ever been made. Read by the tests: an aircraft
+## that quietly started pathing would otherwise look identical to one that did
+## not.
+var requests_made: int = 0
+
 var _budget: int = 0
 var _requests: Array[Dictionary] = []
 
@@ -37,29 +49,38 @@ func _init(game_map: IdGameMap) -> void:
 	_cols = map.cols
 	_rows = map.rows
 	_cell_f = float(map.cell)
-	_grid = AStarGrid2D.new()
-	_grid.region = Rect2i(0, 0, map.cols, map.rows)
-	_grid.cell_size = Vector2(map.cell, map.cell)
-	# Matches the original's rule: no cutting the corner between two blockers.
-	_grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-	_grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-	_grid.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
-	_grid.update()
+	_grid = _make_grid()
+	_grid_foot = _make_grid()
 	rebuild()
 	_budget = budget_per_tick
+
+func _make_grid() -> AStarGrid2D:
+	var g := AStarGrid2D.new()
+	g.region = Rect2i(0, 0, map.cols, map.rows)
+	g.cell_size = Vector2(map.cell, map.cell)
+	# Matches the original's rule: no cutting the corner between two blockers.
+	g.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	g.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	g.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	g.update()
+	return g
 
 ## Re-read passability for the whole map. Used once at startup.
 func rebuild() -> void:
 	for cy in map.rows:
 		for cx in map.cols:
-			_grid.set_point_solid(Vector2i(cx, cy), not map.is_passable_cell(cx, cy))
+			var c := Vector2i(cx, cy)
+			_grid.set_point_solid(c, not map.is_passable_cell(cx, cy))
+			_grid_foot.set_point_solid(c, not map.is_passable_cell_for(cx, cy, true))
 
 ## Keep the search grid in step when a structure occupies or frees cells.
 func update_footprint(cx0: int, cy0: int, size: int) -> void:
 	for cy in range(cy0, cy0 + size):
 		for cx in range(cx0, cx0 + size):
 			if map.in_bounds(cx, cy):
-				_grid.set_point_solid(Vector2i(cx, cy), not map.is_passable_cell(cx, cy))
+				var c := Vector2i(cx, cy)
+				_grid.set_point_solid(c, not map.is_passable_cell(cx, cy))
+				_grid_foot.set_point_solid(c, not map.is_passable_cell_for(cx, cy, true))
 
 # -------------------------------------------------------------- requests
 
@@ -68,10 +89,11 @@ func begin_tick() -> void:
 
 ## Queue a path request. `on_path` receives an Array of Vector2 waypoints, or
 ## an empty array when no route exists.
-func request(sx: float, sy: float, tx: float, ty: float, on_path: Callable, priority: int = 0) -> void:
+func request(sx: float, sy: float, tx: float, ty: float, on_path: Callable, priority: int = 0, on_foot: bool = false) -> void:
+	requests_made += 1
 	_requests.append({
 		"sx": sx, "sy": sy, "tx": tx, "ty": ty,
-		"on_path": on_path, "priority": priority,
+		"on_path": on_path, "priority": priority, "on_foot": on_foot,
 	})
 
 func process_requests() -> void:
@@ -83,25 +105,25 @@ func process_requests() -> void:
 	while not _requests.is_empty() and ran < _budget:
 		var req: Dictionary = _requests.pop_front()
 		ran += 1
-		req["on_path"].call(find_path(req["sx"], req["sy"], req["tx"], req["ty"]))
+		req["on_path"].call(find_path(req["sx"], req["sy"], req["tx"], req["ty"], req["on_foot"]))
 	if _requests.size() > 600:
 		_requests.resize(600)
 
 # ---------------------------------------------------------------- search
 
-func _nearest_open(cx: int, cy: int, max_radius: int) -> Vector2i:
+func _nearest_open(cx: int, cy: int, max_radius: int, on_foot: bool = false) -> Vector2i:
 	for r in range(1, max_radius + 1):
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				if maxi(absi(dx), absi(dy)) != r:
 					continue
-				if map.is_passable_cell(cx + dx, cy + dy):
+				if map.is_passable_cell_for(cx + dx, cy + dy, on_foot):
 					return Vector2i(cx + dx, cy + dy)
 	return Vector2i(-1, -1)
 
 ## Waypoints from start to goal, or an empty array when no route exists.
 ## The start position itself is not included.
-func find_path(sx: float, sy: float, tx: float, ty: float) -> Array:
+func find_path(sx: float, sy: float, tx: float, ty: float, on_foot: bool = false) -> Array:
 	var cell := float(map.cell)
 	var from := Vector2i(int(floor(sx / cell)), int(floor(sy / cell)))
 	var to := Vector2i(int(floor(tx / cell)), int(floor(ty / cell)))
@@ -111,16 +133,16 @@ func find_path(sx: float, sy: float, tx: float, ty: float) -> Array:
 
 	# Standing inside a blocked cell starts the search from the nearest open
 	# one rather than failing outright.
-	if not map.is_passable_cell(from.x, from.y):
-		from = _nearest_open(from.x, from.y, 6)
+	if not map.is_passable_cell_for(from.x, from.y, on_foot):
+		from = _nearest_open(from.x, from.y, 6, on_foot)
 		if from.x < 0:
 			return []
 
 	# A goal inside a building or on water resolves to the closest open cell,
 	# which is what "move next to that thing" should mean.
 	var goal_exact := true
-	if not map.is_passable_cell(to.x, to.y):
-		to = _nearest_open(to.x, to.y, 10)
+	if not map.is_passable_cell_for(to.x, to.y, on_foot):
+		to = _nearest_open(to.x, to.y, 10, on_foot)
 		if to.x < 0:
 			return []
 		goal_exact = false
@@ -129,7 +151,7 @@ func find_path(sx: float, sy: float, tx: float, ty: float) -> Array:
 	if from == to:
 		return [Vector2(tx, ty)] if goal_exact else [_cell_centre(to)]
 
-	var raw := _grid.get_point_path(from, to)
+	var raw := (_grid_foot if on_foot else _grid).get_point_path(from, to)
 	if raw.size() < 2:
 		failures += 1
 		return []
@@ -142,7 +164,7 @@ func find_path(sx: float, sy: float, tx: float, ty: float) -> Array:
 	if goal_exact and not points.is_empty():
 		points[points.size() - 1] = Vector2(tx, ty)
 
-	return _smooth(sx, sy, points)
+	return _smooth(sx, sy, points, on_foot)
 
 func _cell_centre(c: Vector2i) -> Vector2:
 	return Vector2((float(c.x) + 0.5) * float(map.cell), (float(c.y) + 0.5) * float(map.cell))
@@ -153,7 +175,7 @@ func _cell_centre(c: Vector2i) -> Vector2:
 ## Scanning backwards from the end for the furthest visible point gives
 ## slightly shorter paths but costs a line test per candidate; walking forwards
 ## costs one per point, which matters when this runs for every unit.
-func _smooth(sx: float, sy: float, points: Array) -> Array:
+func _smooth(sx: float, sy: float, points: Array, on_foot: bool = false) -> Array:
 	if points.size() <= 2:
 		return points
 	var out: Array = []
@@ -171,7 +193,7 @@ func _smooth(sx: float, sy: float, points: Array) -> Array:
 			i = commit + 1
 			last_clear = -1
 			continue
-		if has_line_of_walk(anchor.x, anchor.y, points[i].x, points[i].y):
+		if has_line_of_walk(anchor.x, anchor.y, points[i].x, points[i].y, on_foot):
 			last_clear = i
 			i += 1
 			continue
@@ -192,7 +214,7 @@ func _smooth(sx: float, sy: float, points: Array) -> Array:
 ## Steps once per cell rather than twice, and reads the terrain arrays
 ## directly: this runs a few hundred times per path and was the single most
 ## expensive thing left once the search moved into the engine.
-func has_line_of_walk(x0: float, y0: float, x1: float, y1: float) -> bool:
+func has_line_of_walk(x0: float, y0: float, x1: float, y1: float, on_foot: bool = false) -> bool:
 	var dx := x1 - x0
 	var dy := y1 - y0
 	var dist := sqrt(dx * dx + dy * dy)
@@ -212,8 +234,12 @@ func has_line_of_walk(x0: float, y0: float, x1: float, y1: float) -> bool:
 		if cx < 0 or cy < 0 or cx >= _cols or cy >= _rows:
 			return false
 		var i := cy * _cols + cx
-		if _terrain[i] != IdGameMap.TERRAIN_LAND or _blocked[i] != 0:
+		if _blocked[i] != 0:
 			return false
+		if _terrain[i] != IdGameMap.TERRAIN_LAND:
+			# Infantry are stopped by water but not by rock.
+			if not on_foot or _terrain[i] == IdGameMap.TERRAIN_WATER:
+				return false
 	return true
 
 ## Cap on how far ahead smoothing looks for a clear line.

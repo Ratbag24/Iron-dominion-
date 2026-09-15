@@ -11,15 +11,11 @@
 # Output goes to build/<target>/, which is not tracked.
 set -uo pipefail
 
-GODOT="${GODOT:-godot}"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/godot-bin.sh"
 TARGET="${1:-all}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-if ! command -v "$GODOT" >/dev/null 2>&1 && [ ! -x "$GODOT" ]; then
-  echo "Godot 4 not found. Set GODOT=/path/to/Godot_v4.3-stable_linux.x86_64"
-  exit 127
-fi
 
 export_one() {
   local preset="$1" dir="$2"

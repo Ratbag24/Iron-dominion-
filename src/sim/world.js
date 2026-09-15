@@ -15,6 +15,7 @@ import { updateCombat } from './combat.js';
 import { updateProjectiles } from './projectiles.js';
 import { FogMap } from './fog.js';
 import { AIPlayer } from './ai.js';
+import { updateCreep, applyCreepEffects } from './creep.js';
 
 /** How much health a converted unit keeps. */
 export const CONVERT_HP = 0.4;
@@ -160,6 +161,7 @@ export class World {
       alive: true,
 
       maxHp: def.hp,
+      speedScale: 1,
       hp: opts.complete === false ? Math.max(1, def.hp * 0.05) : def.hp,
       underConstruction: opts.complete === false,
       buildProgress: opts.complete === false ? 0 : 1,
@@ -376,8 +378,10 @@ export class World {
     runEconomy(this, dt);
     applyConstruction(this, dt);
     settleEconomy(this, dt);
+    applyCreepEffects(this, dt);
     updateMovement(this, dt);
     updateCombat(this, dt);
+    updateCreep(this, dt);
     updateProjectiles(this, dt);
 
     this.pathfinder.processRequests();

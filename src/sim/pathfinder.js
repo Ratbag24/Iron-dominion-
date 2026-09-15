@@ -78,8 +78,8 @@ export class Pathfinder {
    * Queue a path request. `onPath(waypoints|null)` is invoked when the search
    * runs, which may be this tick or a later one.
    */
-  request(sx, sy, tx, ty, onPath, priority = 0) {
-    this.requests.push({ sx, sy, tx, ty, onPath, priority });
+  request(sx, sy, tx, ty, onPath, priority = 0, onFoot = false) {
+    this.requests.push({ sx, sy, tx, ty, onPath, priority, onFoot });
   }
 
   /** Run as many queued searches as the tick budget allows. */
@@ -92,7 +92,7 @@ export class Pathfinder {
     while (this.requests.length && ran < this.budget) {
       const req = this.requests.shift();
       ran++;
-      const path = this.findPath(req.sx, req.sy, req.tx, req.ty);
+      const path = this.findPath(req.sx, req.sy, req.tx, req.ty, req.onFoot);
       req.onPath(path);
     }
     // Anything left waits for the next tick; drop the tail if it grows absurd.
@@ -103,8 +103,12 @@ export class Pathfinder {
    * Returns an array of {x, y} waypoints from start to goal, or null when no
    * route exists. The start position itself is not included.
    */
-  findPath(sx, sy, tx, ty) {
+  findPath(sx, sy, tx, ty, onFoot = false) {
     const map = this.map;
+    // Infantry route over rock; everything else treats it as a wall. Passing
+    // the flag down rather than keeping two graphs means one A* and one set of
+    // scratch buffers, at the cost of a branch per neighbour.
+    const open = (cx, cy) => map.isPassableCellFor(cx, cy, onFoot);
     const cols = map.cols;
     const cell = map.cell;
 
@@ -118,16 +122,16 @@ export class Pathfinder {
 
     // If the unit is standing inside a blocked cell (pushed into a building,
     // say) start the search from the closest open cell instead of failing.
-    if (!map.isPassableCell(scx, scy)) {
-      const near = this._nearestOpen(scx, scy, 6);
+    if (!open(scx, scy)) {
+      const near = this._nearestOpen(scx, scy, 6, onFoot);
       if (!near) return null;
       scx = near.cx; scy = near.cy;
     }
 
     // A goal inside a building or on water resolves to the closest open cell,
     // which is what "move next to that thing" should mean.
-    if (!map.isPassableCell(tcx, tcy)) {
-      const near = this._nearestOpen(tcx, tcy, 10);
+    if (!open(tcx, tcy)) {
+      const near = this._nearestOpen(tcx, tcy, 10, onFoot);
       if (!near) return null;
       tcx = near.cx; tcy = near.cy;
     }
@@ -172,10 +176,10 @@ export class Pathfinder {
           if (dx === 0 && dy === 0) continue;
           const nx = cx + dx;
           const ny = cy + dy;
-          if (!map.isPassableCell(nx, ny)) continue;
+          if (!open(nx, ny)) continue;
           if (dx !== 0 && dy !== 0) {
             // No cutting corners through the diagonal gap between two blockers.
-            if (!map.isPassableCell(cx + dx, cy) || !map.isPassableCell(cx, cy + dy)) continue;
+            if (!open(cx + dx, cy) || !open(cx, cy + dy)) continue;
           }
           const ni = ny * cols + nx;
           if (this.stamp[ni] === gen && this.closed[ni] === 1) continue;
@@ -220,7 +224,7 @@ export class Pathfinder {
     if (found) {
       points[points.length - 1] = { x: tx, y: ty };
     }
-    return this._smooth(sx, sy, points);
+    return this._smooth(sx, sy, points, onFoot);
   }
 
   _heuristic(ax, ay, bx, by) {
@@ -230,7 +234,7 @@ export class Pathfinder {
     return (dx > dy ? dx + (SQRT2 - 1) * dy : dy + (SQRT2 - 1) * dx) * 1.001;
   }
 
-  _nearestOpen(cx, cy, maxRadius) {
+  _nearestOpen(cx, cy, maxRadius, onFoot = false) {
     const map = this.map;
     for (let r = 1; r <= maxRadius; r++) {
       for (let dy = -r; dy <= r; dy++) {
@@ -238,7 +242,7 @@ export class Pathfinder {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
           const nx = cx + dx;
           const ny = cy + dy;
-          if (map.isPassableCell(nx, ny)) return { cx: nx, cy: ny };
+          if (map.isPassableCellFor(nx, ny, onFoot)) return { cx: nx, cy: ny };
         }
       }
     }
@@ -246,7 +250,7 @@ export class Pathfinder {
   }
 
   /** Drop waypoints that a straight line can already reach (string pulling). */
-  _smooth(sx, sy, points) {
+  _smooth(sx, sy, points, onFoot = false) {
     if (points.length <= 2) return points;
     const out = [];
     let anchorX = sx;
@@ -255,7 +259,7 @@ export class Pathfinder {
     while (i < points.length) {
       let furthest = i;
       for (let j = points.length - 1; j > i; j--) {
-        if (this.hasLineOfWalk(anchorX, anchorY, points[j].x, points[j].y)) {
+        if (this.hasLineOfWalk(anchorX, anchorY, points[j].x, points[j].y, onFoot)) {
           furthest = j;
           break;
         }
@@ -270,7 +274,7 @@ export class Pathfinder {
   }
 
   /** Sample the straight segment for blocked cells. */
-  hasLineOfWalk(x0, y0, x1, y1) {
+  hasLineOfWalk(x0, y0, x1, y1, onFoot = false) {
     const map = this.map;
     const cell = map.cell;
     const dx = x1 - x0;
@@ -281,7 +285,7 @@ export class Pathfinder {
       const t = s / steps;
       const x = x0 + dx * t;
       const y = y0 + dy * t;
-      if (!map.isPassableCell(Math.floor(x / cell), Math.floor(y / cell))) return false;
+      if (!map.isPassableCellFor(Math.floor(x / cell), Math.floor(y / cell), onFoot)) return false;
     }
     return true;
   }

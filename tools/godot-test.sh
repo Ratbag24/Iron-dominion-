@@ -3,15 +3,11 @@
 #
 #   GODOT=/path/to/godot tools/godot-test.sh
 #
-# Falls back to `godot` on PATH. Assets are imported first, which also builds
+# Falls back to a binary on PATH, or one fetched into the cache. Assets are imported first, which also builds
 # the global class cache that `--script` needs to resolve class_name types.
 set -uo pipefail
 
-GODOT="${GODOT:-godot}"
-if ! command -v "$GODOT" >/dev/null 2>&1 && [ ! -x "$GODOT" ]; then
-  echo "Godot 4 not found. Set GODOT=/path/to/Godot_v4.3-stable_linux.x86_64"
-  exit 127
-fi
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/godot-bin.sh"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -20,7 +16,7 @@ echo "Importing assets"
 "$GODOT" --headless --path godot --import >/dev/null 2>&1
 
 status=0
-for test in verify_assets parity_rng parity_map test_pathfinder test_defs test_world test_commands test_audio test_view test_quarters test_blight; do
+for test in verify_assets parity_rng parity_map test_pathfinder test_defs test_world test_commands test_audio test_view test_quarters test_blight test_air test_infantry test_creep; do
   script="scripts/tests/$test.gd"
   [ "$test" = "verify_assets" ] && script="scripts/verify_assets.gd"
   echo

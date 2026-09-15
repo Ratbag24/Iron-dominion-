@@ -62,24 +62,55 @@ static func build_terrain(
 	var mi := MeshInstance3D.new()
 	mi.name = "Terrain"
 	mi.mesh = prebuilt if prebuilt != null else terrain.build_mesh()
-	var mat := StandardMaterial3D.new()
 	if diag:
-		mat.albedo_color = Color(1, 0.2, 0.2)
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		var flat := StandardMaterial3D.new()
+		flat.albedo_color = Color(1, 0.2, 0.2)
+		flat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mi.material_override = flat
 	else:
-		mat.vertex_color_use_as_albedo = true
-		mat.roughness = 0.94
-		mat.metallic = 0.0
-		# The ground mesh carries one vertex every few world units, which is
-		# far too coarse to catch the light like ground. A tiling detail
-		# normal map puts the fine relief back without adding geometry.
-		mat.normal_enabled = true
-		mat.normal_texture = detail_normal_texture()
-		mat.normal_scale = 0.85
-	mi.material_override = mat
+		mi.material_override = ground_material(terrain)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
 	return mi
+
+
+## The ground shader with its generated textures bound. The images behind it
+## come from IdGroundTextures, built on the loading thread when there is one;
+## only the wrapping for the GPU happens here on the main thread.
+static var _ground_textures: IdGroundTextures = null
+static var _ground_shader: Shader = null
+
+
+## Build the ground textures ahead of time, off the main thread. Safe to call
+## more than once; the second call is free.
+static func prepare_ground_textures() -> IdGroundTextures:
+	if _ground_textures == null:
+		_ground_textures = IdGroundTextures.new()
+	return _ground_textures
+
+
+static func ground_material(terrain: IdTerrainBuilder) -> ShaderMaterial:
+	if _ground_shader == null:
+		_ground_shader = load("res://shaders/ground.gdshader")
+	var tex := prepare_ground_textures()
+	var mat := ShaderMaterial.new()
+	mat.shader = _ground_shader
+	for name in ["grass", "earth", "rock", "sand", "creep"]:
+		mat.set_shader_parameter(name + "_albedo",
+			ImageTexture.create_from_image(tex.images[name + "_albedo"]))
+		mat.set_shader_parameter(name + "_normal",
+			ImageTexture.create_from_image(tex.images[name + "_normal"]))
+	var map: IdGameMap = terrain.map
+	mat.set_shader_parameter("map_size", Vector2(map.width, map.height))
+	mat.set_shader_parameter("corruption", blank_corruption(map))
+	return mat
+
+
+## An all-black corruption map, for scenes with no simulation writing one.
+static func blank_corruption(map: IdGameMap) -> ImageTexture:
+	var img := Image.create(map.cols, map.rows, false, Image.FORMAT_R8)
+	img.fill(Color.BLACK)
+	return ImageTexture.create_from_image(img)
 
 
 ## The detail normal map, uploaded once per run. The image behind it is
@@ -102,7 +133,7 @@ static func build_water(parent: Node, map: IdGameMap, terrain: IdTerrainBuilder)
 	mi.name = "Water"
 	mi.mesh = plane
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.14, 0.345, 0.486, 0.8)
+	mat.albedo_color = Color(0.1, 0.27, 0.4, 0.86)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.roughness = 0.12
 	mat.metallic = 0.35

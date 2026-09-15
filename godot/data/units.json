@@ -31,7 +31,10 @@
         "speed": 560,
         "aoe": 42,
         "spread": 0.015,
-        "color": "#8ef6ff"
+        "color": "#8ef6ff",
+        "vs": {
+          "infantry": 0.45
+        }
       }
     ],
     "wreckFraction": 0,
@@ -43,9 +46,12 @@
       "converter",
       "estore",
       "mstore",
+      "barracks",
       "botlab",
+      "airpad",
       "nano",
       "llt",
+      "aatower",
       "radar"
     ]
   },
@@ -224,7 +230,10 @@
         "speed": 1600,
         "aoe": 0,
         "spread": 0,
-        "color": "#ff5f5f"
+        "color": "#ff5f5f",
+        "vs": {
+          "infantry": 1.55
+        }
       }
     ],
     "desc": "Cheap perimeter defence. Strong against raiders."
@@ -251,7 +260,10 @@
         "speed": 520,
         "aoe": 64,
         "spread": 0.02,
-        "color": "#ff8ad8"
+        "color": "#ff8ad8",
+        "vs": {
+          "infantry": 1.25
+        }
       }
     ],
     "desc": "Tier 2 defence with splash damage and long reach."
@@ -299,9 +311,12 @@
       "converter",
       "estore",
       "mstore",
+      "barracks",
       "botlab",
+      "airpad",
       "nano",
       "llt",
+      "aatower",
       "radar"
     ]
   },
@@ -333,6 +348,7 @@
       "converter",
       "estore",
       "mstore",
+      "barracks",
       "botlab",
       "advbotlab",
       "nano",
@@ -368,7 +384,10 @@
         "speed": 1400,
         "aoe": 0,
         "spread": 0.05,
-        "color": "#ffe66d"
+        "color": "#ffe66d",
+        "vs": {
+          "infantry": 1.55
+        }
       }
     ],
     "desc": "Fast, cheap eyes. Snipe builders and outrun trouble."
@@ -400,7 +419,10 @@
         "speed": 1500,
         "aoe": 0,
         "spread": 0.035,
-        "color": "#ffd24a"
+        "color": "#ffd24a",
+        "vs": {
+          "infantry": 1.55
+        }
       }
     ],
     "desc": "The line infantry of your army. Cost efficient in numbers."
@@ -432,7 +454,10 @@
         "speed": 380,
         "aoe": 36,
         "spread": 0.02,
-        "color": "#ff9a5b"
+        "color": "#ff9a5b",
+        "vs": {
+          "infantry": 1.25
+        }
       }
     ],
     "desc": "Outranges assault bots. Keep it behind the front line."
@@ -464,7 +489,10 @@
         "speed": 1500,
         "aoe": 0,
         "spread": 0.02,
-        "color": "#ff7b4a"
+        "color": "#ff7b4a",
+        "vs": {
+          "infantry": 0.45
+        }
       },
       {
         "name": "Heavy Laser",
@@ -475,7 +503,10 @@
         "speed": 1500,
         "aoe": 0,
         "spread": 0.02,
-        "color": "#ff7b4a"
+        "color": "#ff7b4a",
+        "vs": {
+          "infantry": 0.45
+        }
       }
     ],
     "desc": "Tier 2 brawler. Twin lasers and enough armour to hold a push."
@@ -507,7 +538,10 @@
         "speed": 420,
         "aoe": 96,
         "spread": 0.045,
-        "color": "#cdd6ff"
+        "color": "#cdd6ff",
+        "vs": {
+          "infantry": 0.8
+        }
       }
     ],
     "desc": "Long range splash artillery. Cracks defences from outside their reach."
@@ -545,7 +579,10 @@
         "speed": 620,
         "aoe": 46,
         "spread": 0.015,
-        "color": "#ffd9a0"
+        "color": "#ffd9a0",
+        "vs": {
+          "infantry": 0.45
+        }
       }
     ],
     "wreckFraction": 0,
@@ -557,6 +594,7 @@
       "con_refinery",
       "con_battery",
       "con_silo",
+      "con_barracks",
       "con_yard",
       "con_crane",
       "con_pillbox",
@@ -748,7 +786,10 @@
         "speed": 900,
         "aoe": 12,
         "spread": 0.01,
-        "color": "#ffd24a"
+        "color": "#ffd24a",
+        "vs": {
+          "infantry": 1.25
+        }
       }
     ],
     "desc": "Dug-in autocannon. Tougher than a laser tower and it shreds raiders."
@@ -776,7 +817,10 @@
         "speed": 640,
         "aoe": 70,
         "spread": 0.015,
-        "color": "#ffb45e"
+        "color": "#ffb45e",
+        "vs": {
+          "infantry": 0.45
+        }
       }
     ],
     "desc": "Tier 2 emplacement with heavy splash and a long reach."
@@ -826,6 +870,7 @@
       "con_refinery",
       "con_battery",
       "con_silo",
+      "con_barracks",
       "con_yard",
       "con_crane",
       "con_pillbox",
@@ -861,6 +906,7 @@
       "con_refinery",
       "con_battery",
       "con_silo",
+      "con_barracks",
       "con_yard",
       "con_works",
       "con_crane",
@@ -897,7 +943,10 @@
         "speed": 1700,
         "aoe": 0,
         "spread": 0.06,
-        "color": "#fff0b8"
+        "color": "#fff0b8",
+        "vs": {
+          "infantry": 1.55
+        }
       }
     ],
     "desc": "The fastest thing on the field, and the best pair of eyes you have."
@@ -930,7 +979,10 @@
         "speed": 700,
         "aoe": 18,
         "spread": 0.02,
-        "color": "#ffcf8a"
+        "color": "#ffcf8a",
+        "vs": {
+          "infantry": 0.45
+        }
       }
     ],
     "desc": "Your line of battle. Splash damage makes it brutal against crowds."
@@ -963,7 +1015,10 @@
         "speed": 400,
         "aoe": 40,
         "spread": 0.015,
-        "color": "#ff9a5b"
+        "color": "#ff9a5b",
+        "vs": {
+          "infantry": 0.45
+        }
       }
     ],
     "desc": "Outranges tanks. Keep it behind the armour and it pays for itself."
@@ -996,7 +1051,10 @@
         "speed": 700,
         "aoe": 30,
         "spread": 0.018,
-        "color": "#ffc070"
+        "color": "#ffc070",
+        "vs": {
+          "infantry": 0.45
+        }
       },
       {
         "name": "140mm Cannon",
@@ -1007,7 +1065,10 @@
         "speed": 700,
         "aoe": 30,
         "spread": 0.018,
-        "color": "#ffc070"
+        "color": "#ffc070",
+        "vs": {
+          "infantry": 0.45
+        }
       }
     ],
     "desc": "Tier 2 breakthrough hull. Twin cannon and armour to walk into fire."
@@ -1040,10 +1101,825 @@
         "speed": 430,
         "aoe": 110,
         "spread": 0.05,
-        "color": "#e8dcc0"
+        "color": "#e8dcc0",
+        "vs": {
+          "infantry": 0.8
+        }
       }
     ],
     "desc": "Flattens emplacements from outside their range. Helpless up close."
+  },
+  "airpad": {
+    "id": "airpad",
+    "name": "Aircraft Plant",
+    "short": "AIR",
+    "kind": "building",
+    "tier": 1,
+    "metal": 680,
+    "energy": 1400,
+    "buildTime": 7000,
+    "hp": 2600,
+    "footprint": 6,
+    "los": 260,
+    "buildPower": 100,
+    "factory": true,
+    "desc": "Produces aircraft. They fly straight over anything in the way.",
+    "build": [
+      "gnat",
+      "harrier",
+      "hammerhead"
+    ]
+  },
+  "aatower": {
+    "id": "aatower",
+    "name": "Flak Tower",
+    "short": "FLK",
+    "kind": "building",
+    "tier": 1,
+    "metal": 210,
+    "energy": 900,
+    "buildTime": 2600,
+    "hp": 1150,
+    "footprint": 2,
+    "los": 420,
+    "weapons": [
+      {
+        "name": "Flak Battery",
+        "kind": "plasma",
+        "damage": 88,
+        "reload": 0.75,
+        "range": 420,
+        "speed": 900,
+        "aoe": 40,
+        "spread": 0.04,
+        "color": "#ffd27a",
+        "targets": "air",
+        "vs": {
+          "infantry": 1.25
+        }
+      }
+    ],
+    "desc": "Shoots at aircraft and nothing else. Without one you have no answer to them."
+  },
+  "gnat": {
+    "id": "gnat",
+    "name": "Gnat",
+    "short": "GNT",
+    "kind": "unit",
+    "layer": "air",
+    "role": "fighter",
+    "tier": 1,
+    "metal": 110,
+    "energy": 240,
+    "buildTime": 2100,
+    "hp": 300,
+    "radius": 11,
+    "speed": 210,
+    "turnRate": 2.6,
+    "accel": 400,
+    "altitude": 110,
+    "orbit": 130,
+    "los": 520,
+    "mass": 1,
+    "weapons": [
+      {
+        "name": "Interceptor Cannon",
+        "kind": "laser",
+        "damage": 34,
+        "reload": 0.28,
+        "range": 300,
+        "speed": 1700,
+        "aoe": 0,
+        "spread": 0.035,
+        "color": "#bfe9ff",
+        "targets": "air",
+        "vs": {
+          "infantry": 1.55
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Interceptor. Fast, fragile, and the only cheap answer to enemy air."
+  },
+  "harrier": {
+    "id": "harrier",
+    "name": "Harrier",
+    "short": "HAR",
+    "kind": "unit",
+    "layer": "air",
+    "role": "gunship",
+    "tier": 1,
+    "metal": 220,
+    "energy": 460,
+    "buildTime": 3400,
+    "hp": 520,
+    "radius": 12,
+    "speed": 150,
+    "turnRate": 2,
+    "accel": 320,
+    "altitude": 85,
+    "orbit": 110,
+    "los": 480,
+    "mass": 1.4,
+    "weapons": [
+      {
+        "name": "Gunship Rockets",
+        "kind": "missile",
+        "damage": 78,
+        "reload": 1.6,
+        "range": 300,
+        "speed": 400,
+        "aoe": 30,
+        "spread": 0.03,
+        "color": "#ff9a5b",
+        "targets": "both",
+        "vs": {
+          "infantry": 1.25
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Gunship. Shoots at both layers, and can hold a position by circling it."
+  },
+  "hammerhead": {
+    "id": "hammerhead",
+    "name": "Hammerhead",
+    "short": "HMR",
+    "kind": "unit",
+    "layer": "air",
+    "role": "bomber",
+    "tier": 2,
+    "metal": 520,
+    "energy": 1100,
+    "buildTime": 6200,
+    "hp": 760,
+    "radius": 14,
+    "speed": 175,
+    "turnRate": 1.5,
+    "accel": 280,
+    "altitude": 130,
+    "orbit": 170,
+    "los": 460,
+    "mass": 2.2,
+    "weapons": [
+      {
+        "name": "Bomb Bay",
+        "kind": "arty",
+        "damage": 300,
+        "reload": 4.2,
+        "range": 150,
+        "speed": 300,
+        "aoe": 110,
+        "spread": 0.02,
+        "color": "#ffb257",
+        "vs": {
+          "infantry": 0.8
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Bomber. One heavy pass, then a long turn to come round again."
+  },
+  "con_apron": {
+    "id": "con_apron",
+    "name": "Airfield",
+    "short": "FLD",
+    "kind": "building",
+    "tier": 1,
+    "metal": 780,
+    "energy": 1550,
+    "buildTime": 7800,
+    "hp": 3000,
+    "footprint": 6,
+    "los": 260,
+    "buildPower": 112,
+    "factory": true,
+    "desc": "Assembles aircraft. Slower than a plant, and tougher.",
+    "build": [
+      "con_needle",
+      "con_vulture",
+      "con_anvil"
+    ]
+  },
+  "con_battery_aa": {
+    "id": "con_battery_aa",
+    "name": "AA Battery",
+    "short": "AAB",
+    "kind": "building",
+    "tier": 1,
+    "metal": 230,
+    "energy": 940,
+    "buildTime": 2800,
+    "hp": 1250,
+    "footprint": 2,
+    "los": 440,
+    "weapons": [
+      {
+        "name": "SAM Rack",
+        "kind": "missile",
+        "damage": 140,
+        "reload": 2.1,
+        "range": 520,
+        "speed": 520,
+        "aoe": 26,
+        "spread": 0.01,
+        "color": "#9fe8ff",
+        "targets": "air",
+        "vs": {
+          "infantry": 0.45
+        }
+      }
+    ],
+    "desc": "Guided anti-air. Longer reach than flak, slower to cycle."
+  },
+  "con_needle": {
+    "id": "con_needle",
+    "name": "Needle",
+    "short": "NDL",
+    "kind": "unit",
+    "layer": "air",
+    "role": "fighter",
+    "tier": 1,
+    "metal": 125,
+    "energy": 260,
+    "buildTime": 2300,
+    "hp": 340,
+    "radius": 11,
+    "speed": 200,
+    "turnRate": 2.4,
+    "accel": 400,
+    "altitude": 110,
+    "orbit": 130,
+    "los": 520,
+    "mass": 1.1,
+    "weapons": [
+      {
+        "name": "Interceptor Cannon",
+        "kind": "laser",
+        "damage": 34,
+        "reload": 0.28,
+        "range": 300,
+        "speed": 1700,
+        "aoe": 0,
+        "spread": 0.035,
+        "color": "#bfe9ff",
+        "targets": "air",
+        "vs": {
+          "infantry": 1.55
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Interceptor. Crewed, so a little tougher and a little slower."
+  },
+  "con_vulture": {
+    "id": "con_vulture",
+    "name": "Vulture",
+    "short": "VLT",
+    "kind": "unit",
+    "layer": "air",
+    "role": "gunship",
+    "tier": 1,
+    "metal": 245,
+    "energy": 500,
+    "buildTime": 3700,
+    "hp": 600,
+    "radius": 13,
+    "speed": 140,
+    "turnRate": 1.9,
+    "accel": 300,
+    "altitude": 85,
+    "orbit": 110,
+    "los": 480,
+    "mass": 1.6,
+    "weapons": [
+      {
+        "name": "Gunship Rockets",
+        "kind": "missile",
+        "damage": 78,
+        "reload": 1.6,
+        "range": 300,
+        "speed": 400,
+        "aoe": 30,
+        "spread": 0.03,
+        "color": "#ff9a5b",
+        "targets": "both",
+        "vs": {
+          "infantry": 1.25
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Attack helicopter. Hangs over a fight and works both layers."
+  },
+  "con_anvil": {
+    "id": "con_anvil",
+    "name": "Anvil",
+    "short": "ANV",
+    "kind": "unit",
+    "layer": "air",
+    "role": "bomber",
+    "tier": 2,
+    "metal": 560,
+    "energy": 1180,
+    "buildTime": 6600,
+    "hp": 880,
+    "radius": 15,
+    "speed": 165,
+    "turnRate": 1.4,
+    "accel": 260,
+    "altitude": 130,
+    "orbit": 175,
+    "los": 460,
+    "mass": 2.4,
+    "weapons": [
+      {
+        "name": "Bomb Bay",
+        "kind": "arty",
+        "damage": 300,
+        "reload": 4.2,
+        "range": 150,
+        "speed": 300,
+        "aoe": 110,
+        "spread": 0.02,
+        "color": "#ffb257",
+        "vs": {
+          "infantry": 0.8
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Heavy bomber. Flattens a building a pass, if it survives the run in."
+  },
+  "bl_roost": {
+    "id": "bl_roost",
+    "name": "Roost",
+    "short": "RST",
+    "kind": "building",
+    "tier": 1,
+    "metal": 640,
+    "energy": 1320,
+    "buildTime": 6800,
+    "hp": 2500,
+    "footprint": 6,
+    "los": 260,
+    "buildPower": 96,
+    "factory": true,
+    "desc": "Hatches flying brood.",
+    "build": [
+      "bl_midge",
+      "bl_wing",
+      "bl_gorger"
+    ],
+    "creep": 7.6
+  },
+  "bl_spitter_aa": {
+    "id": "bl_spitter_aa",
+    "name": "Spore Thrower",
+    "short": "SPR",
+    "kind": "building",
+    "tier": 1,
+    "metal": 205,
+    "energy": 880,
+    "buildTime": 2500,
+    "hp": 1120,
+    "footprint": 2,
+    "los": 420,
+    "weapons": [
+      {
+        "name": "Autocannon",
+        "kind": "laser",
+        "damage": 26,
+        "reload": 0.2,
+        "range": 360,
+        "speed": 1500,
+        "aoe": 0,
+        "spread": 0.05,
+        "color": "#ffe08a",
+        "targets": "air",
+        "vs": {
+          "infantry": 1.55
+        }
+      }
+    ],
+    "desc": "Throws spores at anything overhead. Rapid, and short of reach.",
+    "creep": 4
+  },
+  "bl_midge": {
+    "id": "bl_midge",
+    "name": "Midge",
+    "short": "MDG",
+    "kind": "unit",
+    "layer": "air",
+    "role": "fighter",
+    "tier": 1,
+    "metal": 104,
+    "energy": 225,
+    "buildTime": 2000,
+    "hp": 300,
+    "radius": 10,
+    "speed": 215,
+    "turnRate": 2.8,
+    "accel": 420,
+    "altitude": 105,
+    "orbit": 125,
+    "los": 520,
+    "mass": 0.9,
+    "weapons": [
+      {
+        "name": "Interceptor Cannon",
+        "kind": "laser",
+        "damage": 34,
+        "reload": 0.28,
+        "range": 300,
+        "speed": 1700,
+        "aoe": 0,
+        "spread": 0.035,
+        "color": "#bfe9ff",
+        "targets": "air",
+        "vs": {
+          "infantry": 1.55
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Swarming interceptor. Cheap enough to lose.",
+    "creep": 0
+  },
+  "bl_wing": {
+    "id": "bl_wing",
+    "name": "Wing",
+    "short": "WNG",
+    "kind": "unit",
+    "layer": "air",
+    "role": "gunship",
+    "tier": 1,
+    "metal": 215,
+    "energy": 450,
+    "buildTime": 3300,
+    "hp": 540,
+    "radius": 12,
+    "speed": 155,
+    "turnRate": 2.1,
+    "accel": 330,
+    "altitude": 85,
+    "orbit": 105,
+    "los": 480,
+    "mass": 1.3,
+    "weapons": [
+      {
+        "name": "Gunship Rockets",
+        "kind": "missile",
+        "damage": 78,
+        "reload": 1.6,
+        "range": 300,
+        "speed": 400,
+        "aoe": 30,
+        "spread": 0.03,
+        "color": "#ff9a5b",
+        "targets": "both",
+        "vs": {
+          "infantry": 1.25
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Flying brood that works both layers.",
+    "creep": 0
+  },
+  "bl_gorger": {
+    "id": "bl_gorger",
+    "name": "Gorger",
+    "short": "GRG",
+    "kind": "unit",
+    "layer": "air",
+    "role": "bomber",
+    "tier": 2,
+    "metal": 505,
+    "energy": 1060,
+    "buildTime": 6000,
+    "hp": 800,
+    "radius": 14,
+    "speed": 180,
+    "turnRate": 1.6,
+    "accel": 290,
+    "altitude": 130,
+    "orbit": 165,
+    "los": 460,
+    "mass": 2.1,
+    "weapons": [
+      {
+        "name": "Bomb Bay",
+        "kind": "arty",
+        "damage": 300,
+        "reload": 4.2,
+        "range": 150,
+        "speed": 300,
+        "aoe": 110,
+        "spread": 0.02,
+        "color": "#ffb257",
+        "vs": {
+          "infantry": 0.8
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Drops its load in one pass and labours round for another.",
+    "creep": 0
+  },
+  "barracks": {
+    "id": "barracks",
+    "name": "Barracks",
+    "short": "BKS",
+    "kind": "building",
+    "tier": 1,
+    "metal": 320,
+    "energy": 620,
+    "buildTime": 3600,
+    "hp": 2100,
+    "footprint": 5,
+    "los": 240,
+    "buildPower": 90,
+    "factory": true,
+    "desc": "Trains infantry squads. Cheaper and quicker to raise than a bot lab.",
+    "build": [
+      "trooper",
+      "lancer",
+      "marksman"
+    ]
+  },
+  "trooper": {
+    "id": "trooper",
+    "name": "Trooper Squad",
+    "short": "TRP",
+    "kind": "unit",
+    "role": "assault",
+    "tier": 1,
+    "armour": "infantry",
+    "squad": 6,
+    "metal": 152,
+    "energy": 230,
+    "buildTime": 2900,
+    "hp": 84,
+    "radius": 6,
+    "speed": 58,
+    "turnRate": 12,
+    "accel": 300,
+    "los": 400,
+    "mass": 0.35,
+    "weapons": [
+      {
+        "name": "Service Rifle",
+        "kind": "laser",
+        "damage": 8,
+        "reload": 0.55,
+        "range": 165,
+        "speed": 1500,
+        "aoe": 0,
+        "spread": 0.07,
+        "color": "#ffe9a8",
+        "vs": {
+          "infantry": 1.55
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Six riflemen. Individually nothing; as a squad they hold ground and cross rock."
+  },
+  "lancer": {
+    "id": "lancer",
+    "name": "Lancer Squad",
+    "short": "LNC",
+    "kind": "unit",
+    "role": "skirmisher",
+    "tier": 1,
+    "armour": "infantry",
+    "squad": 4,
+    "metal": 186,
+    "energy": 330,
+    "buildTime": 3400,
+    "hp": 78,
+    "radius": 6,
+    "speed": 52,
+    "turnRate": 12,
+    "accel": 300,
+    "los": 440,
+    "mass": 0.35,
+    "weapons": [
+      {
+        "name": "Shoulder Launcher",
+        "kind": "missile",
+        "damage": 54,
+        "reload": 2.9,
+        "range": 255,
+        "speed": 380,
+        "aoe": 14,
+        "spread": 0.04,
+        "color": "#ffab6a",
+        "vs": {
+          "infantry": 0.6
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Four rocket troops. They open armour and fold instantly under return fire."
+  },
+  "marksman": {
+    "id": "marksman",
+    "name": "Support Squad",
+    "short": "SUP",
+    "kind": "unit",
+    "role": "support",
+    "tier": 1,
+    "armour": "infantry",
+    "squad": 3,
+    "metal": 172,
+    "energy": 290,
+    "buildTime": 3100,
+    "hp": 88,
+    "radius": 6,
+    "speed": 46,
+    "turnRate": 11,
+    "accel": 260,
+    "los": 460,
+    "mass": 0.4,
+    "weapons": [
+      {
+        "name": "Support Gun",
+        "kind": "laser",
+        "damage": 6,
+        "reload": 0.24,
+        "range": 180,
+        "speed": 1700,
+        "aoe": 0,
+        "spread": 0.08,
+        "color": "#fff2c4",
+        "vs": {
+          "infantry": 1.7
+        }
+      },
+      {
+        "name": "Shoulder SAM",
+        "kind": "missile",
+        "damage": 62,
+        "reload": 2.2,
+        "range": 400,
+        "speed": 540,
+        "aoe": 12,
+        "spread": 0.02,
+        "color": "#a8e6ff",
+        "targets": "air"
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Support gunners with a shoulder SAM. The only infantry that can touch aircraft."
+  },
+  "con_barracks": {
+    "id": "con_barracks",
+    "name": "Muster Hall",
+    "short": "MST",
+    "kind": "building",
+    "tier": 1,
+    "metal": 300,
+    "energy": 560,
+    "buildTime": 3300,
+    "hp": 2300,
+    "footprint": 5,
+    "los": 240,
+    "buildPower": 96,
+    "factory": true,
+    "desc": "Musters infantry. The cheapest way Concord has of putting bodies on the map.",
+    "build": [
+      "con_rifles",
+      "con_at",
+      "con_aa_team"
+    ]
+  },
+  "con_rifles": {
+    "id": "con_rifles",
+    "name": "Rifle Platoon",
+    "short": "RFL",
+    "kind": "unit",
+    "role": "assault",
+    "tier": 1,
+    "armour": "infantry",
+    "squad": 8,
+    "metal": 178,
+    "energy": 250,
+    "buildTime": 3200,
+    "hp": 80,
+    "radius": 6,
+    "speed": 55,
+    "turnRate": 12,
+    "accel": 300,
+    "los": 400,
+    "mass": 0.35,
+    "weapons": [
+      {
+        "name": "Service Rifle",
+        "kind": "laser",
+        "damage": 8,
+        "reload": 0.55,
+        "range": 165,
+        "speed": 1500,
+        "aoe": 0,
+        "spread": 0.07,
+        "color": "#ffe9a8",
+        "vs": {
+          "infantry": 1.55
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Eight rifles. Cheap, expendable, and there are always more."
+  },
+  "con_at": {
+    "id": "con_at",
+    "name": "AT Team",
+    "short": "ATT",
+    "kind": "unit",
+    "role": "skirmisher",
+    "tier": 1,
+    "armour": "infantry",
+    "squad": 4,
+    "metal": 182,
+    "energy": 320,
+    "buildTime": 3350,
+    "hp": 76,
+    "radius": 6,
+    "speed": 50,
+    "turnRate": 12,
+    "accel": 300,
+    "los": 440,
+    "mass": 0.35,
+    "weapons": [
+      {
+        "name": "Shoulder Launcher",
+        "kind": "missile",
+        "damage": 54,
+        "reload": 2.9,
+        "range": 255,
+        "speed": 380,
+        "aoe": 14,
+        "spread": 0.04,
+        "color": "#ffab6a",
+        "vs": {
+          "infantry": 0.6
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Anti-tank teams. A handful of them will stop an armoured push cold."
+  },
+  "con_aa_team": {
+    "id": "con_aa_team",
+    "name": "SAM Team",
+    "short": "SAM",
+    "kind": "unit",
+    "role": "support",
+    "tier": 1,
+    "armour": "infantry",
+    "squad": 3,
+    "metal": 176,
+    "energy": 330,
+    "buildTime": 3200,
+    "hp": 80,
+    "radius": 6,
+    "speed": 48,
+    "turnRate": 11,
+    "accel": 280,
+    "los": 470,
+    "mass": 0.4,
+    "weapons": [
+      {
+        "name": "Shoulder SAM",
+        "kind": "missile",
+        "damage": 62,
+        "reload": 2.2,
+        "range": 400,
+        "speed": 540,
+        "aoe": 12,
+        "spread": 0.02,
+        "color": "#a8e6ff",
+        "targets": "air"
+      },
+      {
+        "name": "Support Gun",
+        "kind": "laser",
+        "damage": 6,
+        "reload": 0.24,
+        "range": 180,
+        "speed": 1700,
+        "aoe": 0,
+        "spread": 0.08,
+        "color": "#fff2c4",
+        "vs": {
+          "infantry": 1.7
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Mobile anti-air that walks with the army instead of waiting at home."
   },
   "bl_hive": {
     "id": "bl_hive",
@@ -1077,7 +1953,10 @@
         "speed": 540,
         "aoe": 38,
         "spread": 0.02,
-        "color": "#b6ff6a"
+        "color": "#b6ff6a",
+        "vs": {
+          "infantry": 0.45
+        }
       }
     ],
     "wreckFraction": 0,
@@ -1088,11 +1967,15 @@
       "bl_gut",
       "bl_bladder",
       "bl_sac",
+      "bl_brood",
       "bl_pit",
+      "bl_roost",
       "bl_spire",
       "bl_thorn",
+      "bl_spitter_aa",
       "bl_antenna"
-    ]
+    ],
+    "creep": 7
   },
   "bl_tap": {
     "id": "bl_tap",
@@ -1108,7 +1991,8 @@
     "los": 200,
     "needsMetalSpot": true,
     "metalPerSecond": 1.8,
-    "desc": "Draws metal from a deposit. Build on every one you can hold."
+    "desc": "Draws metal from a deposit. Build on every one you can hold.",
+    "creep": 4.9
   },
   "bl_vent": {
     "id": "bl_vent",
@@ -1123,7 +2007,8 @@
     "footprint": 4,
     "los": 160,
     "energyPerSecond": 22,
-    "desc": "Steady energy, and the only structure that costs none to grow."
+    "desc": "Steady energy, and the only structure that costs none to grow.",
+    "creep": 5.8
   },
   "bl_bloom": {
     "id": "bl_bloom",
@@ -1138,7 +2023,8 @@
     "footprint": 5,
     "los": 240,
     "energyPerSecond": 240,
-    "desc": "A mid-game commitment. Pays for a war once the metal is flowing."
+    "desc": "A mid-game commitment. Pays for a war once the metal is flowing.",
+    "creep": 6.7
   },
   "bl_gut": {
     "id": "bl_gut",
@@ -1154,7 +2040,8 @@
     "los": 140,
     "convertsEnergy": 70,
     "convertsToMetal": 1,
-    "desc": "Turns surplus energy into metal. Worth it only once energy is spare."
+    "desc": "Turns surplus energy into metal. Worth it only once energy is spare.",
+    "creep": 4.9
   },
   "bl_sac": {
     "id": "bl_sac",
@@ -1169,7 +2056,8 @@
     "footprint": 3,
     "los": 140,
     "metalStorage": 3000,
-    "desc": "Room to bank metal instead of wasting it."
+    "desc": "Room to bank metal instead of wasting it.",
+    "creep": 4.9
   },
   "bl_bladder": {
     "id": "bl_bladder",
@@ -1184,7 +2072,8 @@
     "footprint": 3,
     "los": 140,
     "energyStorage": 3000,
-    "desc": "Room to bank energy. Cheap, and it stops a stall becoming a stop."
+    "desc": "Room to bank energy. Cheap, and it stops a stall becoming a stop.",
+    "creep": 4.9
   },
   "bl_antenna": {
     "id": "bl_antenna",
@@ -1199,7 +2088,8 @@
     "footprint": 2,
     "los": 320,
     "radar": 1500,
-    "desc": "Feels movement well beyond sight, without seeing what it is."
+    "desc": "Feels movement well beyond sight, without seeing what it is.",
+    "creep": 4
   },
   "bl_pit": {
     "id": "bl_pit",
@@ -1221,7 +2111,8 @@
       "bl_skitter",
       "bl_husk",
       "bl_spitter"
-    ]
+    ],
+    "creep": 7.6
   },
   "bl_deeppit": {
     "id": "bl_deeppit",
@@ -1242,7 +2133,8 @@
       "bl_tender2",
       "bl_brute",
       "bl_lobber"
-    ]
+    ],
+    "creep": 8.5
   },
   "bl_spire": {
     "id": "bl_spire",
@@ -1259,7 +2151,8 @@
     "buildPower": 72,
     "buildRange": 300,
     "assistOnly": true,
-    "desc": "Fixed build power. Grow them beside a pit to hurry the brood along."
+    "desc": "Fixed build power. Grow them beside a pit to hurry the brood along.",
+    "creep": 4
   },
   "bl_thorn": {
     "id": "bl_thorn",
@@ -1283,10 +2176,14 @@
         "speed": 1600,
         "aoe": 0,
         "spread": 0,
-        "color": "#8fe84a"
+        "color": "#8fe84a",
+        "vs": {
+          "infantry": 1.55
+        }
       }
     ],
-    "desc": "A cheap spine that holds ground against raiders."
+    "desc": "A cheap spine that holds ground against raiders.",
+    "creep": 4
   },
   "bl_maw": {
     "id": "bl_maw",
@@ -1310,10 +2207,14 @@
         "speed": 500,
         "aoe": 60,
         "spread": 0.025,
-        "color": "#b6ff6a"
+        "color": "#b6ff6a",
+        "vs": {
+          "infantry": 1.25
+        }
       }
     ],
-    "desc": "Heavy emplacement. Outranges most things that walk at it."
+    "desc": "Heavy emplacement. Outranges most things that walk at it.",
+    "creep": 4.9
   },
   "bl_tender": {
     "id": "bl_tender",
@@ -1334,7 +2235,8 @@
     "buildRange": 125,
     "los": 340,
     "mass": 1.3,
-    "desc": "Grows structures and helps at a pit. Keep every one of them busy."
+    "desc": "Grows structures and helps at a pit. Keep every one of them busy.",
+    "creep": 1.4
   },
   "bl_tender2": {
     "id": "bl_tender2",
@@ -1363,13 +2265,17 @@
       "bl_gut",
       "bl_bladder",
       "bl_sac",
+      "bl_brood",
       "bl_pit",
       "bl_deeppit",
+      "bl_roost",
       "bl_spire",
       "bl_thorn",
+      "bl_spitter_aa",
       "bl_maw",
       "bl_antenna"
-    ]
+    ],
+    "creep": 1.4
   },
   "bl_skitter": {
     "id": "bl_skitter",
@@ -1399,10 +2305,14 @@
         "aoe": 0,
         "spread": 0.05,
         "color": "#a6f25a",
-        "infects": 0.55
+        "infects": 0.55,
+        "vs": {
+          "infantry": 1.55
+        }
       }
     ],
-    "desc": "Fast and frail. Runs down builders and takes them whole."
+    "desc": "Fast and frail. Runs down builders and takes them whole.",
+    "creep": 1.4
   },
   "bl_husk": {
     "id": "bl_husk",
@@ -1432,10 +2342,14 @@
         "aoe": 0,
         "spread": 0.035,
         "color": "#8fe84a",
-        "infects": 0.45
+        "infects": 0.45,
+        "vs": {
+          "infantry": 1.55
+        }
       }
     ],
-    "desc": "The body of the swarm. Cheap, quick, and hungry at close range."
+    "desc": "The body of the swarm. Cheap, quick, and hungry at close range.",
+    "creep": 1.4
   },
   "bl_spitter": {
     "id": "bl_spitter",
@@ -1465,10 +2379,14 @@
         "aoe": 30,
         "spread": 0.03,
         "color": "#d4ff5e",
-        "infects": 0.22
+        "infects": 0.22,
+        "vs": {
+          "infantry": 1.25
+        }
       }
     ],
-    "desc": "Lobs acid over the front rank. Rarely takes what it kills."
+    "desc": "Lobs acid over the front rank. Rarely takes what it kills.",
+    "creep": 1.4
   },
   "bl_brute": {
     "id": "bl_brute",
@@ -1498,10 +2416,14 @@
         "aoe": 0,
         "spread": 0.02,
         "color": "#9bf05a",
-        "infects": 0.38
+        "infects": 0.38,
+        "vs": {
+          "infantry": 0.45
+        }
       }
     ],
-    "desc": "Walks into a line and comes out the far side with recruits."
+    "desc": "Walks into a line and comes out the far side with recruits.",
+    "creep": 1.4
   },
   "bl_lobber": {
     "id": "bl_lobber",
@@ -1530,9 +2452,165 @@
         "speed": 400,
         "aoe": 104,
         "spread": 0.05,
-        "color": "#ccff8a"
+        "color": "#ccff8a",
+        "vs": {
+          "infantry": 0.8
+        }
       }
     ],
-    "desc": "Breaks emplacements from outside their reach. Helpless up close."
+    "desc": "Breaks emplacements from outside their reach. Helpless up close.",
+    "creep": 1.4
+  },
+  "bl_brood": {
+    "id": "bl_brood",
+    "name": "Brood Pit",
+    "short": "BRD",
+    "kind": "building",
+    "tier": 1,
+    "metal": 280,
+    "energy": 520,
+    "buildTime": 3100,
+    "hp": 2000,
+    "footprint": 5,
+    "los": 230,
+    "buildPower": 88,
+    "factory": true,
+    "desc": "Spawns swarms. The cheapest structure that produces anything at all.",
+    "build": [
+      "bl_swarmer",
+      "bl_barbs",
+      "bl_screamer"
+    ],
+    "creep": 6.7
+  },
+  "bl_swarmer": {
+    "id": "bl_swarmer",
+    "name": "Swarm",
+    "short": "SWM",
+    "kind": "unit",
+    "role": "assault",
+    "tier": 1,
+    "armour": "infantry",
+    "squad": 10,
+    "metal": 168,
+    "energy": 215,
+    "buildTime": 3000,
+    "hp": 62,
+    "radius": 5,
+    "speed": 66,
+    "turnRate": 14,
+    "accel": 340,
+    "los": 360,
+    "mass": 0.3,
+    "weapons": [
+      {
+        "name": "Swarmer Bite",
+        "kind": "laser",
+        "damage": 6,
+        "reload": 0.5,
+        "range": 130,
+        "speed": 1500,
+        "aoe": 0,
+        "spread": 0.07,
+        "color": "#a6f25a",
+        "infects": 0.12,
+        "vs": {
+          "infantry": 1.55
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Ten of them, and each bite can take what it kills.",
+    "creep": 0.8
+  },
+  "bl_barbs": {
+    "id": "bl_barbs",
+    "name": "Barb Cluster",
+    "short": "BRB",
+    "kind": "unit",
+    "role": "skirmisher",
+    "tier": 1,
+    "armour": "infantry",
+    "squad": 4,
+    "metal": 180,
+    "energy": 305,
+    "buildTime": 3300,
+    "hp": 74,
+    "radius": 6,
+    "speed": 54,
+    "turnRate": 12,
+    "accel": 300,
+    "los": 420,
+    "mass": 0.35,
+    "weapons": [
+      {
+        "name": "Shoulder Launcher",
+        "kind": "missile",
+        "damage": 54,
+        "reload": 2.9,
+        "range": 255,
+        "speed": 380,
+        "aoe": 14,
+        "spread": 0.04,
+        "color": "#ffab6a",
+        "vs": {
+          "infantry": 0.6
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Spits a barb heavy enough to open a hull. Nothing to it but the spit.",
+    "creep": 0.8
+  },
+  "bl_screamer": {
+    "id": "bl_screamer",
+    "name": "Screamer",
+    "short": "SCR",
+    "kind": "unit",
+    "role": "support",
+    "tier": 1,
+    "armour": "infantry",
+    "squad": 3,
+    "metal": 178,
+    "energy": 320,
+    "buildTime": 3200,
+    "hp": 78,
+    "radius": 6,
+    "speed": 50,
+    "turnRate": 11,
+    "accel": 280,
+    "los": 450,
+    "mass": 0.4,
+    "weapons": [
+      {
+        "name": "Shoulder SAM",
+        "kind": "missile",
+        "damage": 62,
+        "reload": 2.2,
+        "range": 400,
+        "speed": 540,
+        "aoe": 12,
+        "spread": 0.02,
+        "color": "#a8e6ff",
+        "targets": "air"
+      },
+      {
+        "name": "Support Gun",
+        "kind": "laser",
+        "damage": 6,
+        "reload": 0.24,
+        "range": 180,
+        "speed": 1700,
+        "aoe": 0,
+        "spread": 0.08,
+        "color": "#fff2c4",
+        "vs": {
+          "infantry": 1.7
+        }
+      }
+    ],
+    "wreckFraction": 0,
+    "desc": "Screams something down out of the sky. The hive walking with its own anti-air.",
+    "creep": 0.8
   }
 }

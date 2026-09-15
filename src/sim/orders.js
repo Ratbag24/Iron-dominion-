@@ -6,6 +6,7 @@
 
 import { dist, dist2 } from '../core/math.js';
 import { getDef, BUILD_CELL } from './defs.js';
+import { canEngage } from './combat.js';
 
 export const ORDER = {
   MOVE: 'move',
@@ -366,6 +367,8 @@ export function findNearbyEnemy(world, e, radius) {
   let bestScore = -Infinity;
   for (const other of found) {
     if (!other.alive || !world.isEnemy(e, other)) continue;
+    // No sense walking towards something none of our weapons can reach.
+    if (e.weapons.length && !canEngage(e, other)) continue;
     const d = dist(e.x, e.y, other.x, other.y);
     if (d > radius) continue;
     if (!world.fog[e.player].isVisible(other.x, other.y)) continue;

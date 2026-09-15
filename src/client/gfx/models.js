@@ -23,7 +23,8 @@ function heavyBuild(faction) {
 
 function commander(r, c, faction) {
   const wide = heavyBuild(faction);
-  const parts = legPair(r, c, { gauge: 0.56, scale: 1.15, splay: 0.16 });
+  const legs = legPairParts(r, c, { gauge: 0.56, scale: 1.15, splay: 0.16 });
+  const parts = [];
 
   // Pelvis and a torso that tapers towards the shoulders.
   parts.push(box(r * 0.8, r * 0.3, r * 1.0, HULL_DARK, { y: r * 1.1 }));
@@ -43,6 +44,7 @@ function commander(r, c, faction) {
   parts.push(...engineDeck(r, { x: -r * 0.55, y: r * 2.06, w: 0.5, d: 1.1, slats: 4 }));
   return {
     body: merge(parts),
+    legs: legGeos(legs),
     turret: merge([
       box(r * 0.58, r * 0.46, r * 0.7, c.dark, {}),
       ...gunBarrel(r, { len: 1.3, calibre: 0.13 }),
@@ -53,7 +55,8 @@ function commander(r, c, faction) {
 }
 
 function conbot(r, c) {
-  const parts = legPair(r, c, { gauge: 0.46, scale: 0.9 });
+  const legs = legPairParts(r, c, { gauge: 0.46, scale: 0.9 });
+  const parts = [];
   parts.push(box(r * 0.6, r * 0.22, r * 0.72, HULL_DARK, { y: r * 0.9 }));
   parts.push(cylinder(r * 0.24, r * 0.24, r * 0.1, STEEL, { y: r * 1.0 }, 12));
   parts.push(box(r * 0.9, r * 0.66, r * 0.9, HULL, { y: r * 1.28 }));
@@ -71,6 +74,7 @@ function conbot(r, c) {
   parts.push(...aerial(r, { x: -r * 0.34, z: r * 0.26, y: r * 1.6, len: 0.9 }));
   return {
     body: merge(parts),
+    legs: legGeos(legs),
     turret: merge([
       cylinder(r * 0.16, r * 0.18, r * 0.16, HULL_DARK, {}, 12),
       box(r * 0.46, r * 0.18, r * 0.22, HULL, { x: r * 0.28 }),
@@ -83,7 +87,8 @@ function conbot(r, c) {
 
 function scout(r, c) {
   // Digitigrade legs and a low, forward-leaning body: built for speed.
-  const parts = legPair(r, c, { gauge: 0.5, scale: 0.85, splay: 0.2 });
+  const legs = legPairParts(r, c, { gauge: 0.5, scale: 0.85, splay: 0.2 });
+  const parts = [];
   parts.push(box(r * 0.52, r * 0.22, r * 0.68, HULL_DARK, { y: r * 0.86 }));
   parts.push(cylinder(r * 0.22, r * 0.22, r * 0.1, STEEL, { y: r * 0.98 }, 12));
   parts.push(box(r * 1.25, r * 0.48, r * 0.8, HULL, { x: r * 0.1, y: r * 1.16, rz: -0.1 }));
@@ -106,6 +111,7 @@ function scout(r, c) {
   parts.push(...grille(r, { x: -r * 0.66, y: r * 1.22, w: 0.08, d: 0.4, slats: 4 }));
   return {
     body: merge(parts),
+    legs: legGeos(legs),
     turret: merge([
       cylinder(r * 0.13, r * 0.15, r * 0.14, HULL_DARK, {}, 10),
       box(r * 0.26, r * 0.2, r * 0.26, HULL, { x: r * 0.12 }),
@@ -119,7 +125,8 @@ function scout(r, c) {
 
 function rifle(r, c, faction) {
   const wide = heavyBuild(faction);
-  const parts = legPair(r, c, { gauge: 0.48, scale: 0.95 });
+  const legs = legPairParts(r, c, { gauge: 0.48, scale: 0.95 });
+  const parts = [];
 
   // Pelvis and waist ring, so the torso sits on something rather than floating.
   parts.push(box(r * 0.66, r * 0.24, r * 0.82, HULL_DARK, { y: r * 0.94 }));
@@ -164,6 +171,7 @@ function rifle(r, c, faction) {
 
   return {
     body: merge(parts),
+    legs: legGeos(legs),
     turret: merge([
       // Shoulder mount, upper arm, and the weapon it carries.
       cylinder(r * 0.22, r * 0.22, r * 0.26, HULL_DARK, { rx: Math.PI / 2 }, 12),
@@ -184,7 +192,8 @@ function rifle(r, c, faction) {
 }
 
 function rocket(r, c) {
-  const parts = legPair(r, c, { gauge: 0.5, scale: 1.0 });
+  const legs = legPairParts(r, c, { gauge: 0.5, scale: 1.0 });
+  const parts = [];
   parts.push(box(r * 0.7, r * 0.24, r * 0.86, HULL_DARK, { y: r * 0.94 }));
   parts.push(cylinder(r * 0.28, r * 0.28, r * 0.12, STEEL, { y: r * 1.06 }, 14));
   parts.push(...boltRing(r, { y: r * 1.1, radius: 0.22, count: 9, size: 0.026 }));
@@ -207,6 +216,7 @@ function rocket(r, c) {
   parts.push(...aerial(r, { x: -r * 0.44, z: r * 0.3, y: r * 1.86, len: 1.1 }));
   return {
     body: merge(parts),
+    legs: legGeos(legs),
     turret: merge([
       cylinder(r * 0.22, r * 0.22, r * 0.24, HULL_DARK, { rx: Math.PI / 2 }, 12),
       // Four-cell launcher with loaded warheads showing.
@@ -228,7 +238,8 @@ function rocket(r, c) {
 }
 
 function heavy(r, c) {
-  const parts = legPair(r, c, { gauge: 0.62, scale: 1.35, splay: 0.16 });
+  const legs = legPairParts(r, c, { gauge: 0.62, scale: 1.35, splay: 0.16 });
+  const parts = [];
   parts.push(box(r * 1.0, r * 0.3, r * 1.2, HULL_DARK, { y: r * 1.26 }));
   parts.push(cylinder(r * 0.4, r * 0.4, r * 0.16, STEEL, { y: r * 1.44 }, 16));
   parts.push(...boltRing(r, { y: r * 1.5, radius: 0.32, count: 12, size: 0.03 }));
@@ -257,6 +268,7 @@ function heavy(r, c) {
   parts.push(...aerial(r, { x: -r * 0.66, z: r * 0.44, y: r * 2.52, len: 1.2 }));
   return {
     body: merge(parts),
+    legs: legGeos(legs),
     turret: merge([
       cylinder(r * 0.3, r * 0.3, r * 0.34, HULL_DARK, { rx: Math.PI / 2 }, 14),
       ...boltRing(r, { y: r * 0.2, radius: 0.22, count: 9, size: 0.03 }),
@@ -278,7 +290,8 @@ function heavy(r, c) {
 }
 
 function siege(r, c) {
-  const parts = legPair(r, c, { gauge: 0.66, scale: 1.2, splay: 0.24 });
+  const legs = legPairParts(r, c, { gauge: 0.66, scale: 1.2, splay: 0.24 });
+  const parts = [];
   // Wide, braced base: a firing platform rather than a walker.
   parts.push(box(r * 1.2, r * 0.3, r * 1.5, HULL_DARK, { y: r * 1.1 }));
   for (const side of [-1, 1]) {
@@ -300,6 +313,7 @@ function siege(r, c) {
   parts.push(...cable(r, [-r * 0.6, r * 1.9, r * 0.3], [-r * 0.1, r * 1.96, r * 0.5]));
   return {
     body: merge(parts),
+    legs: legGeos(legs),
     turret: merge([
       cylinder(r * 0.3, r * 0.3, r * 0.3, HULL_DARK, { rx: Math.PI / 2 }, 14),
       box(r * 0.66, r * 0.48, r * 0.72, HULL, { x: r * 0.1 }),
@@ -750,10 +764,20 @@ function gunBarrel(r, { len = 1.5, calibre = 0.12, brake = true, y = 0 } = {}) {
  * were previously two plain boxes, which is what made them read as furniture
  * rather than as machines that walk.
  */
-function legPair(r, c, { gauge = 0.5, scale = 1, splay = 0.12 } = {}) {
-  const parts = [];
+/**
+ * Legs as separate parts, each with its hip pivot, so the view can swing
+ * them. `legPair` below flattens this for anything that only wants geometry.
+ *
+ * Animation is the single largest thing separating "models" from "a game":
+ * a walker that glides is a chess piece. Each leg is exported as its own node
+ * hung from the hip, and unit_view.gd rocks it fore and aft in time with the
+ * unit's speed. That is all a walk cycle is at this camera distance.
+ */
+function legPairParts(r, c, { gauge = 0.5, scale = 1, splay = 0.12 } = {}) {
+  const legs = [];
   const s = scale;
   for (const side of [-gauge, gauge]) {
+    const parts = [];
     const dir = side < 0 ? -1 : 1;
     // Hip actuator, with its bolted collar.
     parts.push(cylinder(r * 0.17 * s, r * 0.17 * s, r * 0.22 * s, HULL, {
@@ -810,8 +834,18 @@ function legPair(r, c, { gauge = 0.5, scale = 1, splay = 0.12 } = {}) {
       to: [r * 0.16 * s, r * 0.12 * s, side * (r + dir * splay * r)],
       count: 3, size: 0.026 * s,
     }));
+    legs.push({ parts, pivot: [0, r * 0.92 * s, side * r], phase: side < 0 ? 0 : 1 });
   }
-  return parts;
+  return legs;
+}
+
+function legPair(r, c, opts = {}) {
+  return legPairParts(r, c, opts).flatMap((l) => l.parts);
+}
+
+/** Merge each leg's parts, ready for the exporter and the renderer. */
+function legGeos(legs) {
+  return legs.map((l) => ({ geo: merge(l.parts), pivot: l.pivot, phase: l.phase }));
 }
 
 function shoulder(r, c, { z = 0, y = 0, scale = 1 } = {}) {
@@ -1446,162 +1480,477 @@ function mound(s, c, h = 0.1) {
   ];
 }
 
+// The hive's equivalent of the panel lines, bolts and grilles the metal
+// factions got. It is not enough to make a shape organic by making it round:
+// what reads as living rather than moulded is segmentation, asymmetry, and
+// surfaces that look like they grew in layers. All of it is geometry, because
+// there are no textures anywhere in this project.
+
+/**
+ * Overlapping plates along a body, each a little smaller than the last.
+ *
+ * The single most useful thing here. A bare dome reads as a pebble; the same
+ * dome with five plates lapped over it reads as a carapace, and it costs a
+ * handful of flattened boxes.
+ */
+function segments(r, { from, to, count = 5, width = 0.8, rise = 0.1, colour = CHITIN_LIGHT }) {
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const t = count === 1 ? 0 : i / (count - 1);
+    const taper = 1 - Math.abs(t - 0.35) * 0.55;
+    parts.push(box(r * 0.1, r * rise, r * width * taper, colour, {
+      x: from[0] + (to[0] - from[0]) * t,
+      y: from[1] + (to[1] - from[1]) * t,
+      z: from[2] + (to[2] - from[2]) * t,
+      rz: -0.2 + t * 0.35,
+    }));
+  }
+  return parts;
+}
+
+/** Breathing pores down a flank: small dark pits, in an uneven row. */
+function pores(r, { x = 0, y = 0, z = 0, count = 4, spacing = 0.26, size = 0.055 } = {}) {
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const t = i - (count - 1) / 2;
+    parts.push(cylinder(r * size, r * size * 0.7, r * 0.04, CHITIN_DARK, {
+      x: x + t * r * spacing,
+      y: y + Math.sin(i * 2.3) * r * 0.04,
+      z, rx: Math.PI / 2,
+    }, 6));
+  }
+  return parts;
+}
+
+/** A raised vein running over a surface, in two or three kinked lengths. */
+function vein(r, { from, to, colour = FLESH, thickness = 0.03, kinks = 2 } = {}) {
+  const parts = [];
+  const steps = kinks + 1;
+  for (let i = 0; i < steps; i++) {
+    const t0 = i / steps;
+    const t1 = (i + 1) / steps;
+    const wob = Math.sin(i * 1.9) * r * 0.07;
+    const ax = from[0] + (to[0] - from[0]) * t0;
+    const ay = from[1] + (to[1] - from[1]) * t0 + wob;
+    const az = from[2] + (to[2] - from[2]) * t0;
+    const bx = from[0] + (to[0] - from[0]) * t1;
+    const by = from[1] + (to[1] - from[1]) * t1 - wob;
+    const bz = from[2] + (to[2] - from[2]) * t1;
+    const len = Math.hypot(bx - ax, by - ay, bz - az) || r * 0.05;
+    parts.push(box(len, r * thickness, r * thickness, colour, {
+      x: (ax + bx) / 2, y: (ay + by) / 2, z: (az + bz) / 2,
+      rz: Math.atan2(by - ay, bx - ax),
+      ry: -Math.atan2(bz - az, bx - ax),
+    }));
+  }
+  return parts;
+}
+
+/**
+ * A properly jointed leg: coxa, femur, tibia, claw.
+ *
+ * The old legs were two cylinders at a fixed angle, which read as sticks. A
+ * real insect leg goes up, out, then down, and the raised knee above the body
+ * line is what makes the silhouette read as a crawling thing at any size.
+ */
+function jointedLeg(r, { x = 0, y = 0, z = 0, side = 1, scale = 1, splay = 0.5, lift = 0.5 }) {
+  const s = scale;
+  const parts = [];
+  // Coxa: the socket where it meets the body.
+  parts.push(sphere(r * 0.09 * s, CHITIN_DARK, { x, y, z }, 6, 5));
+  // Femur, angled up and out to the raised knee.
+  const kx = x - r * 0.1 * s;
+  const ky = y + r * 0.42 * s * lift;
+  const kz = z + side * r * 0.42 * s * splay;
+  parts.push(cylinder(r * 0.075 * s, r * 0.055 * s, r * Math.hypot(0.1, 0.42 * lift, 0.42 * splay) * s,
+    CHITIN, { x: (x + kx) / 2, y: (y + ky) / 2, z: (z + kz) / 2,
+      rz: Math.PI / 2 - Math.atan2(ky - y, kx - x),
+      rx: Math.atan2(kz - z, ky - y) }, 6));
+  parts.push(sphere(r * 0.07 * s, CHITIN_LIGHT, { x: kx, y: ky, z: kz }, 6, 5));
+  // Tibia, down and further out to the ground.
+  const fx = kx + r * 0.16 * s;
+  const fy = r * 0.05 * s;
+  const fz = kz + side * r * 0.3 * s * splay;
+  parts.push(cylinder(r * 0.05 * s, r * 0.028 * s, r * Math.hypot(0.16, 0.42 * lift, 0.3 * splay) * s,
+    CHITIN_DARK, { x: (kx + fx) / 2, y: (ky + fy) / 2, z: (kz + fz) / 2,
+      rz: Math.PI / 2 - Math.atan2(fy - ky, fx - kx),
+      rx: Math.atan2(fz - kz, fy - ky) }, 6));
+  // Claw.
+  parts.push(cone(r * 0.035 * s, r * 0.12 * s, CHITIN_LIGHT, { x: fx, y: fy, z: fz, rz: Math.PI }, 5));
+  return parts;
+}
+
+/** A row of jointed legs down both sides of a body. */
+/**
+ * A row of jointed legs, each its own part pivoted at the coxa. Alternate
+ * legs on alternate sides share a phase, which is the tripod gait every
+ * six-legged thing actually walks with: three feet down, three swinging.
+ */
+function legRowParts(r, { count = 3, scale = 1, gauge = 0.6, from = -0.5, to = 0.5, y = 0.5, lift = 0.5 } = {}) {
+  const legs = [];
+  for (let i = 0; i < count; i++) {
+    const t = count === 1 ? 0.5 : i / (count - 1);
+    const x = r * (from + (to - from) * t);
+    // Front legs reach further forward, rear legs trail: a row of identical
+    // legs reads as a millipede toy rather than as something that walks.
+    const lean = 1 - Math.abs(t - 0.5) * 0.4;
+    for (const side of [-1, 1]) {
+      const z = side * r * gauge * 0.45;
+      legs.push({
+        parts: jointedLeg(r, { x, y: r * y, z, side, scale: scale * lean, splay: gauge, lift }),
+        pivot: [x, r * y, z],
+        phase: ((i % 2 === 0) === (side > 0)) ? 0 : 1,
+      });
+    }
+  }
+  return legs;
+}
+
+function legRow(r, opts = {}) {
+  return legRowParts(r, opts).flatMap((l) => l.parts);
+}
+
+/**
+ * The hive's recognition marking.
+ *
+ * Team colour on a Blight unit was the whole carapace, which made every hive
+ * unit a solid block of red or green and lost the shape inside it -- the same
+ * mistake the metal hulls made before they were rebuilt. The body is chitin
+ * now, and the colour is carried here: a marked plate over the back, a pair of
+ * flank flashes, and the glow of whatever it uses for eyes.
+ */
+function hiveMark(r, c, { x = 0, y = 0, scale = 1, flanks = true } = {}) {
+  const parts = [box(r * 0.5 * scale, r * 0.08 * scale, r * 0.44 * scale, c.primary, {
+    x, y, rz: -0.06,
+  })];
+  parts.push(box(r * 0.3 * scale, r * 0.05 * scale, r * 0.2 * scale, c.light, { x: x + r * 0.05 * scale, y: y + r * 0.05 * scale }));
+  if (flanks) {
+    for (const side of [-1, 1]) {
+      parts.push(box(r * 0.34 * scale, r * 0.2 * scale, r * 0.04 * scale, c.dark, {
+        x, y: y - r * 0.18 * scale, z: side * r * 0.42 * scale,
+      }));
+    }
+  }
+  return parts;
+}
+
 // --------------------------------------------------------------- hive units
 
 function blHive(r, c) {
-  const parts = crawlerLegs(r, c, { scale: 1.3, gauge: 0.7, count: 4 });
-  parts.push(...carapace(r, c.primary, { y: r * 1.5, scale: 1.5, squash: 0.72 }));
-  parts.push(...carapace(r, c.dark, { x: -r * 0.5, y: r * 2.1, scale: 0.9 }));
-  parts.push(...spines(r, c, { x: -r * 0.2, y: r * 2.3, count: 5, len: 0.8, spacing: 0.26 }));
-  parts.push(...maw(r, { x: r * 1.25, y: r * 1.4, radius: 0.45, count: 10, len: 0.36 }));
-  parts.push(sphere(r * 0.2, BILE, { x: r * 0.7, y: r * 2.0 }, 10));
-  parts.push(...tendrils(r, c, { x: r * 0.9, y: r * 0.9, count: 6, len: 0.9, spread: 0.6 }));
+  // The hive itself: the largest walker the faction fields, and the thing the
+  // match ends on. Four heavy jointed legs, a segmented back, and a mouth that
+  // could take a tank.
+  const legs = legRowParts(r, { count: 4, scale: 1.9, gauge: 0.85, from: -0.9, to: 0.7, y: 1.2, lift: 0.7 });
+  const parts = [];
+
+  // Thorax and abdomen as two masses rather than one dome: the waist between
+  // them is what makes it read as a body instead of a boulder.
+  parts.push(...carapace(r, CHITIN, { x: r * 0.25, y: r * 1.55, scale: 1.35, squash: 0.76 }));
+  parts.push(...carapace(r, CHITIN_DARK, { x: -r * 0.95, y: r * 1.4, scale: 1.05, squash: 0.85 }));
+  parts.push(cylinder(r * 0.5, r * 0.5, r * 0.4, CHITIN_DARK, { x: -r * 0.42, y: r * 1.5, rz: Math.PI / 2 }, 10));
+
+  parts.push(...segments(r, {
+    from: [r * 0.7, r * 2.2, 0], to: [-r * 1.4, r * 1.95, 0], count: 7, width: 1.3, rise: 0.11,
+  }));
+  parts.push(...spines(r, c, { x: -r * 0.3, y: r * 2.4, count: 5, len: 0.8, spacing: 0.26 }));
+  parts.push(...hiveMark(r, c, { x: r * 0.15, y: r * 2.28, scale: 1.5 }));
+  parts.push(...pores(r, { x: -r * 0.5, y: r * 1.5, z: r * 0.88, count: 5, spacing: 0.32, size: 0.07 }));
+  parts.push(...pores(r, { x: -r * 0.5, y: r * 1.5, z: -r * 0.88, count: 5, spacing: 0.32, size: 0.07 }));
+  parts.push(...vein(r, { from: [r * 0.6, r * 1.9, r * 0.5], to: [-r * 1.1, r * 1.6, r * 0.7], thickness: 0.05 }));
+  parts.push(...vein(r, { from: [r * 0.6, r * 1.9, -r * 0.5], to: [-r * 1.1, r * 1.6, -r * 0.7], thickness: 0.05 }));
+
+  // Head: a plated skull slung forward, with the mouth under it.
+  parts.push(...carapace(r, CHITIN_LIGHT, { x: r * 1.25, y: r * 1.5, scale: 0.68, squash: 0.8 }));
+  parts.push(...maw(r, { x: r * 1.55, y: r * 1.32, radius: 0.42, count: 10, len: 0.4 }));
+  for (const side of [-1, 1]) {
+    parts.push(sphere(r * 0.13, BILE, { x: r * 1.4, y: r * 1.78, z: side * r * 0.26 }, 8, 6));
+    parts.push(cone(r * 0.08, r * 0.5, CHITIN_DARK, {
+      x: r * 1.3, y: r * 1.9, z: side * r * 0.38, rz: -0.6, rx: side * 0.5,
+    }, 6));
+  }
+  parts.push(...tendrils(r, c, { x: r * 1.2, y: r * 1.05, count: 6, len: 0.85, spread: 0.55 }));
+
   return {
     body: merge(parts),
+    legs: legGeos(legs),
     turret: merge([
-      ...carapace(r, c.light, { scale: 0.5, squash: 0.8 }),
+      ...carapace(r, CHITIN_LIGHT, { scale: 0.52, squash: 0.85 }),
+      ...segments(r, { from: [r * 0.2, r * 0.3, 0], to: [-r * 0.4, r * 0.2, 0], count: 3, width: 0.55, rise: 0.07 }),
+      box(r * 0.3, r * 0.06, r * 0.26, c.primary, { x: -r * 0.05, y: r * 0.34 }),
       cylinder(r * 0.16, r * 0.2, r * 0.9, CHITIN, { x: r * 0.6, rz: Math.PI / 2 }, 10),
-      cylinder(r * 0.1, r * 0.1, r * 0.22, BILE, { x: r * 1.06, rz: Math.PI / 2 }, 8),
+      cylinder(r * 0.11, r * 0.09, r * 0.3, FLESH, { x: r * 0.9, rz: Math.PI / 2 }, 8),
+      cylinder(r * 0.1, r * 0.1, r * 0.22, BILE, { x: r * 1.12, rz: Math.PI / 2 }, 8),
+      ...pores(r, { x: r * 0.1, y: r * 0.1, z: r * 0.3, count: 3, spacing: 0.2, size: 0.04 }),
     ]),
-    turretY: r * 2.15,
+    turretY: r * 2.2,
   };
 }
 
 function blTender(r, c) {
-  const parts = crawlerLegs(r, c, { scale: 0.9, gauge: 0.6 });
-  parts.push(...carapace(r, c.primary, { y: r * 0.95, scale: 0.95 }));
-  parts.push(...tendrils(r, c, { x: r * 0.7, y: r * 0.85, count: 4, len: 0.75, spread: 0.4 }));
-  parts.push(sphere(r * 0.16, BILE, { x: r * 0.3, y: r * 1.28 }, 8));
-  parts.push(...spines(r, c, { x: -r * 0.3, y: r * 1.24, count: 3, len: 0.36, spacing: 0.22 }));
-  return { body: merge(parts) };
+  // The hive's builder: a carrier, not a fighter. Its tendrils are the
+  // nanolathe, so they are the most worked part of it.
+  const legs = legRowParts(r, { count: 3, scale: 1.1, gauge: 0.66, from: -0.55, to: 0.4, y: 0.72, lift: 0.5 });
+  const parts = [];
+  parts.push(...carapace(r, CHITIN, { y: r * 0.95, scale: 0.95, squash: 0.68 }));
+  parts.push(...carapace(r, CHITIN_DARK, { x: -r * 0.52, y: r * 0.88, scale: 0.6, squash: 0.85 }));
+  parts.push(...segments(r, {
+    from: [r * 0.4, r * 1.32, 0], to: [-r * 0.7, r * 1.15, 0], count: 5, width: 0.85, rise: 0.08,
+  }));
+  parts.push(...hiveMark(r, c, { x: 0, y: r * 1.34, scale: 0.95 }));
+  parts.push(...pores(r, { x: -r * 0.2, y: r * 0.95, z: r * 0.62, count: 4, spacing: 0.24, size: 0.05 }));
+  parts.push(...pores(r, { x: -r * 0.2, y: r * 0.95, z: -r * 0.62, count: 4, spacing: 0.24, size: 0.05 }));
+  // Head and the feeding tendrils it builds with.
+  parts.push(...carapace(r, CHITIN_LIGHT, { x: r * 0.72, y: r * 0.95, scale: 0.4, squash: 0.85 }));
+  parts.push(...tendrils(r, c, { x: r * 0.95, y: r * 0.9, count: 5, len: 0.8, spread: 0.42 }));
+  parts.push(sphere(r * 0.11, BILE, { x: r * 0.82, y: r * 1.14 }, 8, 6));
+  parts.push(...vein(r, { from: [r * 0.5, r * 1.1, r * 0.35], to: [-r * 0.5, r * 0.9, r * 0.5] }));
+  return { body: merge(parts), legs: legGeos(legs) };
 }
 
 function blSkitter(r, c) {
-  // All legs and jaw. Nothing here is meant to survive being shot at.
-  const parts = crawlerLegs(r, c, { scale: 1.1, gauge: 0.75, count: 3 });
-  parts.push(...carapace(r, c.primary, { y: r * 0.8, scale: 0.8, squash: 0.5 }));
-  parts.push(...maw(r, { x: r * 0.72, y: r * 0.78, radius: 0.3, count: 6, len: 0.28 }));
-  parts.push(sphere(r * 0.1, BILE, { x: r * 0.3, y: r * 1.02 }, 8));
-  parts.push(cone(r * 0.14, r * 0.6, CHITIN_DARK, { x: -r * 0.7, y: r * 0.85, rz: Math.PI / 2 }, 7));
-  return { body: merge(parts) };
+  // All legs and jaw. Nothing here is meant to survive being shot at, so it is
+  // built long and low: the silhouette of something that runs.
+  const legs = legRowParts(r, { count: 3, scale: 1.25, gauge: 0.85, from: -0.5, to: 0.5, y: 0.7, lift: 0.75 });
+  const parts = [];
+  parts.push(...carapace(r, CHITIN, { y: r * 0.8, scale: 0.78, squash: 0.48 }));
+  parts.push(...segments(r, {
+    from: [r * 0.3, r * 1.04, 0], to: [-r * 0.6, r * 0.9, 0], count: 4, width: 0.6, rise: 0.07,
+  }));
+  parts.push(...hiveMark(r, c, { x: -r * 0.05, y: r * 1.06, scale: 0.7, flanks: false }));
+  parts.push(...maw(r, { x: r * 0.74, y: r * 0.78, radius: 0.3, count: 6, len: 0.3 }));
+  for (const side of [-1, 1]) {
+    parts.push(sphere(r * 0.075, BILE, { x: r * 0.52, y: r * 0.98, z: side * r * 0.13 }, 6, 5));
+  }
+  // The tail is the counterweight that makes it look fast rather than stubby.
+  parts.push(cone(r * 0.15, r * 0.75, CHITIN_DARK, { x: -r * 0.78, y: r * 0.86, rz: Math.PI / 2 }, 7));
+  parts.push(...pores(r, { x: -r * 0.1, y: r * 0.78, z: r * 0.5, count: 3, spacing: 0.2, size: 0.04 }));
+  parts.push(...pores(r, { x: -r * 0.1, y: r * 0.78, z: -r * 0.5, count: 3, spacing: 0.2, size: 0.04 }));
+  return { body: merge(parts), legs: legGeos(legs) };
 }
 
 function blHusk(r, c) {
-  const parts = crawlerLegs(r, c, { scale: 1, gauge: 0.62, count: 3 });
-  parts.push(...carapace(r, c.primary, { y: r * 1.0, scale: 1.05 }));
-  parts.push(...carapace(r, c.dark, { x: r * 0.42, y: r * 1.12, scale: 0.6, squash: 0.7 }));
-  parts.push(...spines(r, c, { x: -r * 0.25, y: r * 1.36, count: 4, len: 0.46 }));
-  parts.push(sphere(r * 0.12, BILE, { x: r * 0.5, y: r * 1.3 }, 8));
+  // The line unit: thick over the front, soft behind, and walking straight at
+  // you. Its plates are heaviest where it is pointed.
+  const legs = legRowParts(r, { count: 3, scale: 1.25, gauge: 0.7, from: -0.5, to: 0.45, y: 0.82, lift: 0.55 });
+  const parts = [];
+  parts.push(...carapace(r, CHITIN, { y: r * 1.0, scale: 1.05, squash: 0.66 }));
+  parts.push(...carapace(r, CHITIN_LIGHT, { x: r * 0.5, y: r * 1.12, scale: 0.6, squash: 0.72 }));
+  parts.push(...segments(r, {
+    from: [r * 0.5, r * 1.44, 0], to: [-r * 0.75, r * 1.22, 0], count: 6, width: 0.95, rise: 0.1,
+  }));
+  parts.push(...spines(r, c, { x: -r * 0.25, y: r * 1.5, count: 4, len: 0.46 }));
+  parts.push(...hiveMark(r, c, { x: r * 0.05, y: r * 1.46, scale: 1.0 }));
+  parts.push(...pores(r, { x: -r * 0.2, y: r * 1.0, z: r * 0.68, count: 4, spacing: 0.26, size: 0.055 }));
+  parts.push(...pores(r, { x: -r * 0.2, y: r * 1.0, z: -r * 0.68, count: 4, spacing: 0.26, size: 0.055 }));
+  parts.push(...vein(r, { from: [r * 0.55, r * 1.25, r * 0.4], to: [-r * 0.6, r * 1.05, r * 0.55] }));
+  parts.push(sphere(r * 0.1, BILE, { x: r * 0.55, y: r * 1.34 }, 8, 6));
   return {
     body: merge(parts),
+    legs: legGeos(legs),
     turret: merge([
       sphere(r * 0.3, FLESH, { sy: 0.8 }, 10),
-      ...maw(r, { x: r * 0.3, radius: 0.26, count: 7, len: 0.3 }),
+      ...carapace(r, CHITIN_LIGHT, { x: -r * 0.06, scale: 0.34, squash: 0.9 }),
+      ...maw(r, { x: r * 0.3, radius: 0.26, count: 7, len: 0.32 }),
+      cone(r * 0.05, r * 0.26, CHITIN_DARK, { x: r * 0.14, y: r * 0.22, z: r * 0.16, rz: -0.5 }, 5),
+      cone(r * 0.05, r * 0.26, CHITIN_DARK, { x: r * 0.14, y: r * 0.22, z: -r * 0.16, rz: -0.5 }, 5),
     ]),
-    turretY: r * 1.32,
+    turretY: r * 1.34,
   };
 }
 
 function blSpitter(r, c) {
-  const parts = crawlerLegs(r, c, { scale: 1, gauge: 0.66, count: 3 });
-  parts.push(...carapace(r, c.primary, { y: r * 1.0, scale: 1.0 }));
-  // The bile sac it fires from, carried high on the back.
+  // Everything about it points at the sac on its back: the body is a pump and
+  // the head is a nozzle.
+  const legs = legRowParts(r, { count: 3, scale: 1.2, gauge: 0.74, from: -0.5, to: 0.45, y: 0.8, lift: 0.55 });
+  const parts = [];
+  parts.push(...carapace(r, CHITIN, { y: r * 1.0, scale: 1.0, squash: 0.62 }));
+  parts.push(...segments(r, {
+    from: [r * 0.45, r * 1.34, 0], to: [-r * 0.5, r * 1.2, 0], count: 4, width: 0.8, rise: 0.08,
+  }));
+  parts.push(...hiveMark(r, c, { x: r * 0.3, y: r * 1.36, scale: 0.85, flanks: false }));
+  // The bile sac, ribbed so it reads as full rather than as a green ball.
   parts.push(sphere(r * 0.46, BILE, { x: -r * 0.34, y: r * 1.42, sy: 0.85 }, 12));
   parts.push(sphere(r * 0.3, FLESH, { x: -r * 0.34, y: r * 1.5, sy: 0.7 }, 10));
+  for (let i = 0; i < 3; i++) {
+    parts.push(cylinder(r * (0.44 - i * 0.02), r * (0.44 - i * 0.02), r * 0.04, CHITIN_DARK, {
+      x: -r * (0.16 + i * 0.18), y: r * 1.42, rz: Math.PI / 2,
+    }, 12));
+  }
+  parts.push(...vein(r, { from: [-r * 0.5, r * 1.6, 0], to: [r * 0.5, r * 1.15, 0], thickness: 0.04 }));
   parts.push(...tendrils(r, c, { x: r * 0.5, y: r * 1.0, count: 3, len: 0.5, spread: 0.35 }));
+  parts.push(...pores(r, { x: 0, y: r * 1.0, z: r * 0.64, count: 3, spacing: 0.22, size: 0.05 }));
+  parts.push(...pores(r, { x: 0, y: r * 1.0, z: -r * 0.64, count: 3, spacing: 0.22, size: 0.05 }));
   return {
     body: merge(parts),
+    legs: legGeos(legs),
     turret: merge([
       sphere(r * 0.26, CHITIN, { sy: 0.9 }, 10),
       cone(r * 0.2, r * 0.8, FLESH, { x: r * 0.5, rz: -Math.PI / 2 }, 8),
+      cylinder(r * 0.14, r * 0.14, r * 0.06, CHITIN_DARK, { x: r * 0.62, rz: Math.PI / 2 }, 8),
       cylinder(r * 0.08, r * 0.12, r * 0.16, BILE, { x: r * 0.92, rz: Math.PI / 2 }, 8),
+      sphere(r * 0.055, BILE, { x: r * 0.1, y: r * 0.2, z: r * 0.14 }, 6, 5),
+      sphere(r * 0.055, BILE, { x: r * 0.1, y: r * 0.2, z: -r * 0.14 }, 6, 5),
     ]),
     turretY: r * 1.3,
   };
 }
 
 function blBrute(r, c) {
-  const parts = crawlerLegs(r, c, { scale: 1.5, gauge: 0.8, count: 4 });
-  parts.push(...carapace(r, c.primary, { y: r * 1.35, scale: 1.5, squash: 0.7 }));
-  parts.push(...carapace(r, c.dark, { x: r * 0.6, y: r * 1.5, scale: 0.85, squash: 0.75 }));
-  parts.push(...spines(r, c, { x: -r * 0.3, y: r * 2.0, count: 6, len: 0.8, spacing: 0.24 }));
+  // The heavy. Four legs to a side, a back like a shield, and a head it leads
+  // with. Everything is a size up from the husk rather than a different idea.
+  const legs = legRowParts(r, { count: 4, scale: 1.7, gauge: 0.92, from: -0.7, to: 0.6, y: 1.05, lift: 0.6 });
+  const parts = [];
+  parts.push(...carapace(r, CHITIN, { y: r * 1.35, scale: 1.5, squash: 0.7 }));
+  parts.push(...carapace(r, CHITIN_LIGHT, { x: r * 0.7, y: r * 1.5, scale: 0.8, squash: 0.76 }));
+  parts.push(...segments(r, {
+    from: [r * 0.8, r * 2.02, 0], to: [-r * 1.0, r * 1.76, 0], count: 7, width: 1.35, rise: 0.12,
+  }));
+  parts.push(...spines(r, c, { x: -r * 0.3, y: r * 2.1, count: 6, len: 0.8, spacing: 0.24 }));
+  parts.push(...hiveMark(r, c, { x: r * 0.1, y: r * 2.06, scale: 1.45 }));
+  parts.push(...pores(r, { x: -r * 0.3, y: r * 1.35, z: r * 1.0, count: 5, spacing: 0.3, size: 0.07 }));
+  parts.push(...pores(r, { x: -r * 0.3, y: r * 1.35, z: -r * 1.0, count: 5, spacing: 0.3, size: 0.07 }));
+  parts.push(...vein(r, { from: [r * 0.8, r * 1.8, r * 0.6], to: [-r * 0.9, r * 1.45, r * 0.8], thickness: 0.05 }));
+  parts.push(...vein(r, { from: [r * 0.8, r * 1.8, -r * 0.6], to: [-r * 0.9, r * 1.45, -r * 0.8], thickness: 0.05 }));
   parts.push(...maw(r, { x: r * 1.35, y: r * 1.35, radius: 0.44, count: 10, len: 0.4 }));
-  parts.push(sphere(r * 0.14, BILE, { x: r * 0.8, y: r * 1.9, z: r * 0.3 }, 8));
-  parts.push(sphere(r * 0.14, BILE, { x: r * 0.8, y: r * 1.9, z: -r * 0.3 }, 8));
+  for (const side of [-1, 1]) {
+    parts.push(sphere(r * 0.14, BILE, { x: r * 0.8, y: r * 1.9, z: side * r * 0.3 }, 8, 6));
+    // Tusks: the read that says "heavy" from straight above, where the back
+    // plates all look the same.
+    parts.push(cone(r * 0.1, r * 0.66, CHITIN_LIGHT, {
+      x: r * 1.3, y: r * 1.2, z: side * r * 0.4, rz: -1.2, rx: side * 0.35,
+    }, 6));
+  }
   return {
     body: merge(parts),
+    legs: legGeos(legs),
     turret: merge([
       sphere(r * 0.42, FLESH, { sy: 0.8 }, 12),
+      ...carapace(r, CHITIN_LIGHT, { x: -r * 0.08, scale: 0.46, squash: 0.9 }),
       ...maw(r, { x: r * 0.42, radius: 0.34, count: 9, len: 0.42 }),
-      ...spines(r, c, { x: -r * 0.2, y: r * 0.28, count: 3, len: 0.4, spacing: 0.2 }),
+      ...spines(r, c, { x: -r * 0.2, y: r * 0.32, count: 3, len: 0.4, spacing: 0.2 }),
+      box(r * 0.34, r * 0.07, r * 0.3, c.primary, { x: -r * 0.05, y: r * 0.38 }),
     ]),
-    turretY: r * 1.85,
+    turretY: r * 1.9,
   };
 }
 
 function blLobber(r, c) {
-  const parts = crawlerLegs(r, c, { scale: 1.3, gauge: 0.8, count: 4 });
-  parts.push(...carapace(r, c.primary, { y: r * 1.0, scale: 1.25, squash: 0.55 }));
+  // Siege. It is mostly a bladder on legs, and it should look like it has
+  // trouble carrying itself.
+  const legs = legRowParts(r, { count: 4, scale: 1.45, gauge: 0.92, from: -0.6, to: 0.5, y: 0.78, lift: 0.45 });
+  const parts = [];
+  parts.push(...carapace(r, CHITIN, { y: r * 1.0, scale: 1.25, squash: 0.55 }));
+  parts.push(...segments(r, {
+    from: [r * 0.6, r * 1.3, 0], to: [-r * 0.2, r * 1.2, 0], count: 4, width: 1.05, rise: 0.09,
+  }));
+  parts.push(...hiveMark(r, c, { x: r * 0.5, y: r * 1.32, scale: 1.0, flanks: false }));
   parts.push(sphere(r * 0.5, BILE, { x: -r * 0.5, y: r * 1.3, sy: 0.9 }, 12));
-  parts.push(...tendrils(r, c, { x: r * 0.6, y: r * 0.8, count: 4, len: 0.6, spread: 0.5 }));
+  parts.push(sphere(r * 0.34, FLESH, { x: -r * 0.55, y: r * 1.42, sy: 0.8 }, 10));
+  for (let i = 0; i < 4; i++) {
+    parts.push(cylinder(r * (0.48 - i * 0.03), r * (0.48 - i * 0.03), r * 0.045, CHITIN_DARK, {
+      x: -r * (0.22 + i * 0.16), y: r * 1.3, rz: Math.PI / 2,
+    }, 12));
+  }
+  parts.push(...pores(r, { x: r * 0.2, y: r * 1.0, z: r * 0.8, count: 4, spacing: 0.26, size: 0.06 }));
+  parts.push(...pores(r, { x: r * 0.2, y: r * 1.0, z: -r * 0.8, count: 4, spacing: 0.26, size: 0.06 }));
+  parts.push(...vein(r, { from: [-r * 0.8, r * 1.5, 0], to: [r * 0.7, r * 1.1, 0], thickness: 0.045 }));
   return {
     body: merge(parts),
+    legs: legGeos(legs),
     turret: merge([
-      sphere(r * 0.34, CHITIN, { sy: 0.9 }, 10),
-      // A mortar throat, angled up.
-      cylinder(r * 0.26, r * 0.18, r * 1.2, FLESH, { x: r * 0.4, y: r * 0.4, rz: -0.9 }, 10),
-      cylinder(r * 0.28, r * 0.28, r * 0.14, CHITIN_LIGHT, { x: r * 0.76, y: r * 0.82, rz: -0.9 }, 10),
+      sphere(r * 0.3, CHITIN, { sy: 0.85 }, 10),
+      ...segments(r, { from: [r * 0.1, r * 0.24, 0], to: [-r * 0.3, r * 0.18, 0], count: 3, width: 0.5, rise: 0.06 }),
+      // A short, wide throat angled up: a mortar rather than a rifle.
+      cylinder(r * 0.26, r * 0.32, r * 0.7, FLESH, { x: r * 0.3, y: r * 0.26, rz: Math.PI / 2 - 0.5 }, 10),
+      cylinder(r * 0.3, r * 0.3, r * 0.07, CHITIN_DARK, { x: r * 0.42, y: r * 0.32, rz: Math.PI / 2 - 0.5 }, 10),
+      sphere(r * 0.18, BILE, { x: r * 0.48, y: r * 0.42 }, 8, 6),
     ]),
-    turretY: r * 1.2,
+    turretY: r * 1.3,
   };
 }
 
-// ---------------------------------------------------------- hive structures
-
 function blTap(s, c) {
+  // A mouth clamped over a metal seam. It should look like it is feeding on
+  // the ground rather than standing on it.
   const parts = mound(s, c, 0.12);
-  parts.push(cylinder(s * 0.1, s * 0.16, s * 0.5, CHITIN, { y: s * 0.3 }, 10));
-  parts.push(sphere(s * 0.17, c.primary, { y: s * 0.56, sy: 1.2 }, 12));
+  parts.push(cylinder(s * 0.11, s * 0.18, s * 0.46, CHITIN, { y: s * 0.28 }, 10));
+  // Ribs up the throat, so it is not a smooth funnel.
+  for (let i = 0; i < 4; i++) {
+    parts.push(cylinder(s * (0.13 + i * 0.015), s * (0.13 + i * 0.015), s * 0.03, CHITIN_DARK,
+      { y: s * (0.12 + i * 0.11) }, 10));
+  }
+  parts.push(sphere(s * 0.17, CHITIN_LIGHT, { y: s * 0.56, sy: 1.2 }, 12));
+  parts.push(box(s * 0.2, s * 0.05, s * 0.14, c.primary, { y: s * 0.68 }));
   parts.push(...maw(s * 0.5, { y: s * 0.72, radius: 0.3, count: 7, len: 0.2 }));
   parts.push(...tendrils(s * 0.5, c, { y: s * 0.2, count: 6, len: 0.5, spread: 0.75 }));
+  // Roots gripping the ground around it.
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + 0.4;
+    parts.push(...vein(s, {
+      from: [Math.cos(a) * s * 0.14, s * 0.08, Math.sin(a) * s * 0.14],
+      to: [Math.cos(a) * s * 0.42, s * 0.02, Math.sin(a) * s * 0.42],
+      colour: CHITIN_DARK, thickness: 0.05, kinks: 1,
+    }));
+  }
   return { body: merge(parts) };
 }
 
 function blVent(s, c) {
   const parts = mound(s, c, 0.1);
-  // Three chimneys venting biomass gas.
-  for (const [x, z, h] of [[-0.14, -0.1, 0.5], [0.14, 0.06, 0.62], [0, 0.18, 0.42]]) {
+  // Three chimneys venting biomass gas, each ribbed and leaning differently.
+  for (const [x, z, h, lean] of [[-0.14, -0.1, 0.5, 0.12], [0.14, 0.06, 0.62, -0.08], [0, 0.18, 0.42, 0.05]]) {
     parts.push(cylinder(s * 0.055, s * 0.09, s * h, CHITIN_DARK,
-      { x: s * x, z: s * z, y: s * h * 0.5 }, 8));
+      { x: s * x, z: s * z, y: s * h * 0.5, rz: lean }, 8));
+    for (let i = 0; i < 3; i++) {
+      parts.push(cylinder(s * 0.075, s * 0.075, s * 0.025, CHITIN,
+        { x: s * x, z: s * z, y: s * (0.12 + i * h * 0.3), rz: lean }, 8));
+    }
     parts.push(cylinder(s * 0.07, s * 0.055, s * 0.08, BILE,
       { x: s * x, z: s * z, y: s * (h + 0.03) }, 8));
   }
   parts.push(...sac(s, c, { x: -s * 0.2, z: s * 0.16, scale: 0.7 }));
+  parts.push(box(s * 0.22, s * 0.05, s * 0.16, c.primary, { x: s * 0.06, z: -s * 0.22, y: s * 0.14 }));
+  parts.push(...pores(s, { x: s * 0.05, y: s * 0.1, z: -s * 0.3, count: 4, spacing: 0.12, size: 0.03 }));
   return { body: merge(parts) };
 }
 
 function blBloom(s, c) {
+  // The big reactor: a flower that has grown too large for itself.
   const parts = mound(s, c, 0.14);
-  parts.push(sphere(s * 0.3, c.primary, { y: s * 0.34, sy: 0.9 }, 14));
+  parts.push(sphere(s * 0.3, CHITIN, { y: s * 0.34, sy: 0.9 }, 14));
   parts.push(sphere(s * 0.22, BILE, { y: s * 0.44, sy: 0.85 }, 12));
-  // Petals opening off the bulb.
+  // Petals opening off the bulb, each with a spine up its back.
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
-    parts.push(cone(s * 0.1, s * 0.46, c.dark, {
-      x: Math.cos(a) * s * 0.26, z: Math.sin(a) * s * 0.26, y: s * 0.5,
-      rx: Math.sin(a) * 0.8, rz: -Math.cos(a) * 0.8,
+    const px = Math.cos(a) * s * 0.26;
+    const pz = Math.sin(a) * s * 0.26;
+    parts.push(cone(s * 0.1, s * 0.46, CHITIN_LIGHT, {
+      x: px, z: pz, y: s * 0.5, rx: Math.sin(a) * 0.8, rz: -Math.cos(a) * 0.8,
     }, 7));
+    parts.push(cone(s * 0.045, s * 0.5, c.primary, {
+      x: px * 1.06, z: pz * 1.06, y: s * 0.54, rx: Math.sin(a) * 0.8, rz: -Math.cos(a) * 0.8,
+    }, 5));
   }
   parts.push(...tendrils(s * 0.6, c, { y: s * 0.18, count: 7, len: 0.6, spread: 0.85 }));
+  parts.push(...vein(s, { from: [-s * 0.3, s * 0.14, 0], to: [s * 0.3, s * 0.14, 0], thickness: 0.04, kinks: 3 }));
   return { body: merge(parts) };
 }
 
 function blGut(s, c) {
+  // The converter: a stomach. Sacs feed into it and something comes out.
   const parts = mound(s, c, 0.1);
   parts.push(sphere(s * 0.26, FLESH, { y: s * 0.28, sy: 0.95 }, 12));
+  for (let i = 0; i < 4; i++) {
+    parts.push(cylinder(s * (0.25 - i * 0.02), s * (0.25 - i * 0.02), s * 0.03, CHITIN_DARK,
+      { y: s * (0.16 + i * 0.09) }, 12));
+  }
   parts.push(...maw(s * 0.6, { y: s * 0.5, radius: 0.34, count: 9, len: 0.24 }));
   parts.push(...sac(s, c, { x: s * 0.24, scale: 0.6 }));
   parts.push(...sac(s, c, { x: -s * 0.24, z: s * 0.1, scale: 0.55 }));
+  // Gullets running from each sac into the stomach.
+  parts.push(...vein(s, { from: [s * 0.24, s * 0.16, 0], to: [s * 0.05, s * 0.3, 0], thickness: 0.05, kinks: 1 }));
+  parts.push(...vein(s, { from: [-s * 0.24, s * 0.16, s * 0.1], to: [-s * 0.05, s * 0.3, s * 0.02], thickness: 0.05, kinks: 1 }));
+  parts.push(box(s * 0.18, s * 0.05, s * 0.13, c.primary, { z: -s * 0.24, y: s * 0.2 }));
   return { body: merge(parts) };
 }
 
@@ -1611,25 +1960,46 @@ function blStore(s, c, metalKind) {
   parts.push(...sac(s, c, { x: -s * 0.16, z: -s * 0.14, scale: 1.05, colour }));
   parts.push(...sac(s, c, { x: s * 0.17, z: -s * 0.02, scale: 0.9, colour }));
   parts.push(...sac(s, c, { x: -s * 0.04, z: s * 0.19, scale: 0.8, colour }));
+  // Membranes strung between the sacs: the read that makes three balls into
+  // one organism rather than three balls.
+  parts.push(...vein(s, { from: [-s * 0.16, s * 0.18, -s * 0.14], to: [s * 0.17, s * 0.16, -s * 0.02], thickness: 0.05, kinks: 1 }));
+  parts.push(...vein(s, { from: [s * 0.17, s * 0.16, -s * 0.02], to: [-s * 0.04, s * 0.14, s * 0.19], thickness: 0.05, kinks: 1 }));
+  parts.push(box(s * 0.16, s * 0.04, s * 0.12, c.primary, { z: -s * 0.3, y: s * 0.1 }));
   return { body: merge(parts) };
 }
 
 function blPit(s, c, deep) {
+  // The factory: a hole in the ground that things climb out of.
   const parts = mound(s, c, deep ? 0.14 : 0.12);
-  // A ring of carapace around an open pit.
-  for (let i = 0; i < 9; i++) {
-    const a = (i / 9) * Math.PI * 2;
-    parts.push(cone(s * (deep ? 0.09 : 0.075), s * (deep ? 0.5 : 0.4), c.primary, {
-      x: Math.cos(a) * s * 0.3, z: Math.sin(a) * s * 0.3, y: s * 0.2,
-      rx: Math.sin(a) * 0.3, rz: -Math.cos(a) * 0.3,
-    }, 7));
+  // A ring of carapace around an open pit, alternating tall and short so the
+  // rim is a jaw rather than a crown.
+  const teeth = deep ? 11 : 9;
+  for (let i = 0; i < teeth; i++) {
+    const a = (i / teeth) * Math.PI * 2;
+    const tall = i % 2 === 0;
+    parts.push(cone(s * (deep ? 0.09 : 0.075) * (tall ? 1 : 0.8),
+      s * (deep ? 0.5 : 0.4) * (tall ? 1 : 0.7), CHITIN_LIGHT, {
+        x: Math.cos(a) * s * 0.3, z: Math.sin(a) * s * 0.3, y: s * 0.2,
+        rx: Math.sin(a) * 0.3, rz: -Math.cos(a) * 0.3,
+      }, 7));
   }
-  parts.push(cylinder(s * 0.26, s * 0.3, s * 0.1, CHITIN_DARK, { y: s * 0.06 }, 14));
+  parts.push(cylinder(s * 0.26, s * 0.32, s * 0.12, CHITIN_DARK, { y: s * 0.07 }, 14));
   parts.push(cylinder(s * 0.2, s * 0.2, s * 0.05, BILE, { y: s * 0.1 }, 14));
+  // The marked lip on the side the units come out of.
+  parts.push(box(s * 0.14, s * 0.06, s * 0.3, c.primary, { x: s * 0.33, y: s * 0.13 }));
   parts.push(...sac(s, c, { x: -s * 0.32, z: s * 0.24, scale: deep ? 0.9 : 0.7 }));
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + 0.7;
+    parts.push(...vein(s, {
+      from: [Math.cos(a) * s * 0.3, s * 0.1, Math.sin(a) * s * 0.3],
+      to: [Math.cos(a) * s * 0.46, s * 0.02, Math.sin(a) * s * 0.46],
+      colour: CHITIN_DARK, thickness: 0.05, kinks: 1,
+    }));
+  }
   if (deep) {
     parts.push(...sac(s, c, { x: s * 0.3, z: -s * 0.28, scale: 0.8 }));
     parts.push(...spines(s * 0.7, c, { x: s * 0.1, y: s * 0.42, count: 5, len: 0.5, spacing: 0.3 }));
+    parts.push(...segments(s, { from: [-s * 0.3, s * 0.3, 0], to: [s * 0.1, s * 0.26, 0], count: 4, width: 0.35, rise: 0.05 }));
   }
   return { body: merge(parts) };
 }
@@ -1675,8 +2045,659 @@ function blAntenna(s, c) {
   };
 }
 
+
+// -------------------------------------------------------------------- air
+//
+// Aircraft are read from above and from a long way off, so the silhouette has
+// to do the work: an interceptor is a dart, a gunship is a fuselage slung
+// under a rotor, and a bomber is a wing with weight hanging off it. Every one
+// of them gets undercarriage and an intake, because the thing that makes a
+// flying model look real is the parts that only matter on the ground.
+
+/**
+ * A wing panel with a root fillet, control surfaces and a tip light.
+ *
+ * `root` is where the fuselage side is: the fillet spans from there out to the
+ * panel, because a wing that starts in mid-air reads as a detached slab rather
+ * than as part of the aircraft. That is the single thing that most makes a
+ * flying model look wrong.
+ */
+function wing(r, c, { x = 0, y = 0, z = 0, span = 1, chord = 0.6, sweep = 0.3, thick = 0.09, tip = null, root = 0.25 } = {}) {
+  const side = Math.sign(z) || 1;
+  // `z` arrives already scaled by r, so bring it back into the same ratio
+  // space as span and root before comparing them. Mixing the two makes the
+  // fillet come out an order of magnitude too big, which reads as loose
+  // panels scattered around the aircraft rather than as a wing.
+  const zr = Math.abs(z) / r;
+  const inner = Math.max(root + 0.02, zr - span * 0.5);
+  const fillet = Math.max(0.1, inner - root);
+  return [
+    // Fillet from the fuselage side out to the panel root.
+    box(r * chord * 1.15, r * thick * 1.5, r * fillet, HULL,
+      { x: x + r * chord * 0.06, y, z: side * r * (root + fillet * 0.5) }),
+    box(r * chord, r * thick, r * span, HULL, { x, y, z, ry: side * sweep }),
+    box(r * chord * 0.3, r * thick * 1.3, r * span * 0.4, HULL_DARK,
+      { x: x + r * chord * 0.3, y, z: z - side * r * span * 0.28, ry: side * sweep }),
+    // Aileron, in team colour so the wing reads at a distance.
+    box(r * chord * 0.26, r * thick * 0.7, r * span * 0.5, c.primary,
+      { x: x - r * chord * 0.36, y, z: z + side * r * span * 0.16, ry: side * sweep }),
+    cylinder(r * 0.035, r * 0.035, r * 0.06, tip || GLOW,
+      { x: x - r * chord * 0.1, y, z: z + side * r * span * 0.5 }, 6),
+    ...boltLine(r, {
+      from: [x + r * chord * 0.1, y + r * thick * 0.6, z - side * r * span * 0.3],
+      to: [x + r * chord * 0.1, y + r * thick * 0.6, z + side * r * span * 0.3],
+      count: 4, size: 0.022,
+    }),
+  ];
+}
+
+/** A retractable leg with a wheel, left down because these never land. */
+function gearLeg(r, { x = 0, y = 0, z = 0, len = 0.3 } = {}) {
+  return [
+    cylinder(r * 0.035, r * 0.035, r * len, STEEL, { x, y: y - r * len * 0.5, z }, 6),
+    cylinder(r * 0.09, r * 0.09, r * 0.07, GREASE, { x, y: y - r * len, z, rx: Math.PI / 2 }, 10),
+    box(r * 0.1, r * 0.12, r * 0.03, HULL_DARK, { x, y: y - r * len * 0.2, z }),
+  ];
+}
+
+/** A jet intake and the exhaust that goes with it. */
+function jetPod(r, c, { x = 0, y = 0, z = 0, len = 0.7, rad = 0.16 } = {}) {
+  return [
+    cylinder(r * rad, r * rad, r * len, HULL, { x, y, z, rz: Math.PI / 2 }, 14),
+    cylinder(r * rad * 1.1, r * rad * 1.1, r * 0.06, HULL_DARK, { x: x + r * len * 0.5, y, z, rz: Math.PI / 2 }, 14),
+    cylinder(r * rad * 0.78, r * rad * 0.78, r * 0.05, DARK, { x: x + r * len * 0.52, y, z, rz: Math.PI / 2 }, 12),
+    cylinder(r * rad * 0.9, r * rad * 0.9, r * 0.1, GREASE, { x: x - r * len * 0.52, y, z, rz: Math.PI / 2 }, 12),
+    cylinder(r * rad * 0.6, r * rad * 0.6, r * 0.05, GLOW, { x: x - r * len * 0.56, y, z, rz: Math.PI / 2 }, 10),
+    ...boltRing(r, { x: x + r * len * 0.46, y, z, radius: rad * 1.05, count: 8, size: 0.022 }),
+  ];
+}
+
+function interceptor(r, c) {
+  // A dart: long nose, swept wings well aft, twin tails.
+  const parts = [];
+  parts.push(cylinder(r * 0.24, r * 0.3, r * 1.5, HULL, { rz: Math.PI / 2 }, 14));
+  parts.push(cone(r * 0.2, r * 0.7, HULL, { x: r * 1.05, rz: -Math.PI / 2 }, 14));
+  parts.push(cone(r * 0.06, r * 0.3, HULL_LIGHT, { x: r * 1.5, rz: -Math.PI / 2 }, 8));
+  // Canopy.
+  parts.push(box(r * 0.5, r * 0.16, r * 0.26, GLASS, { x: r * 0.42, y: r * 0.16 }));
+  parts.push(box(r * 0.56, r * 0.06, r * 0.3, HULL_DARK, { x: r * 0.4, y: r * 0.08 }));
+  // Wings, sharply swept, and canards forward.
+  for (const side of [-1, 1]) {
+    parts.push(...wing(r, c, { x: -r * 0.2, z: side * r * 0.62, span: 0.95, chord: 0.72, sweep: 0.5, root: 0.22 }));
+    parts.push(box(r * 0.3, r * 0.06, r * 0.42, HULL_DARK, { x: r * 0.56, z: side * r * 0.32, ry: side * 0.5 }));
+    // Twin tails, canted outward.
+    parts.push(box(r * 0.4, r * 0.5, r * 0.06, HULL, { x: -r * 0.86, z: side * r * 0.38, y: r * 0.24, rx: side * 0.35 }));
+    parts.push(...jetPod(r, c, { x: -r * 0.5, z: side * r * 0.26, y: -r * 0.04, len: 0.8, rad: 0.15 }));
+    parts.push(...gearLeg(r, { x: -r * 0.3, z: side * r * 0.34, y: -r * 0.2, len: 0.26 }));
+  }
+  parts.push(...gearLeg(r, { x: r * 0.6, y: -r * 0.2, len: 0.24 }));
+  parts.push(box(r * 0.7, r * 0.04, r * 0.12, c.primary, { x: r * 0.1, y: r * 0.24 }));
+  parts.push(...seam(r, { from: [-r * 0.6, r * 0.2, 0], to: [r * 0.6, r * 0.2, 0], width: 0.03 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      box(r * 0.3, r * 0.14, r * 0.3, HULL_DARK, {}),
+      ...[-1, 1].map((side) =>
+        cylinder(r * 0.05, r * 0.05, r * 0.5, HULL_LIGHT, { x: r * 0.3, z: side * r * 0.1, rz: Math.PI / 2 }, 8)),
+    ]),
+    turretY: -r * 0.12,
+  };
+}
+
+function gunship(r, c) {
+  // A fuselage slung under a rotor, with stub wings carrying the pods.
+  const parts = [];
+  parts.push(box(r * 1.5, r * 0.52, r * 0.68, HULL, { y: r * 0.1 }));
+  parts.push(cone(r * 0.28, r * 0.6, HULL, { x: r * 0.98, y: r * 0.06, rz: -Math.PI / 2 }, 12));
+  parts.push(box(r * 0.44, r * 0.3, r * 0.4, GLASS, { x: r * 0.62, y: r * 0.18 }));
+  // Tail boom and rotor.
+  parts.push(cylinder(r * 0.09, r * 0.13, r * 1.1, HULL, { x: -r * 1.15, y: r * 0.16, rz: Math.PI / 2 }, 10));
+  parts.push(box(r * 0.3, r * 0.46, r * 0.05, HULL, { x: -r * 1.62, y: r * 0.34 }));
+  parts.push(box(r * 0.16, r * 0.06, r * 0.36, HULL_DARK, { x: -r * 1.58, y: r * 0.5 }));
+  parts.push(cylinder(r * 0.05, r * 0.05, r * 0.1, STEEL, { x: -r * 1.62, y: r * 0.2, z: r * 0.1, rx: Math.PI / 2 }, 8));
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    parts.push(box(r * 0.04, r * 0.24, r * 0.03, HULL_LIGHT, {
+      x: -r * 1.62 + Math.cos(a) * r * 0.16, y: r * 0.2 + Math.sin(a) * r * 0.16, z: r * 0.16,
+    }));
+  }
+  // Engine deck, exhausts and the mast the rotor turns on.
+  parts.push(box(r * 0.6, r * 0.3, r * 0.5, HULL_DARK, { x: -r * 0.34, y: r * 0.36 }));
+  parts.push(...grille(r, { x: -r * 0.34, y: r * 0.52, w: 0.44, d: 0.4, slats: 5 }));
+  for (const side of [-1, 1]) {
+    parts.push(cylinder(r * 0.09, r * 0.09, r * 0.2, GREASE,
+      { x: -r * 0.66, z: side * r * 0.18, y: r * 0.36, rz: Math.PI / 2 }, 10));
+    parts.push(...wing(r, c, { x: r * 0.05, y: r * 0.04, z: side * r * 0.5, span: 0.44, chord: 0.46, sweep: 0.05, thick: 0.11, root: 0.28 }));
+    parts.push(box(r * 0.42, r * 0.2, r * 0.22, HULL_DARK, { x: r * 0.02, z: side * r * 0.78, y: -r * 0.06 }));
+    parts.push(...[-1, 1].map((k) =>
+      cylinder(r * 0.05, r * 0.05, r * 0.18, GREASE, { x: r * 0.24, z: side * r * 0.78 + k * r * 0.06, y: -r * 0.06, rz: Math.PI / 2 }, 8)));
+    parts.push(...gearLeg(r, { x: -r * 0.1, z: side * r * 0.36, y: -r * 0.16, len: 0.28 }));
+  }
+  parts.push(cylinder(r * 0.1, r * 0.1, r * 0.3, STEEL, { x: -r * 0.05, y: r * 0.6 }, 10));
+  parts.push(box(r * 0.5, r * 0.04, r * 0.1, c.primary, { x: r * 0.1, y: r * 0.36 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      cylinder(r * 0.12, r * 0.14, r * 0.12, HULL_DARK, {}, 10),
+      box(r * 0.34, r * 0.14, r * 0.16, HULL, { x: r * 0.16 }),
+      ...[-1, 1].map((side) =>
+        cylinder(r * 0.04, r * 0.04, r * 0.36, HULL_LIGHT, { x: r * 0.38, z: side * r * 0.05, rz: Math.PI / 2 }, 8)),
+    ]),
+    turretY: -r * 0.2,
+    // The main rotor, turning.
+    spinner: merge([
+      cylinder(r * 0.09, r * 0.09, r * 0.1, STEEL, {}, 10),
+      ...[0, 1, 2, 3].map((i) => {
+        const a = (i / 4) * Math.PI * 2;
+        return box(r * 2.3, r * 0.035, r * 0.16, HULL_DARK, { ry: a });
+      }),
+      ...boltRing(r, { radius: 0.08, count: 6, size: 0.022 }),
+    ]),
+    spinnerY: r * 0.76,
+    spinSpeed: 16,
+  };
+}
+
+function bomber(r, c) {
+  // A wing with weight hanging off it.
+  const parts = [];
+  parts.push(box(r * 1.9, r * 0.46, r * 0.84, HULL, { y: r * 0.06 }));
+  parts.push(cone(r * 0.38, r * 0.66, HULL, { x: r * 1.22, y: r * 0.04, rz: -Math.PI / 2 }, 14));
+  parts.push(box(r * 0.5, r * 0.24, r * 0.44, GLASS, { x: r * 0.74, y: r * 0.2 }));
+  parts.push(...seam(r, { from: [-r * 0.8, r * 0.28, 0], to: [r * 0.7, r * 0.28, 0], width: 0.035 }));
+  // Bomb bay, open, with its load visible.
+  parts.push(box(r * 0.9, r * 0.14, r * 0.44, GREASE, { x: -r * 0.1, y: -r * 0.2 }));
+  for (let i = 0; i < 3; i++) {
+    parts.push(cylinder(r * 0.1, r * 0.1, r * 0.3, HULL_DARK,
+      { x: -r * 0.4 + i * r * 0.3, y: -r * 0.28, rz: Math.PI / 2 }, 10));
+    parts.push(cone(r * 0.09, r * 0.16, '#ff9a5b',
+      { x: -r * 0.24 + i * r * 0.3, y: -r * 0.28, rz: -Math.PI / 2 }, 8));
+  }
+  for (const side of [-1, 1]) {
+    parts.push(...wing(r, c, { x: -r * 0.1, z: side * r * 0.9, span: 1.35, chord: 1.0, sweep: 0.22, thick: 0.13, root: 0.34 }));
+    parts.push(...jetPod(r, c, { x: -r * 0.05, z: side * r * 0.82, y: -r * 0.16, len: 0.9, rad: 0.17 }));
+    parts.push(box(r * 0.34, r * 0.44, r * 0.05, HULL, { x: -r * 1.02, z: side * r * 0.3, y: r * 0.26, rx: side * 0.25 }));
+    parts.push(...gearLeg(r, { x: -r * 0.2, z: side * r * 0.5, y: -r * 0.2, len: 0.3 }));
+  }
+  parts.push(box(r * 0.5, r * 0.5, r * 0.06, HULL, { x: -r * 1.06, y: r * 0.3 }));
+  parts.push(...gearLeg(r, { x: r * 0.8, y: -r * 0.18, len: 0.26 }));
+  parts.push(box(r * 0.8, r * 0.04, r * 0.14, c.primary, { x: r * 0.1, y: r * 0.28 }));
+  parts.push(...optics(r, { x: r * 0.9, y: -r * 0.14, scale: 0.6 }));
+  return {
+    body: merge(parts),
+    turret: merge([
+      cylinder(r * 0.12, r * 0.12, r * 0.1, HULL_DARK, {}, 10),
+      box(r * 0.26, r * 0.12, r * 0.2, HULL, { x: r * 0.1 }),
+    ]),
+    turretY: r * 0.3,
+  };
+}
+
+/** Air plant: an open shed with a pad, a gantry and a windsock. */
+function airPlant(s, c, heavy) {
+  const parts = foundation(s, c);
+  parts.push(box(s * 0.8, s * 0.05, s * 0.8, '#33373d', { y: s * 0.06 }));
+  // Landing circle.
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    parts.push(box(s * 0.06, s * 0.02, s * 0.05, HULL_LIGHT,
+      { x: Math.cos(a) * s * 0.3, z: Math.sin(a) * s * 0.3, y: s * 0.09, ry: -a }));
+  }
+  parts.push(box(s * 0.3, s * 0.02, s * 0.08, c.primary, { y: s * 0.09 }));
+  // Hangar block along one side, with roof panels and a gantry over the pad.
+  parts.push(box(s * 0.3, s * 0.34, s * 0.86, HULL, { x: -s * 0.32, y: s * 0.24 }));
+  parts.push(...roofPanels(s, s * 0.42, c, { w: 0.28, d: 0.8 }));
+  parts.push(...grille(s, { x: -s * 0.32, y: s * 0.42, w: 0.22, d: 0.6, slats: 6 }));
+  parts.push(box(s * 0.26, s * 0.2, s * 0.5, HULL_DARK, { x: -s * 0.32, y: s * 0.14 }));
+  for (const side of [-1, 1]) {
+    parts.push(box(s * 0.05, s * 0.42, s * 0.05, STEEL, { x: s * 0.28, z: side * s * 0.34, y: s * 0.26 }));
+    parts.push(cylinder(s * 0.03, s * 0.03, s * 0.3, STEEL, { x: -s * 0.05, z: side * s * 0.34, y: s * 0.46, rz: Math.PI / 2 }, 6));
+  }
+  parts.push(box(s * 0.7, s * 0.05, s * 0.08, STEEL, { x: s * 0.0, y: s * 0.48 }));
+  parts.push(box(s * 0.12, s * 0.1, s * 0.14, HULL_DARK, { x: s * 0.1, y: s * 0.42 }));
+  // Windsock and approach lights.
+  parts.push(cylinder(s * 0.012, s * 0.012, s * 0.36, STEEL, { x: s * 0.34, z: -s * 0.34, y: s * 0.24 }, 6));
+  parts.push(cone(s * 0.05, s * 0.16, '#ff9a5b', { x: s * 0.34, z: -s * 0.3, y: s * 0.4, rz: -Math.PI / 2 }, 8));
+  for (const side of [-1, 1]) {
+    parts.push(cylinder(s * 0.03, s * 0.03, s * 0.04, GLOW, { x: s * 0.36, z: side * s * 0.16, y: s * 0.1 }, 8));
+  }
+  if (heavy) {
+    parts.push(box(s * 0.22, s * 0.26, s * 0.7, HULL_DARK, { x: s * 0.3, y: s * 0.2 }));
+    parts.push(...boltLine(s, { from: [s * 0.3, s * 0.34, -s * 0.3], to: [s * 0.3, s * 0.34, s * 0.3], count: 5, size: 0.03 }));
+  }
+  return { body: merge(parts) };
+}
+
+/** Anti-air emplacement: a ring mount with barrels that point up. */
+function aaTurret(s, c, { missile = false } = {}) {
+  const parts = foundation(s, c);
+  parts.push(cylinder(s * 0.3, s * 0.34, s * 0.2, HULL, { y: s * 0.16 }, 16));
+  parts.push(...boltRing(s, { y: s * 0.27, radius: 0.26, count: 12, size: 0.03 }));
+  parts.push(box(s * 0.3, s * 0.16, s * 0.24, HULL_DARK, { x: -s * 0.28, y: s * 0.14 }));
+  parts.push(...grille(s, { x: -s * 0.28, y: s * 0.23, w: 0.2, d: 0.18, slats: 3 }));
+  return {
+    body: merge(parts),
+    turret: merge(missile ? [
+      cylinder(s * 0.2, s * 0.22, s * 0.14, HULL, {}, 14),
+      // A rack of tubes, canted up.
+      ...[-1, 1].flatMap((side) => [0, 1].map((k) =>
+        cylinder(s * 0.07, s * 0.07, s * 0.5, HULL_DARK, {
+          x: s * 0.04, z: side * s * 0.12, y: s * 0.18 + k * s * 0.14, rz: 0.8,
+        }, 10))),
+      ...[-1, 1].flatMap((side) => [0, 1].map((k) =>
+        cone(s * 0.055, s * 0.12, '#9fe8ff', {
+          x: s * 0.2, z: side * s * 0.12, y: s * 0.36 + k * s * 0.14, rz: 0.8 - Math.PI,
+        }, 8))),
+      ...optics(s, { x: -s * 0.14, y: s * 0.16, scale: 0.5 }),
+      box(s * 0.24, s * 0.06, s * 0.03, c.primary, { y: s * 0.1, z: s * 0.2 }),
+    ] : [
+      cylinder(s * 0.2, s * 0.22, s * 0.14, HULL, {}, 14),
+      box(s * 0.22, s * 0.24, s * 0.34, HULL_DARK, { y: s * 0.14 }),
+      // Twin barrels at a steep elevation.
+      ...[-1, 1].map((side) =>
+        cylinder(s * 0.05, s * 0.045, s * 0.66, HULL_LIGHT, {
+          x: s * 0.14, z: side * s * 0.09, y: s * 0.36, rz: 0.9,
+        }, 10)),
+      ...[-1, 1].map((side) =>
+        cylinder(s * 0.07, s * 0.06, s * 0.1, GREASE, {
+          x: s * 0.32, z: side * s * 0.09, y: s * 0.6, rz: 0.9,
+        }, 10)),
+      box(s * 0.16, s * 0.14, s * 0.12, GREASE, { x: -s * 0.12, y: s * 0.2 }),
+      ...optics(s, { x: s * 0.02, z: -s * 0.2, y: s * 0.2, scale: 0.5 }),
+      box(s * 0.24, s * 0.06, s * 0.03, c.primary, { y: s * 0.08, z: s * 0.2 }),
+    ]),
+    turretY: s * 0.3,
+  };
+}
+
+/** The hive's flyers: the same silhouettes grown rather than built. */
+function blFlyer(r, c, kind) {
+  const parts = [];
+  const big = kind === 'gorger';
+  const span = kind === 'midge' ? 1.2 : big ? 1.7 : 1.4;
+  parts.push(...carapace(r, c.primary, { y: 0, scale: big ? 1.2 : 0.9, squash: 0.5 }));
+  parts.push(cone(r * (big ? 0.3 : 0.22), r * 0.8, CHITIN, { x: r * 0.8, rz: -Math.PI / 2 }, 10));
+  parts.push(...maw(r, { x: r * 1.0, radius: 0.22, count: 6, len: 0.24 }));
+  for (const side of [-1, 1]) {
+    // Membrane wings on a ribbed spar.
+    parts.push(box(r * 0.7, r * 0.04, r * span, FLESH, { x: -r * 0.1, z: side * r * span * 0.55, ry: side * 0.25 }));
+    parts.push(cylinder(r * 0.05, r * 0.03, r * span, CHITIN_DARK,
+      { x: r * 0.14, z: side * r * span * 0.55, rx: Math.PI / 2, ry: side * 0.25 }, 6));
+    for (let i = 1; i <= 3; i++) {
+      parts.push(cylinder(r * 0.02, r * 0.015, r * 0.5, CHITIN_DARK, {
+        x: -r * 0.16, z: side * r * span * (0.2 * i), rx: Math.PI / 2, ry: side * 0.25,
+      }, 5));
+    }
+    parts.push(cone(r * 0.05, r * 0.3, CHITIN_LIGHT, { x: -r * 0.6, z: side * r * 0.3, rz: 0.6 }, 6));
+  }
+  parts.push(...spines(r, c, { x: -r * 0.1, y: r * 0.2, count: big ? 5 : 3, len: 0.4 }));
+  parts.push(sphere(r * 0.1, BILE, { x: r * 0.4, y: r * 0.14 }, 8));
+  parts.push(...tendrils(r, c, { x: -r * 0.5, y: -r * 0.1, count: 4, len: 0.5, spread: 0.3 }));
+  if (big) {
+    // The load it drops.
+    for (let i = 0; i < 3; i++) {
+      parts.push(sphere(r * 0.14, BILE, { x: -r * 0.3 + i * r * 0.3, y: -r * 0.26, sy: 1.2 }, 8));
+    }
+  }
+  return {
+    body: merge(parts),
+    turret: merge([
+      sphere(r * 0.16, FLESH, { sy: 0.8 }, 10),
+      ...maw(r, { x: r * 0.16, radius: 0.14, count: 5, len: 0.18 }),
+    ]),
+    turretY: big ? -r * 0.2 : r * 0.16,
+  };
+}
+
+/** The hive's roost, and its spore thrower. */
+function blRoost(s, c) {
+  const parts = mound(s, c, 0.13);
+  // An open cup with a ring of spines, and egg sacs around the rim.
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    parts.push(cone(s * 0.08, s * 0.55, c.primary, {
+      x: Math.cos(a) * s * 0.32, z: Math.sin(a) * s * 0.32, y: s * 0.24,
+      rx: Math.sin(a) * 0.42, rz: -Math.cos(a) * 0.42,
+    }, 7));
+  }
+  parts.push(cylinder(s * 0.26, s * 0.3, s * 0.1, CHITIN_DARK, { y: s * 0.07 }, 14));
+  parts.push(cylinder(s * 0.2, s * 0.2, s * 0.05, BILE, { y: s * 0.11 }, 14));
+  parts.push(...sac(s, c, { x: -s * 0.3, z: s * 0.26, scale: 0.75 }));
+  parts.push(...sac(s, c, { x: s * 0.28, z: -s * 0.3, scale: 0.6 }));
+  parts.push(...tendrils(s * 0.7, c, { y: s * 0.2, count: 6, len: 0.55, spread: 0.8 }));
+  return { body: merge(parts) };
+}
+
+function blSporeThrower(s, c) {
+  const parts = mound(s, c, 0.1);
+  parts.push(sphere(s * 0.22, c.primary, { y: s * 0.22, sy: 0.85 }, 12));
+  return {
+    body: merge(parts),
+    turret: merge([
+      sphere(s * 0.16, CHITIN, { sy: 0.9 }, 10),
+      // A throat angled up, ringed with teeth.
+      cylinder(s * 0.1, s * 0.14, s * 0.5, FLESH, { x: s * 0.1, y: s * 0.24, rz: 0.95 }, 10),
+      ...maw(s * 0.8, { x: s * 0.24, y: s * 0.46, radius: 0.16, count: 7, len: 0.16 }),
+      ...spines(s * 0.7, c, { y: s * 0.12, count: 3, len: 0.3, spacing: 0.24 }),
+      sphere(s * 0.06, BILE, { x: -s * 0.1, y: s * 0.14 }, 8),
+    ]),
+    turretY: s * 0.3,
+  };
+}
+
+// -------------------------------------------------------------- infantry
+//
+// A soldier is roughly a tenth the volume of a tank and is drawn at a tenth
+// the pixel size, so the detail that reads on a hull is wasted here. What
+// carries at this scale is silhouette: helmet, shoulders, a weapon held out
+// from the body, and the gap between the legs. Everything below is shaped to
+// make those four things survive being twenty pixels tall.
+//
+// The unit the game moves is one soldier, not a squad marker -- the squad is
+// six of these walking together -- so the model is built small and cheap.
+
+const WEBBING = '#4a4f45';
+const FATIGUE = '#5d6350';
+const SKIN = '#9c7b61';
+
+/**
+ * One figure, standing, facing +X with its weapon out front.
+ *
+ * `h` is the figure's height in world units; every proportion below is a
+ * fraction of it, so the same function serves a rifleman and a heavier
+ * trooper. `pose` shifts the legs so a squad does not look like a row of
+ * identical statues -- the same model drawn six times is the one thing that
+ * would give the trick away.
+ */
+function soldier(h, c, { pose = 0, kit = 'rifle', coat = FATIGUE } = {}) {
+  const parts = [];
+  // Proportions are taken off a real figure rather than guessed: head about a
+  // seventh of the height, shoulders at 0.82, hips at 0.50, knees at 0.27.
+  // The first pass used a head a fifth of the body and it read as a robot with
+  // a bowl on it -- at this size the head is the one measurement that has to
+  // be right, because it is the part the eye uses to judge all the others.
+  const HIP = 0.5;
+  const SHOULDER = 0.82;
+  const HEAD = 0.9;
+
+  // Legs: thigh, shin, boot, each leg its own part hung from the hip so the
+  // view can swing it. The pose only staggers the rest stance now; the walk
+  // itself is animated.
+  const legs = [];
+  for (const [side, phase] of [[-1, 0], [1, Math.PI]]) {
+    const off = Math.sin(pose + phase) * h * 0.02;
+    const z = side * h * 0.065;
+    const leg = [];
+    leg.push(box(h * 0.105, h * 0.24, h * 0.1, coat, {
+      x: off * 0.45, y: h * 0.385, z, rz: off * 0.5 / h,
+    }));
+    leg.push(box(h * 0.085, h * 0.22, h * 0.085, coat, {
+      x: off * 0.9, y: h * 0.16, z, rz: off * 0.3 / h,
+    }));
+    leg.push(box(h * 0.145, h * 0.055, h * 0.1, DARK, {
+      x: off + h * 0.02, y: h * 0.03, z,
+    }));
+    legs.push({ parts: leg, pivot: [0, h * HIP, z], phase: side < 0 ? 0 : 1 });
+  }
+
+  // Hips and torso. The chest is a shade wider than the waist, which is what
+  // separates a person from a stack of boxes.
+  parts.push(box(h * 0.14, h * 0.07, h * 0.2, coat, { y: h * HIP }));
+  parts.push(box(h * 0.145, h * 0.14, h * 0.21, coat, { y: h * 0.61 }));
+  parts.push(box(h * 0.16, h * 0.15, h * 0.24, coat, { y: h * 0.745 }));
+  // Webbing: a belt, a strap over one shoulder, and the pack behind.
+  parts.push(box(h * 0.165, h * 0.035, h * 0.225, WEBBING, { y: h * 0.545 }));
+  parts.push(box(h * 0.04, h * 0.2, h * 0.05, WEBBING, { x: h * 0.075, y: h * 0.69, z: -h * 0.06, rz: 0.2 }));
+  parts.push(box(h * 0.1, h * 0.17, h * 0.19, WEBBING, { x: -h * 0.12, y: h * 0.7 }));
+  parts.push(box(h * 0.055, h * 0.06, h * 0.06, GREASE, { x: -h * 0.15, y: h * 0.61, z: h * 0.07 }));
+  // The recognition panel: a plate on the chest, not a coloured head.
+  parts.push(box(h * 0.035, h * 0.075, h * 0.15, c.primary, { x: h * 0.08, y: h * 0.72 }));
+
+  // Shoulders, then neck and head. The helmet is a dome a little wider than
+  // the skull, with a brim at the front only.
+  parts.push(box(h * 0.13, h * 0.07, h * 0.3, coat, { y: h * SHOULDER }));
+  for (const side of [-1, 1]) {
+    parts.push(sphere(h * 0.045, coat, { y: h * (SHOULDER + 0.01), z: side * h * 0.135 }, 6, 5));
+  }
+  parts.push(cylinder(h * 0.032, h * 0.032, h * 0.04, SKIN, { y: h * 0.858 }, 6));
+  parts.push(sphere(h * 0.052, SKIN, { y: h * (HEAD - 0.005) }, 6, 5));
+  parts.push(sphere(h * 0.062, coat, { y: h * (HEAD + 0.008), sy: 0.85 }, 8, 6));
+  parts.push(box(h * 0.055, h * 0.014, h * 0.1, DARK, { x: h * 0.045, y: h * (HEAD - 0.01) }));
+  // Team colour on the helmet is a stripe front to back, not a painted dome:
+  // a coloured dome is the brightest thing on the model and swallows the head.
+  parts.push(box(h * 0.11, h * 0.016, h * 0.022, c.light, { y: h * (HEAD + 0.055) }));
+
+  // Arms. Upper arm down and slightly forward, forearm across to the weapon,
+  // so the gun is held rather than growing out of the chest.
+  const armKit = (side, reach) => {
+    const z = side * h * 0.115;
+    parts.push(box(h * 0.06, h * 0.145, h * 0.06, coat, { x: h * 0.01, y: h * 0.735, z, rz: 0.25 }));
+    parts.push(box(h * 0.14, h * 0.05, h * 0.05, coat, {
+      x: h * (0.075 + reach * 0.5), y: h * 0.66, z: z * 0.85, rz: -0.12,
+    }));
+    parts.push(sphere(h * 0.03, DARK, { x: h * (0.13 + reach), y: h * 0.655, z: z * 0.8 }, 6, 5));
+  };
+
+  if (kit === 'launcher') {
+    armKit(-1, 0.05); armKit(1, 0.0);
+    parts.push(cylinder(h * 0.042, h * 0.042, h * 0.4, DARK, {
+      x: h * 0.1, y: h * 0.795, z: -h * 0.075, rz: Math.PI / 2,
+    }, 8));
+    parts.push(cylinder(h * 0.058, h * 0.046, h * 0.07, GREASE, {
+      x: -h * 0.09, y: h * 0.795, z: -h * 0.075, rz: Math.PI / 2,
+    }, 8));
+    parts.push(cone(h * 0.05, h * 0.09, c.primary, {
+      x: h * 0.34, y: h * 0.795, z: -h * 0.075, rz: -Math.PI / 2,
+    }, 8));
+    parts.push(box(h * 0.02, h * 0.05, h * 0.02, STEEL, { x: h * 0.02, y: h * 0.755, z: -h * 0.075 }));
+  } else if (kit === 'sam') {
+    armKit(-1, 0.04); armKit(1, 0.0);
+    parts.push(cylinder(h * 0.045, h * 0.045, h * 0.38, GREASE, {
+      x: h * 0.12, y: h * 0.86, z: -h * 0.075, rz: Math.PI / 2 - 0.55,
+    }, 8));
+    parts.push(cone(h * 0.052, h * 0.09, c.primary, {
+      x: h * 0.29, y: h * 0.975, z: -h * 0.075, rz: -0.55,
+    }, 8));
+    parts.push(box(h * 0.07, h * 0.06, h * 0.06, DARK, { x: h * 0.02, y: h * 0.805, z: -h * 0.075 }));
+    parts.push(sphere(h * 0.022, GLOW, { x: h * 0.06, y: h * 0.83, z: -h * 0.075 }, 6, 4));
+  } else if (kit === 'support') {
+    armKit(-1, 0.1); armKit(1, 0.03);
+    parts.push(box(h * 0.3, h * 0.04, h * 0.04, DARK, { x: h * 0.2, y: h * 0.655 }));
+    parts.push(box(h * 0.09, h * 0.055, h * 0.055, GREASE, { x: h * 0.08, y: h * 0.655 }));
+    parts.push(cylinder(h * 0.055, h * 0.055, h * 0.045, GREASE, {
+      x: h * 0.1, y: h * 0.605, rx: Math.PI / 2,
+    }, 8));
+    for (const side of [-1, 1]) {
+      parts.push(box(h * 0.022, h * 0.12, h * 0.022, STEEL, {
+        x: h * 0.3, y: h * 0.58, z: side * h * 0.03, rz: 0.35,
+      }));
+    }
+  } else {
+    armKit(-1, 0.09); armKit(1, 0.02);
+    parts.push(box(h * 0.26, h * 0.035, h * 0.035, DARK, { x: h * 0.185, y: h * 0.665 }));
+    parts.push(box(h * 0.085, h * 0.06, h * 0.05, GREASE, { x: h * 0.085, y: h * 0.665 }));
+    parts.push(box(h * 0.035, h * 0.08, h * 0.03, DARK, { x: h * 0.09, y: h * 0.605, rz: 0.18 }));
+    parts.push(box(h * 0.09, h * 0.045, h * 0.035, WEBBING, { x: -h * 0.005, y: h * 0.672 }));
+    parts.push(box(h * 0.02, h * 0.025, h * 0.015, STEEL, { x: h * 0.14, y: h * 0.695 }));
+  }
+  return { parts, legs };
+}
+
+/**
+ * The hive's version: the same silhouette read as a thing rather than a man.
+ * Hunched, no helmet, and a carapace instead of webbing -- close enough in
+ * outline that a player reads "swarm of small bodies" at a glance, different
+ * enough on inspection that it is clearly not somebody's infantry.
+ */
+function swarmer(h, c, { pose = 0, kit = 'rifle' } = {}) {
+  const parts = [];
+
+  // Four legs rather than two, splayed low. A wider, flatter footprint is what
+  // separates it from a man at the twenty-pixel size that matters.
+  const legs = [];
+  for (const side of [-1, 1]) {
+    for (const [fx, k] of [[0.12, 0], [-0.1, 1]]) {
+      const off = Math.sin(pose + k * Math.PI + (side > 0 ? 1.6 : 0)) * h * 0.02;
+      const leg = [
+        box(h * 0.08, h * 0.26, h * 0.07, CHITIN_DARK, {
+          x: h * fx + off * 0.4, y: h * 0.2, z: side * h * 0.13, rz: 0.2 * side,
+        }),
+        cone(h * 0.05, h * 0.09, CHITIN_DARK, {
+          x: h * fx + off, y: h * 0.05, z: side * h * 0.16, rz: Math.PI,
+        }, 6),
+      ];
+      legs.push({ parts: leg, pivot: [h * fx, h * 0.33, side * h * 0.13], phase: (k === 0) === (side > 0) ? 0 : 1 });
+    }
+  }
+
+  // A low, ridged abdomen carried horizontally.
+  parts.push(sphere(h * 0.19, CHITIN, { x: -h * 0.06, y: h * 0.42 }, 8, 6));
+  parts.push(box(h * 0.3, h * 0.2, h * 0.24, CHITIN, { x: h * 0.08, y: h * 0.45 }));
+  for (let i = 0; i < 3; i++) {
+    parts.push(box(h * 0.035, h * 0.1, h * 0.26, CHITIN_LIGHT, {
+      x: h * (0.0 + i * 0.09), y: h * 0.55,
+    }));
+  }
+  parts.push(box(h * 0.2, h * 0.09, h * 0.2, c.primary, { x: h * 0.1, y: h * 0.56 }));
+
+  // Head: a wedge with mandibles and two glowing pits.
+  parts.push(cone(h * 0.13, h * 0.2, CHITIN_LIGHT, { x: h * 0.28, y: h * 0.46, rz: -Math.PI / 2 }, 8));
+  for (const side of [-1, 1]) {
+    parts.push(cone(h * 0.035, h * 0.14, CHITIN_DARK, {
+      x: h * 0.38, y: h * 0.42, z: side * h * 0.06, rz: -Math.PI / 2, rx: side * 0.3,
+    }, 6));
+    parts.push(sphere(h * 0.035, BILE, { x: h * 0.32, y: h * 0.52, z: side * h * 0.06 }, 6, 4));
+  }
+
+  if (kit === 'launcher' || kit === 'sam') {
+    // A barbed spine carried over the back, angled up for the AA variant.
+    const lift = kit === 'sam' ? 0.55 : 0.15;
+    parts.push(cylinder(h * 0.05, h * 0.02, h * 0.46, CHITIN_LIGHT, {
+      x: h * 0.06, y: h * 0.66, rz: Math.PI / 2 - lift,
+    }, 8));
+    parts.push(cone(h * 0.055, h * 0.12, BILE, {
+      x: h * 0.26, y: h * 0.66 + h * lift * 0.5, rz: -lift,
+    }, 6));
+  } else if (kit === 'support') {
+    parts.push(cylinder(h * 0.07, h * 0.05, h * 0.3, CHITIN_LIGHT, {
+      x: h * 0.2, y: h * 0.6, rz: Math.PI / 2 - 0.2,
+    }, 8));
+    parts.push(sphere(h * 0.07, BILE, { x: h * 0.34, y: h * 0.66 }, 6, 4));
+  }
+  return { parts, legs };
+}
+
+/**
+ * A squad, drawn as one model.
+ *
+ * Every body in a squad is its own entity in the simulation, so this is not a
+ * squad marker -- it is the single figure that entity draws. It is kept as its
+ * own function only so the pose can be varied by a seed taken from the def, so
+ * that a line of them is not a line of identical statues.
+ */
+function infantryFigure(r, c, { kit = 'rifle', hive = false, seed = 0 } = {}) {
+  // Infantry radius is small (6 world units); the figure stands about three
+  // radii tall, which puts a soldier at roughly half a tank's height.
+  const h = r * 3.1;
+  const pose = seed * 1.37;
+  const fig = hive ? swarmer(h, c, { pose, kit }) : soldier(h, c, { pose, kit });
+  return { body: merge(fig.parts), legs: legGeos(fig.legs) };
+}
+
+/**
+ * A barracks: a low drill yard rather than a hangar.
+ *
+ * It has to read as "infantry" from straight overhead and at a glance, which
+ * means it cannot look like a smaller bot lab. What distinguishes it is that
+ * it is horizontal -- huts, a parade square, a perimeter -- where every other
+ * factory is a tall shed with a mouth. `hive` swaps the huts for growths.
+ */
+function barracks(s, c, { hive = false } = {}) {
+  const shell = hive ? CHITIN : HULL;
+  const shellDark = hive ? CHITIN_DARK : HULL_DARK;
+  const parts = foundation(s, c, 1.6);
+  const h = 1.6;
+
+  // The square itself: a worn plate with lane markings, which is most of what
+  // is visible from the game camera.
+  parts.push(box(s * 0.62, s * 0.04, s * 0.78, '#26292f', { x: s * 0.06, y: h + s * 0.02 }));
+  for (let i = 0; i < 4; i++) {
+    parts.push(box(s * 0.5, s * 0.012, s * 0.03, '#6a7079', {
+      x: s * 0.08, z: s * (-0.3 + i * 0.2), y: h + s * 0.045,
+    }));
+  }
+
+  // Two barrack huts along the back edge, roofs ridged so they are not slabs.
+  for (const side of [-1, 1]) {
+    const z = side * s * 0.3;
+    parts.push(box(s * 0.28, s * 0.22, s * 0.3, shell, { x: -s * 0.26, z, y: h + s * 0.11 }));
+    parts.push(box(s * 0.3, s * 0.05, s * 0.32, shellDark, { x: -s * 0.26, z, y: h + s * 0.24 }));
+    parts.push(box(s * 0.3, s * 0.05, s * 0.06, c.primary, { x: -s * 0.26, z, y: h + s * 0.27 }));
+    if (hive) {
+      parts.push(sphere(s * 0.1, CHITIN_LIGHT, { x: -s * 0.26, z, y: h + s * 0.3 }, 8, 6));
+      parts.push(sphere(s * 0.04, BILE, { x: -s * 0.14, z, y: h + s * 0.16 }, 6, 4));
+    } else {
+      parts.push(box(s * 0.04, s * 0.09, s * 0.07, GLASS, { x: -s * 0.12, z, y: h + s * 0.13 }));
+      parts.push(...boltLine(s, {
+        from: [-s * 0.4, h + s * 0.24, z - s * 0.13],
+        to: [-s * 0.12, h + s * 0.24, z - s * 0.13], count: 3, size: 0.018,
+      }));
+    }
+  }
+
+  // The gate the squads come out of: two posts and a lintel on +X.
+  parts.push(box(s * 0.07, s * 0.3, s * 0.07, shell, { x: s * 0.36, z: -s * 0.22, y: h + s * 0.15 }));
+  parts.push(box(s * 0.07, s * 0.3, s * 0.07, shell, { x: s * 0.36, z: s * 0.22, y: h + s * 0.15 }));
+  parts.push(box(s * 0.09, s * 0.07, s * 0.52, c.primary, { x: s * 0.36, y: h + s * 0.32 }));
+  parts.push(sphere(s * 0.045, hive ? BILE : GLOW, { x: s * 0.36, y: h + s * 0.38 }, 8, 6));
+
+  // A perimeter of low blocks on the two open sides, so the footprint has an
+  // edge rather than fading into the ground.
+  for (let i = 0; i < 5; i++) {
+    const z = s * (-0.36 + i * 0.18);
+    parts.push(box(s * 0.08, s * 0.08, s * 0.1, shellDark, { x: s * 0.42, z, y: h + s * 0.04 }));
+  }
+
+  if (hive) {
+    // Egg sacs where a human barracks would have a store and a mast.
+    for (const [x, z, rr] of [[0.06, -0.36, 0.11], [0.2, 0.34, 0.09], [-0.02, 0.3, 0.07]]) {
+      parts.push(sphere(s * rr, CHITIN_LIGHT, { x: s * x, z: s * z, y: h + s * rr * 0.8 }, 8, 6));
+      parts.push(sphere(s * rr * 0.35, BILE, { x: s * x, z: s * z, y: h + s * rr * 1.5 }, 6, 4));
+    }
+  } else {
+    // Quartermaster's store, a stack of crates and a flagpole: the props that
+    // say people live here rather than machines being assembled.
+    parts.push(box(s * 0.16, s * 0.16, s * 0.2, shellDark, { x: s * 0.1, z: -s * 0.36, y: h + s * 0.08 }));
+    parts.push(box(s * 0.1, s * 0.1, s * 0.1, GREASE, { x: s * 0.22, z: s * 0.34, y: h + s * 0.05 }));
+    parts.push(box(s * 0.1, s * 0.1, s * 0.1, GREASE, { x: s * 0.22, z: s * 0.34, y: h + s * 0.15 }));
+    parts.push(box(s * 0.1, s * 0.1, s * 0.1, GREASE, { x: s * 0.1, z: s * 0.34, y: h + s * 0.05 }));
+    parts.push(cylinder(s * 0.018, s * 0.018, s * 0.55, STEEL, { x: -s * 0.02, z: s * 0.36, y: h + s * 0.28 }, 6));
+    parts.push(box(s * 0.01, s * 0.12, s * 0.16, c.light, { x: -s * 0.02, z: s * 0.44, y: h + s * 0.47 }));
+    parts.push(...railing(s, {
+      from: [s * 0.3, h, -s * 0.4], to: [s * 0.3, h, s * 0.4], posts: 3,
+    }));
+  }
+  return { body: merge(parts) };
+}
+
 const BUILDERS = {
   commander: (d, c) => commander(d.radius, c, d.faction),
+
+  // Infantry. The `seed` varies the walking pose between the three squad
+  // types so a mixed force is not six copies of one statue.
+  barracks: (d, c) => barracks(d.footprintPx, c),
+  con_barracks: (d, c) => barracks(d.footprintPx, c),
+  bl_brood: (d, c) => barracks(d.footprintPx, c, { hive: true }),
+  trooper: (d, c) => infantryFigure(d.radius, c, { kit: 'rifle', seed: 0 }),
+  lancer: (d, c) => infantryFigure(d.radius, c, { kit: 'launcher', seed: 1 }),
+  marksman: (d, c) => infantryFigure(d.radius, c, { kit: 'support', seed: 2 }),
+  con_rifles: (d, c) => infantryFigure(d.radius, c, { kit: 'rifle', seed: 3 }),
+  con_at: (d, c) => infantryFigure(d.radius, c, { kit: 'launcher', seed: 4 }),
+  con_aa_team: (d, c) => infantryFigure(d.radius, c, { kit: 'sam', seed: 5 }),
+  bl_swarmer: (d, c) => infantryFigure(d.radius, c, { kit: 'rifle', hive: true, seed: 0 }),
+  bl_barbs: (d, c) => infantryFigure(d.radius, c, { kit: 'launcher', hive: true, seed: 1 }),
+  bl_screamer: (d, c) => infantryFigure(d.radius, c, { kit: 'sam', hive: true, seed: 2 }),
+
   conbot: (d, c) => conbot(d.radius, c),
   adv_conbot: (d, c) => conbot(d.radius, c),
   scout: (d, c) => scout(d.radius, c),
@@ -1726,6 +2747,22 @@ const BUILDERS = {
   bl_maw: (d, c) => blThorn(d.footprintPx, c, true),
   bl_antenna: (d, c) => blAntenna(d.footprintPx, c),
 
+  airpad: (d, c) => airPlant(d.footprintPx, c, false),
+  aatower: (d, c) => aaTurret(d.footprintPx, c, { missile: false }),
+  gnat: (d, c) => interceptor(d.radius, c),
+  harrier: (d, c) => gunship(d.radius, c),
+  hammerhead: (d, c) => bomber(d.radius, c),
+  con_apron: (d, c) => airPlant(d.footprintPx, c, true),
+  con_battery_aa: (d, c) => aaTurret(d.footprintPx, c, { missile: true }),
+  con_needle: (d, c) => interceptor(d.radius, c),
+  con_vulture: (d, c) => gunship(d.radius, c),
+  con_anvil: (d, c) => bomber(d.radius, c),
+  bl_roost: (d, c) => blRoost(d.footprintPx, c),
+  bl_spitter_aa: (d, c) => blSporeThrower(d.footprintPx, c),
+  bl_midge: (d, c) => blFlyer(d.radius, c, 'midge'),
+  bl_wing: (d, c) => blFlyer(d.radius, c, 'wing'),
+  bl_gorger: (d, c) => blFlyer(d.radius, c, 'gorger'),
+
   con_derrick: (d, c) => conDerrick(d.footprintPx, c),
   con_diesel: (d, c) => conDiesel(d.footprintPx, c),
   con_fusion: (d, c) => conFusion(d.footprintPx, c),
@@ -1774,6 +2811,7 @@ export const PALETTE = {
   HULL, HULL_DARK, HULL_LIGHT, DARK, GLASS, GLOW, TRACK,
   STEEL, GREASE,
   CHITIN, CHITIN_DARK, CHITIN_LIGHT, FLESH, BILE,
+  WEBBING, FATIGUE, SKIN,
 };
 
 /** Build (and cache) the model for a definition rendered in a player colour. */
@@ -1789,6 +2827,10 @@ export function modelFor(def, colors) {
   m.spinnerX = m.spinnerX || 0;
   m.spinSpeed = m.spinSpeed || 0;
   m.spinnerAxis = m.spinnerAxis || 'y';
+  // The browser renderer does not animate legs; it draws them as body.
+  if (m.legs && m.legs.length) {
+    m.body = merge([m.body, ...m.legs.map((l) => l.geo)]);
+  }
 
   // Peel the glowing detail off each part into its own geometry.
   for (const part of ['body', 'turret', 'spinner']) {

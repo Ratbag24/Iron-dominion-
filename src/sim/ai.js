@@ -12,15 +12,18 @@ import { dist } from '../core/math.js';
 const LEVELS = {
   easy: {
     think: 0.75, income: 0.85, builders: 2, waveBase: 6, waveGrowth: 1 / 120,
-    maxWave: 24, techTime: 660, defenceTime: 300,
+    maxWave: 24, techTime: 660, defenceTime: 300, airTime: 600,
+    barracksTime: 150,
   },
   normal: {
     think: 0.5, income: 1.0, builders: 4, waveBase: 8, waveGrowth: 1 / 90,
-    maxWave: 34, techTime: 480, defenceTime: 220,
+    maxWave: 34, techTime: 480, defenceTime: 220, airTime: 420,
+    barracksTime: 105,
   },
   hard: {
     think: 0.35, income: 1.2, builders: 6, waveBase: 10, waveGrowth: 1 / 70,
-    maxWave: 48, techTime: 380, defenceTime: 160,
+    maxWave: 48, techTime: 380, defenceTime: 160, airTime: 320,
+    barracksTime: 75,
   },
 };
 
@@ -53,6 +56,9 @@ export class AIPlayer {
     this.defendY = 0;
     this.energyStallTime = 0;
     this.metalWasteTime = 0;
+    // How many enemy aircraft we have laid eyes on, which is what drives the
+    // decision to pay for anti-air at all.
+    this.airSeen = 0;
   }
 
   update(dt) {
@@ -83,6 +89,16 @@ export class AIPlayer {
       if (e.weapons.length > 0 && e.def.speed && !e.def.isCommander) army.push(e);
     }
     this.counts = counts;
+
+    // Count what is flying against us, from what we can currently see.
+    let flying = 0;
+    for (const other of w.entities) {
+      if (!other.alive || other.def.layer !== 'air') continue;
+      if (w.players[other.player].team === p.team) continue;
+      if (!w.fog[p.index].isVisible(other.x, other.y)) continue;
+      flying++;
+    }
+    this.airSeen = Math.max(flying, this.airSeen * 0.985);
 
     if (p.stalling && p.stalling.energy) this.energyStallTime += dt;
     else this.energyStallTime = Math.max(0, this.energyStallTime - dt * 0.5);
@@ -163,12 +179,44 @@ export class AIPlayer {
     // which is what makes it the way out of a stall.
     if (p.energy < p.energyStorage * 0.3 || energyIncome < 24) add(R.energy);
 
+    // Anti-air goes near the top the moment something is actually flying at
+    // us. It is not an improvement to make when there is spare time; it is the
+    // difference between having an answer and not having one.
+    if (this.airSeen > 0 && n(R.antiAir) < 1 + Math.floor(this.airSeen / 2)) {
+      add(R.antiAir);
+    }
+
     if (mexes < 4 && hasSpot) add(R.mex);
     if (energyIncome < 42 && n(R.energy) + n(R.energyAlt) < 6) {
       add(energyIncome < 30 ? R.energy : (R.energyAlt || R.energy));
     }
     if (factories === 0) add(R.factory);
+
+    // A barracks is the cheapest production in the game and finishes in a
+    // third of the time a bot lab takes, so it goes up beside the first
+    // factory rather than after it -- troops are what covers the gap while
+    // the real army is still being built.
+    if (time > this.cfg.barracksTime && n(R.barracks) < 1) add(R.barracks);
+
+    // An air plant is a strategic opening rather than an incremental one, so
+    // it sits with the factories: aircraft ignore the map, which is worth a
+    // great deal on ground this broken. Below the first factory, above the
+    // steady drip of power plants and turrets that would otherwise crowd it
+    // out forever.
+    if (factories > 0 && time > this.cfg.airTime && p.metalIncome > 14
+        && n(R.airFactory) < 1) {
+      add(R.airFactory);
+    }
+    // One tower on spec once the game is old enough that someone could have
+    // aircraft, so the first raid is not free. Exactly one: anti-air shoots at
+    // nothing else, so every tower past the first is metal that buys no ground
+    // until an aircraft actually shows up -- and a second one on spec measured
+    // out as games that ran to the clock instead of to a winner.
+    if (time > this.cfg.airTime * 1.2 && n(R.antiAir) < 1) add(R.antiAir);
     if (hasSpot) add(R.mex);
+    // Infantry scale by number, not by quality, so a second barracks is worth
+    // more than a second bot lab once there is income to keep both busy.
+    if (p.metalIncome > 20 && n(R.barracks) < 2) add(R.barracks);
 
     if (this.energyStallTime > 1.5 || energyIncome < energyTarget) {
       // A big reactor is a mid-game commitment, not an opening move: it costs
@@ -191,6 +239,7 @@ export class AIPlayer {
     const wantDefence = time > this.cfg.defenceTime || w.time < this.defendUntil;
     if (wantDefence && n(R.defence) < 2 + Math.floor(time / 240)) add(R.defence);
     if (time > 180 && n(R.radar) < 1) add(R.radar);
+
     if (time > this.cfg.techTime && n(R.factoryT2) === 0 && p.metalIncome > 9) add(R.factoryT2);
     if (this.metalWasteTime > 3 && n(R.mstore) < 2) add(R.mstore);
     if (p.energy > p.energyStorage * 0.9 && p.metalIncome < 20 && n(R.converter) < 6) add(R.converter);
@@ -257,6 +306,13 @@ export class AIPlayer {
       originY = this.baseY + Math.sin(a) * 300;
       minR = 0;
       maxR = 320;
+    } else if (defId === R.antiAir) {
+      // Anti-air belongs over what it is protecting, not out at the front.
+      minR = 60;
+      maxR = 380;
+    } else if (defId === R.airFactory) {
+      minR = 140;
+      maxR = 480;
     } else if (defId === R.radar) {
       minR = 200;
       maxR = 600;
@@ -306,7 +362,23 @@ export class AIPlayer {
       const isT2 = f.defId === R.factoryT2;
       let pick;
 
-      if (isT2) {
+      if (f.defId === R.barracks) {
+        // Troopers are the body of the squad; lancers are what stops armour;
+        // the AA team only earns its cost once something is in the air. Keep
+        // the mix weighted to riflemen -- a platoon of nothing but rocket
+        // troops evaporates the moment it meets infantry of its own.
+        if (this.airSeen > 0 && n(R.aaInfantry) < 2) pick = R.aaInfantry;
+        else {
+          const r = this.world.rng();
+          pick = r < 0.62 ? R.trooper : R.lancer;
+        }
+      } else if (f.defId === R.airFactory) {
+        // Enough interceptors to contest the sky, then things that hit ground.
+        const fighters = n(R.fighter);
+        if (this.airSeen > fighters * 1.5) pick = R.fighter;
+        else if (fighters < 2) pick = R.fighter;
+        else pick = this.world.rng() < 0.55 ? R.gunship : R.bomber;
+      } else if (isT2) {
         if (n(R.builderT2) < 2) pick = R.builderT2;
         else pick = this.world.rng() < 0.68 ? R.heavy : R.artillery;
       } else {

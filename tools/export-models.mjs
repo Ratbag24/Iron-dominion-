@@ -60,6 +60,12 @@ name('#33373d', 'Deck');
 name(PALETTE.STEEL, 'Steel');
 name(PALETTE.GREASE, 'Rubber');
 name('#9aa3ad', 'StoreMetal');
+// Infantry cloth and skin. Soldiers are drawn at a tenth of a tank's size, so
+// these are the only materials on them that carry: without their own slots
+// they snap to the nearest hull grey and a squad reads as small machines.
+name(PALETTE.FATIGUE, 'Fatigue');
+name(PALETTE.WEBBING, 'Webbing');
+name(PALETTE.SKIN, 'Skin');
 name('#d8b24a', 'StoreEnergy');
 
 // The hive is grown rather than built, so it has its own shades. Without
@@ -242,6 +248,24 @@ class GlbBuilder {
   }
 }
 
+/** A copy of the geometry moved by (dx, dy, dz). Normals and colours are kept. */
+function translateGeometry(geo, dx, dy, dz) {
+  const src = geo.attributes.position.array;
+  const position = new Float32Array(src.length);
+  for (let i = 0; i < src.length; i += 3) {
+    position[i] = src[i] + dx;
+    position[i + 1] = src[i + 1] + dy;
+    position[i + 2] = src[i + 2] + dz;
+  }
+  return {
+    attributes: {
+      position: { array: position, count: geo.attributes.position.count },
+      normal: geo.attributes.normal,
+      color: geo.attributes.color,
+    },
+  };
+}
+
 // ------------------------------------------------------------------ export
 for (const dir of OUTPUTS) await mkdir(dir, { recursive: true });
 
@@ -267,6 +291,20 @@ for (const id of Object.keys(DEFS)) {
     parts.turret = { pivotY: model.turretY, materials: t.materials };
     tris += t.tris;
   }
+  // Legs: one node each, hung from its pivot, named so the view can find them
+  // and knows which half of the gait each is on ("a" swings while "b" plants).
+  // The geometry is authored in model space; it is shifted back by the pivot
+  // so the node's own translation puts it where it was drawn.
+  if (model.legs) {
+    parts.legs = [];
+    model.legs.forEach((leg, i) => {
+      const shifted = translateGeometry(leg.geo, -leg.pivot[0], -leg.pivot[1], -leg.pivot[2]);
+      const name = `leg_${i}_${leg.phase ? 'b' : 'a'}`;
+      const l = glb.addPart(name, shifted, leg.pivot);
+      parts.legs.push({ node: name, pivot: leg.pivot, phase: leg.phase, materials: l.materials });
+      tris += l.tris;
+    });
+  }
   if (model.spinner) {
     const s = glb.addPart('spinner', model.spinner,
       [model.spinnerX || 0, model.spinnerY, 0]);
@@ -278,7 +316,9 @@ for (const id of Object.keys(DEFS)) {
     tris += s.tris;
   }
 
-  for (const p of Object.values(parts)) for (const m of p.materials) allMaterials.add(m);
+  for (const p of Object.values(parts)) {
+    for (const part of Array.isArray(p) ? p : [p]) for (const m of part.materials) allMaterials.add(m);
+  }
 
   const bytes = glb.build();
   for (const dir of OUTPUTS) await writeFile(join(dir, id + '.glb'), bytes);

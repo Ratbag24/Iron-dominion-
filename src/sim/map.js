@@ -26,6 +26,8 @@ export class GameMap {
     this.heights = new Float32Array(this.cols * this.rows);
     /** Cells occupied by finished or in-progress buildings. */
     this.blocked = new Uint8Array(this.cols * this.rows);
+    /** The hive's infection, 0..1 per cell. See creep.js. */
+    this.corruption = new Float32Array(this.cols * this.rows);
 
     this.metalSpots = [];
     this.startPositions = [];
@@ -62,8 +64,28 @@ export class GameMap {
     return this.terrain[i] === TERRAIN_LAND && this.blocked[i] === 0;
   }
 
+  /**
+   * As above, but `onFoot` units also cross rock.
+   *
+   * Rock is scree and broken slab: nothing with wheels, tracks or a metre-long
+   * stride gets over it, but troops scramble across. That single difference is
+   * what makes infantry worth building on maps this broken -- it turns every
+   * ridge on the map from a wall into a route that only they can take.
+   * Water still stops everyone, and a building still blocks its own footprint.
+   */
+  isPassableCellFor(cx, cy, onFoot) {
+    if (!onFoot) return this.isPassableCell(cx, cy);
+    if (!this.inBounds(cx, cy)) return false;
+    const i = this.idx(cx, cy);
+    return this.terrain[i] !== TERRAIN_WATER && this.blocked[i] === 0;
+  }
+
   isPassable(x, y) {
     return this.isPassableCell((x / this.cell) | 0, (y / this.cell) | 0);
+  }
+
+  isPassableFor(x, y, onFoot) {
+    return this.isPassableCellFor((x / this.cell) | 0, (y / this.cell) | 0, onFoot);
   }
 
   /** Terrain-only test, ignoring buildings: used when placing structures. */

@@ -38,6 +38,13 @@ static func spawn_projectile(
 		# what it kills; the shooter alone cannot say, since a unit may hold
 		# more than one weapon.
 		"infects": float(w.get("infects", 0.0)),
+		# What the shell is allowed to hit, so a ground-only splash cannot rake
+		# aircraft out of the sky by accident.
+		"targets": String(w.get("targets", "ground")),
+		# Armour multipliers travel with the shell rather than being looked up
+		# at impact: one splash can land on several armour classes at once, so
+		# the scaling has to happen per target, not per shot.
+		"vs": w.get("vs", {}),
 		"life": clampf((float(w["range"]) * 1.6) / speed, 0.25, 6.0),
 		"z": 0.0,
 		"trail": 22.0 if kind == "laser" else 0.0,
@@ -126,6 +133,8 @@ static func _hit_check(world: IdWorld, p: Dictionary, buf: Array) -> bool:
 			continue
 		if world.players[e.player].team == my_team:
 			continue
+		if not _reaches(p, e):
+			continue
 		var r: float = e.radius + 3.0
 		# Segment check so fast projectiles cannot tunnel through small units.
 		if _segment_hits_circle(
@@ -134,6 +143,15 @@ static func _hit_check(world: IdWorld, p: Dictionary, buf: Array) -> bool:
 			_detonate(world, p, buf, e)
 			return true
 	return false
+
+
+## Whether this projectile is allowed to touch that entity's layer.
+static func _reaches(p: Dictionary, e: IdEntity) -> bool:
+	var targets: String = String(p.get("targets", "ground"))
+	if targets == "both":
+		return true
+	var flying: bool = String(e.def.get("layer", "ground")) == "air"
+	return flying if targets == "air" else not flying
 
 
 static func _segment_hits_circle(
@@ -149,6 +167,17 @@ static func _segment_hits_circle(
 	return ddx * ddx + ddy * ddy <= r * r
 
 
+## How much of this shell's damage the target's armour actually takes.
+static func _scale_for(p: Dictionary, target: IdEntity) -> float:
+	var vs: Dictionary = p.get("vs", {})
+	if vs.is_empty():
+		return 1.0
+	var armour := String(target.def.get("armour", IdUnitDefs.ARMOUR_STANDARD))
+	if armour == IdUnitDefs.ARMOUR_STANDARD:
+		return 1.0
+	return float(vs.get(armour, 1.0))
+
+
 static func _detonate(
 	world: IdWorld, p: Dictionary, buf: Array, direct_hit: IdEntity
 ) -> void:
@@ -156,7 +185,10 @@ static func _detonate(
 	var damage: float = float(p["damage"])
 
 	if direct_hit != null:
-		world.damage(direct_hit, damage, shooter, float(p.get("infects", 0.0)))
+		world.damage(
+			direct_hit, damage * _scale_for(p, direct_hit), shooter,
+			float(p.get("infects", 0.0))
+		)
 
 	var aoe: float = float(p["aoe"])
 	if aoe > 0.0:
@@ -167,13 +199,15 @@ static func _detonate(
 				continue
 			if world.players[e.player].team == my_team:
 				continue
+			if not _reaches(p, e):
+				continue
 			var d: float = IdMath.dist(p["x"], p["y"], e.x, e.y) - e.radius
 			if d > aoe:
 				continue
 			var falloff: float = 1.0 - clampf(d / aoe, 0.0, 1.0)
 			# Splash does not convert: a shell that took a whole group would
 			# make the hive's artillery the only weapon worth building.
-			world.damage(e, damage * falloff * 0.85, shooter)
+			world.damage(e, damage * falloff * 0.85 * _scale_for(p, e), shooter)
 		world.add_effect({
 			"type": "explosion", "x": p["x"], "y": p["y"],
 			"size": aoe * 1.15, "color": p["color"],

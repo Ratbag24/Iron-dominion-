@@ -1,6 +1,28 @@
 class_name IdCombat
 
 ## Target acquisition and weapon firing.
+##
+## What a weapon can shoot at is part of its definition. Most guns are laid for
+## ground targets and cannot elevate onto an aircraft; dedicated anti-air can,
+## and a few mounts do both. Without that rule an air unit is just a fast
+## ground unit that ignores terrain, and there is nothing to answer it with.
+
+
+## Can this weapon engage that target? `targets` defaults to ground only.
+static func can_hit(weapon_def: Dictionary, target: IdEntity) -> bool:
+	var targets: String = String(weapon_def.get("targets", "ground"))
+	if targets == "both":
+		return true
+	var flying: bool = String(target.def.get("layer", "ground")) == "air"
+	return flying if targets == "air" else not flying
+
+
+## Does this entity have any weapon that could engage that target?
+static func can_engage(e: IdEntity, target: IdEntity) -> bool:
+	for w in e.weapons:
+		if can_hit(w.def, target):
+			return true
+	return false
 
 const TURRET_TURN_UNIT: float = 7.0  ## radians/second
 const TURRET_TURN_BUILDING: float = 3.2
@@ -41,6 +63,8 @@ static func update_combat(world: IdWorld, dt: float) -> void:
 				continue
 			if surface_dist > float(w.def["range"]):
 				continue
+			if not can_hit(w.def, target):
+				continue
 
 			var lead: Vector2 = IdMath.intercept_point(
 				e.x, e.y, target.x, target.y, target.vx, target.vy,
@@ -65,14 +89,14 @@ static func _resolve_target(
 	# Hold on to an explicitly ordered target even outside vision.
 	if not e.orders.is_empty() and e.orders[0].get("type", "") == "attack":
 		var ordered: IdEntity = world.get_entity(int(e.orders[0].get("targetId", 0)))
-		if ordered != null and world.is_enemy(e, ordered):
+		if ordered != null and world.is_enemy(e, ordered) and can_engage(e, ordered):
 			var od: float = IdMath.dist(e.x, e.y, ordered.x, ordered.y) - ordered.radius
 			if od <= max_range * 1.05:
 				return ordered
 			return null  # still walking into range
 
 	var current: IdEntity = world.get_entity(e.target_id)
-	if current != null and world.is_enemy(e, current):
+	if current != null and world.is_enemy(e, current) and can_engage(e, current):
 		var cd: float = IdMath.dist(e.x, e.y, current.x, current.y) - current.radius
 		if cd <= max_range and world.fog[e.player].is_visible_at(current.x, current.y):
 			return current
@@ -90,6 +114,8 @@ static func _acquire(world: IdWorld, e: IdEntity, max_range: float, buf: Array) 
 
 	for o in buf:
 		if not o.alive or not world.is_enemy(e, o):
+			continue
+		if not can_engage(e, o):
 			continue
 		var d: float = IdMath.dist(e.x, e.y, o.x, o.y) - o.radius
 		if d > max_range:
@@ -111,6 +137,10 @@ static func _acquire(world: IdWorld, e: IdEntity, max_range: float, buf: Array) 
 		score += (1.0 - o.hp / o.max_hp) * 200.0
 		if o.is_building and (o.def.get("weapons", []) as Array).is_empty():
 			score -= 300.0  # prefer live targets
+		# Anything that can shoot back at aircraft is the first thing an
+		# aircraft should be killing.
+		if String(e.def.get("layer", "ground")) == "air" and bool(o.def.get("hitsAir", false)):
+			score += 500.0
 
 		if score > best_score:
 			best_score = score

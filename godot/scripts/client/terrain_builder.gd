@@ -35,6 +35,11 @@ var _cell_colours: PackedColorArray = PackedColorArray()
 ## Per-cell surface-grain weight; see _build_fade.
 var _fade: PackedFloat32Array = PackedFloat32Array()
 
+## Per-cell material weights for the ground shader: (earth, rock, sand, macro
+## brightness). Grass is whatever the first three leave over. The colour table
+## above is kept for the minimap, which is drawn flat and needs a colour.
+var _cell_splat: PackedColorArray = PackedColorArray()
+
 func _init(map: IdGameMap, scale: int = 2) -> void:
 	_map = map
 	_detail = IdNoise2D.new(DETAIL_SEED)
@@ -169,10 +174,84 @@ func height_at(x: float, y: float) -> float:
 ## Build the per-cell colour table. Called once, before anything samples it.
 func _build_cell_colours() -> void:
 	_cell_colours.resize(_map.cols * _map.rows)
+	_cell_splat.resize(_map.cols * _map.rows)
 	for cy in range(_map.rows):
 		var row := cy * _map.cols
 		for cx in range(_map.cols):
 			_cell_colours[row + cx] = _terrain_colour(cx, cy)
+			_cell_splat[row + cx] = _terrain_splat(cx, cy)
+
+
+## What the ground is made of at this cell, for the shader to paint.
+##
+## The simulation only knows land, water and rock. What the eye needs is
+## finer than that: earth on slopes and along the shore, sand under the water
+## line, rock climbing in as the ground rises towards the rock line, and a
+## slow macro tint so a field is not one flat green.
+func _terrain_splat(cx: int, cy: int) -> Color:
+	var i := _map.idx(cx, cy)
+	var t := _map.terrain[i]
+	var h := _map.heights[i]
+
+	var hx0 := _map.heights[_map.idx(maxi(0, cx - 1), cy)]
+	var hx1 := _map.heights[_map.idx(mini(_map.cols - 1, cx + 1), cy)]
+	var hy0 := _map.heights[_map.idx(cx, maxi(0, cy - 1))]
+	var hy1 := _map.heights[_map.idx(cx, mini(_map.rows - 1, cy + 1))]
+	var gx := (hx1 - hx0) * 0.5
+	var gy := (hy1 - hy0) * 0.5
+	var steepness := clampf(sqrt(gx * gx + gy * gy) * 22.0, 0.0, 1.0)
+
+	var broad := _detail.fbm(float(cx) * 0.03, float(cy) * 0.03, 3)
+	var patch := _detail.fbm(float(cx) * 0.11 + 40.0, float(cy) * 0.11, 2)
+
+	var earth := 0.0
+	var rock := 0.0
+	var sand := 0.0
+	var water := _map.water_line
+	var rock_line := _map.rock_line
+	if t == IdGameMap.TERRAIN_WATER:
+		# The bed: sand near the shore, darker earth further out.
+		var depth := clampf((water - h) * 3.4, 0.0, 1.0)
+		sand = 1.0 - depth * 0.6
+		earth = depth * 0.6
+	elif t == IdGameMap.TERRAIN_ROCK:
+		rock = 1.0
+		earth = (1.0 - clampf((h - rock_line) * 4.0, 0.0, 1.0)) * 0.25
+	else:
+		var rise := clampf((h - water) / maxf(0.01, rock_line - water), 0.0, 1.0)
+		# Shore: a band of sand and earth just above the water line.
+		var shore := 1.0 - smoothstep(0.0, 0.09, rise)
+		sand = shore * 0.7
+		earth = shore * 0.3
+		# Slopes shed their grass; rock shows through as the ground climbs.
+		earth = maxf(earth, steepness * 0.85)
+		rock = smoothstep(0.62, 1.0, rise) * 0.7 + steepness * steepness * 0.5
+		# Bare patches, so a plain is a plain and not a lawn.
+		earth = maxf(earth, smoothstep(0.62, 0.8, patch) * 0.55 * (1.0 - rock))
+	var macro := clampf(0.35 + broad * 0.55 + (patch - 0.5) * 0.15, 0.0, 1.0)
+	return Color(clampf(earth, 0.0, 1.0), clampf(rock, 0.0, 1.0), clampf(sand, 0.0, 1.0), macro)
+
+
+## Blend the four surrounding cells' material weights, as _sample_colour does
+## for colour: the mesh is finer than the simulation grid.
+func _sample_splat(x: float, z: float) -> Color:
+	var cols := _map.cols
+	var rows := _map.rows
+	var fx := x / _cell_f - 0.5
+	var fz := z / _cell_f - 0.5
+	var x0 := int(floor(fx))
+	var z0 := int(floor(fz))
+	var tx := fx - float(x0)
+	var tz := fz - float(z0)
+	var xa := clampi(x0, 0, cols - 1)
+	var xb := clampi(x0 + 1, 0, cols - 1)
+	var za := clampi(z0, 0, rows - 1) * cols
+	var zb := clampi(z0 + 1, 0, rows - 1) * cols
+	var c00 := _cell_splat[za + xa]
+	var c10 := _cell_splat[za + xb]
+	var c01 := _cell_splat[zb + xa]
+	var c11 := _cell_splat[zb + xb]
+	return c00.lerp(c10, tx).lerp(c01.lerp(c11, tx), tz)
 
 
 func _cell_colour(cx: int, cy: int) -> Color:
@@ -257,7 +336,7 @@ func _sample_colour(x: float, z: float) -> Color:
 	var c11 := _cell_colours[zb + xb]
 	return c00.lerp(c10, tx).lerp(c01.lerp(c11, tx), tz)
 
-## The ground as a single mesh, vertex-coloured and smooth-shaded.
+## The ground as a single mesh, smooth-shaded, with material weights per vertex.
 func build_mesh() -> ArrayMesh:
 	var verts := PackedVector3Array()
 	var colours := PackedColorArray()
@@ -273,7 +352,9 @@ func build_mesh() -> ArrayMesh:
 			var z := float(j) * _render_cell
 			var n := j * _render_cols + i
 			verts[n] = Vector3(x, height_at(x, z), z)
-			colours[n] = _sample_colour(x, z)
+			# COLOR is not a colour here: it is the ground shader's material
+			# weights. The painted colour survives only on the minimap.
+			colours[n] = _sample_splat(x, z)
 			# UVs are world position over the tile size, so the detail normal
 			# map repeats at a fixed scale regardless of map size.
 			uvs[n] = Vector2(x / DETAIL_TILE, z / DETAIL_TILE)

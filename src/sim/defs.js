@@ -55,6 +55,39 @@ const W = {
     name: '90mm Cannon', kind: 'plasma', damage: 92, reload: 1.5,
     range: 255, speed: 700, aoe: 18, spread: 0.02, color: '#ffcf8a',
   },
+  // Air, and the guns that answer it. `targets` is what makes an aircraft a
+  // real unit type rather than a fast ground one: almost nothing can elevate
+  // onto it, so a player who ignores anti-air gets taken apart from above.
+  aaFlak: {
+    name: 'Flak Battery', kind: 'plasma', damage: 88, reload: 0.75,
+    range: 420, speed: 900, aoe: 40, spread: 0.04, color: '#ffd27a',
+    targets: 'air',
+  },
+  aaMissile: {
+    name: 'SAM Rack', kind: 'missile', damage: 140, reload: 2.1,
+    range: 520, speed: 520, aoe: 26, spread: 0.01, color: '#9fe8ff',
+    targets: 'air',
+  },
+  aaCannon: {
+    name: 'Autocannon', kind: 'laser', damage: 26, reload: 0.2,
+    range: 360, speed: 1500, aoe: 0, spread: 0.05, color: '#ffe08a',
+    targets: 'air',
+  },
+  interceptorGun: {
+    name: 'Interceptor Cannon', kind: 'laser', damage: 34, reload: 0.28,
+    range: 300, speed: 1700, aoe: 0, spread: 0.035, color: '#bfe9ff',
+    targets: 'air',
+  },
+  bombBay: {
+    name: 'Bomb Bay', kind: 'arty', damage: 300, reload: 4.2,
+    range: 150, speed: 300, aoe: 110, spread: 0.02, color: '#ffb257',
+  },
+  gunship: {
+    name: 'Gunship Rockets', kind: 'missile', damage: 78, reload: 1.6,
+    range: 300, speed: 400, aoe: 30, spread: 0.03, color: '#ff9a5b',
+    targets: 'both',
+  },
+
   // Blight: teeth and bile. Short reach, quick cycle, and the ones marked
   // `infects` take the killed unit rather than leaving a wreck.
   hiveLash: {
@@ -96,6 +129,39 @@ const W = {
     range: 420, speed: 500, aoe: 60, spread: 0.025, color: '#b6ff6a',
   },
 
+  // Infantry small arms. Short reach and thin damage per shot, but a squad
+  // arrives as eight of them at once, and every one of these is an
+  // anti-infantry weapon in its own right -- troops are each other's answer.
+  serviceRifle: {
+    name: 'Service Rifle', kind: 'laser', damage: 8, reload: 0.55,
+    range: 165, speed: 1500, aoe: 0, spread: 0.07, color: '#ffe9a8',
+    vs: { infantry: 1.55 },
+  },
+  squadLauncher: {
+    name: 'Shoulder Launcher', kind: 'missile', damage: 54, reload: 2.9,
+    range: 255, speed: 380, aoe: 14, spread: 0.04, color: '#ffab6a',
+    // A rocket made to kill armour, carried by someone who cannot take a hit.
+    vs: { infantry: 0.6 },
+  },
+  squadMg: {
+    name: 'Support Gun', kind: 'laser', damage: 6, reload: 0.24,
+    range: 180, speed: 1700, aoe: 0, spread: 0.08, color: '#fff2c4',
+    vs: { infantry: 1.7 },
+  },
+  squadStinger: {
+    name: 'Shoulder SAM', kind: 'missile', damage: 62, reload: 2.2,
+    range: 400, speed: 540, aoe: 12, spread: 0.02, color: '#a8e6ff',
+    targets: 'air',
+  },
+  swarmerBite: {
+    name: 'Swarmer Bite', kind: 'laser', damage: 6, reload: 0.5,
+    range: 130, speed: 1500, aoe: 0, spread: 0.07, color: '#a6f25a',
+    // A tenth of the infection chance the bigger teeth carry: ten mouths
+    // biting at a hive weapon's usual rate would convert an entire army in a
+    // single engagement, which is a win condition rather than a mechanic.
+    infects: 0.12, vs: { infantry: 1.55 },
+  },
+
   heavyCannon: {
     name: '140mm Cannon', kind: 'plasma', damage: 105, reload: 1.0,
     range: 285, speed: 700, aoe: 30, spread: 0.018, color: '#ffc070',
@@ -119,6 +185,57 @@ const W = {
 };
 
 /**
+ * Armour classes, and what each weapon does to them.
+ *
+ * A shell sized to crack a tank passes straight through a squad of troops and
+ * buries itself in the dirt; a machine gun that barely scratches armour plate
+ * cuts the same squad apart. Without that, infantry would just be small tanks
+ * with worse numbers, and there would be no reason to build any. `vs` on a
+ * weapon is the multiplier applied to a target of that armour class, so the
+ * table below is the whole counter triangle in one place:
+ *
+ *   heavy guns  ->  poor against infantry, good against armour
+ *   small arms  ->  good against infantry, poor against armour
+ *   splash      ->  good against infantry, fair against armour
+ *
+ * `standard` is the default class and takes every weapon at face value, so
+ * nothing outside this table changes behaviour.
+ */
+export const ARMOUR_INFANTRY = 'infantry';
+export const ARMOUR_STANDARD = 'standard';
+
+/** Multiplier for `weapon` landing on a target of `armour`. 1 when unstated. */
+export function armourScale(weapon, armour) {
+  if (!armour || armour === ARMOUR_STANDARD) return 1;
+  const vs = weapon && weapon.vs;
+  if (!vs) return 1;
+  const m = vs[armour];
+  return m === undefined ? 1 : m;
+}
+
+// Applied to the weapon table above rather than written into each entry, so
+// the numbers stay readable and a weapon's class is a single fact about it.
+const ANTI_INFANTRY = { infantry: 1.55 };   // small arms: what they are for
+const SPLASH_INFANTRY = { infantry: 1.25 }; // blast does not care about size
+const HEAVY_INFANTRY = { infantry: 0.45 };  // punches through, wastes the shell
+const SIEGE_INFANTRY = { infantry: 0.8 };   // big blast, badly aimed at movers
+
+for (const [names, vs] of [
+  [['lightLaser', 'rifleLaser', 'machineGun', 'aaCannon', 'interceptorGun',
+    'towerLaser', 'claw', 'talon', 'thornSpike'], ANTI_INFANTRY],
+  [['rocketPod', 'flakTower', 'aaFlak', 'gunship', 'autocannon', 'acidSpit',
+    'mawBlast'], SPLASH_INFANTRY],
+  [['tankCannon', 'heavyCannon', 'heavyLaser', 'missileRack', 'commanderCannon',
+    'commandGun', 'hiveLash', 'rendMaw', 'bastionGun', 'aaMissile'], HEAVY_INFANTRY],
+  [['siegeGun', 'howitzer', 'bileLob', 'bombBay'], SIEGE_INFANTRY],
+]) {
+  for (const name of names) {
+    if (!W[name]) throw new Error(`armour table names a weapon that is gone: ${name}`);
+    W[name].vs = vs;
+  }
+}
+
+/**
  * Every definition. `build` lists what the entity can construct, which is what
  * drives both the player's build menu and the AI's options.
  */
@@ -139,7 +256,7 @@ export const DEFS = {
     desc: 'Your avatar and first builder. Lose it and the battle is lost.',
     build: [
       'mex', 'solar', 'wind', 'converter', 'estore', 'mstore',
-      'botlab', 'nano', 'llt', 'radar',
+      'barracks', 'botlab', 'airpad', 'nano', 'llt', 'aatower', 'radar',
     ],
   },
 
@@ -246,7 +363,7 @@ export const DEFS = {
     desc: 'Builds, repairs, reclaims and assists. Build more than you think.',
     build: [
       'mex', 'solar', 'wind', 'converter', 'estore', 'mstore',
-      'botlab', 'nano', 'llt', 'radar',
+      'barracks', 'botlab', 'airpad', 'nano', 'llt', 'aatower', 'radar',
     ],
   },
   adv_conbot: {
@@ -259,7 +376,7 @@ export const DEFS = {
     desc: 'Tier 2 builder. Unlocks advanced structures.',
     build: [
       'mex', 'solar', 'wind', 'converter', 'estore', 'mstore',
-      'botlab', 'advbotlab', 'nano', 'llt', 'hlt', 'radar',
+      'barracks', 'botlab', 'advbotlab', 'nano', 'llt', 'hlt', 'radar',
     ],
   },
   scout: {
@@ -328,7 +445,7 @@ export const DEFS = {
     desc: 'Your headquarters on tracks. Lose it and the campaign is over.',
     build: [
       'con_derrick', 'con_diesel', 'con_fusion', 'con_refinery',
-      'con_battery', 'con_silo', 'con_yard', 'con_crane',
+      'con_battery', 'con_silo', 'con_barracks', 'con_yard', 'con_crane',
       'con_pillbox', 'con_radar',
     ],
   },
@@ -447,7 +564,7 @@ export const DEFS = {
     desc: 'Builds, repairs and reclaims. Slower at it than a bot, and tougher.',
     build: [
       'con_derrick', 'con_diesel', 'con_fusion', 'con_refinery',
-      'con_battery', 'con_silo', 'con_yard', 'con_crane',
+      'con_battery', 'con_silo', 'con_barracks', 'con_yard', 'con_crane',
       'con_pillbox', 'con_radar',
     ],
   },
@@ -461,7 +578,7 @@ export const DEFS = {
     desc: 'Tier 2 builder. Unlocks the Armoured Works and heavy emplacements.',
     build: [
       'con_derrick', 'con_diesel', 'con_fusion', 'con_refinery',
-      'con_battery', 'con_silo', 'con_yard', 'con_works', 'con_crane',
+      'con_battery', 'con_silo', 'con_barracks', 'con_yard', 'con_works', 'con_crane',
       'con_pillbox', 'con_bastion', 'con_radar',
     ],
   },
@@ -511,6 +628,256 @@ export const DEFS = {
     desc: 'Flattens emplacements from outside their range. Helpless up close.',
   },
 
+
+  // ------------------------------------------------------------------- air
+  //
+  // Aircraft do not path and do not collide with the ground, so the map is not
+  // in their way; what holds them back is that they cannot stop, and that
+  // anti-air outranges them. `orbit` is the circle they hold when they have
+  // nowhere to be, and `altitude` the height the renderer lifts them to.
+
+  airpad: {
+    id: 'airpad', name: 'Aircraft Plant', short: 'AIR', kind: 'building',
+    tier: 1, metal: 680, energy: 1400, buildTime: 7000,
+    hp: 2600, footprint: 6, los: 260,
+    buildPower: 100, factory: true,
+    desc: 'Produces aircraft. They fly straight over anything in the way.',
+    build: ['gnat', 'harrier', 'hammerhead'],
+  },
+  aatower: {
+    id: 'aatower', name: 'Flak Tower', short: 'FLK', kind: 'building',
+    tier: 1, metal: 210, energy: 900, buildTime: 2600,
+    hp: 1150, footprint: 2, los: 420,
+    weapons: [W.aaFlak],
+    desc: 'Shoots at aircraft and nothing else. Without one you have no answer to them.',
+  },
+  gnat: {
+    id: 'gnat', name: 'Gnat', short: 'GNT', kind: 'unit', layer: 'air',
+    role: 'fighter', tier: 1,
+    metal: 110, energy: 240, buildTime: 2100,
+    hp: 300, radius: 11, speed: 210, turnRate: 2.6, accel: 400,
+    altitude: 110, orbit: 130,
+    los: 520, mass: 1,
+    weapons: [W.interceptorGun],
+    wreckFraction: 0.0,
+    desc: 'Interceptor. Fast, fragile, and the only cheap answer to enemy air.',
+  },
+  harrier: {
+    id: 'harrier', name: 'Harrier', short: 'HAR', kind: 'unit', layer: 'air',
+    role: 'gunship', tier: 1,
+    metal: 220, energy: 460, buildTime: 3400,
+    hp: 520, radius: 12, speed: 150, turnRate: 2.0, accel: 320,
+    altitude: 85, orbit: 110,
+    los: 480, mass: 1.4,
+    weapons: [W.gunship],
+    wreckFraction: 0.0,
+    desc: 'Gunship. Shoots at both layers, and can hold a position by circling it.',
+  },
+  hammerhead: {
+    id: 'hammerhead', name: 'Hammerhead', short: 'HMR', kind: 'unit', layer: 'air',
+    role: 'bomber', tier: 2,
+    metal: 520, energy: 1100, buildTime: 6200,
+    hp: 760, radius: 14, speed: 175, turnRate: 1.5, accel: 280,
+    altitude: 130, orbit: 170,
+    los: 460, mass: 2.2,
+    weapons: [W.bombBay],
+    wreckFraction: 0.0,
+    desc: 'Bomber. One heavy pass, then a long turn to come round again.',
+  },
+
+  con_apron: {
+    id: 'con_apron', name: 'Airfield', short: 'FLD', kind: 'building',
+    tier: 1, metal: 780, energy: 1550, buildTime: 7800,
+    hp: 3000, footprint: 6, los: 260,
+    buildPower: 112, factory: true,
+    desc: 'Assembles aircraft. Slower than a plant, and tougher.',
+    build: ['con_needle', 'con_vulture', 'con_anvil'],
+  },
+  con_battery_aa: {
+    id: 'con_battery_aa', name: 'AA Battery', short: 'AAB', kind: 'building',
+    tier: 1, metal: 230, energy: 940, buildTime: 2800,
+    hp: 1250, footprint: 2, los: 440,
+    weapons: [W.aaMissile],
+    desc: 'Guided anti-air. Longer reach than flak, slower to cycle.',
+  },
+  con_needle: {
+    id: 'con_needle', name: 'Needle', short: 'NDL', kind: 'unit', layer: 'air',
+    role: 'fighter', tier: 1,
+    metal: 125, energy: 260, buildTime: 2300,
+    hp: 340, radius: 11, speed: 200, turnRate: 2.4, accel: 400,
+    altitude: 110, orbit: 130,
+    los: 520, mass: 1.1,
+    weapons: [W.interceptorGun],
+    wreckFraction: 0.0,
+    desc: 'Interceptor. Crewed, so a little tougher and a little slower.',
+  },
+  con_vulture: {
+    id: 'con_vulture', name: 'Vulture', short: 'VLT', kind: 'unit', layer: 'air',
+    role: 'gunship', tier: 1,
+    metal: 245, energy: 500, buildTime: 3700,
+    hp: 600, radius: 13, speed: 140, turnRate: 1.9, accel: 300,
+    altitude: 85, orbit: 110,
+    los: 480, mass: 1.6,
+    weapons: [W.gunship],
+    wreckFraction: 0.0,
+    desc: 'Attack helicopter. Hangs over a fight and works both layers.',
+  },
+  con_anvil: {
+    id: 'con_anvil', name: 'Anvil', short: 'ANV', kind: 'unit', layer: 'air',
+    role: 'bomber', tier: 2,
+    metal: 560, energy: 1180, buildTime: 6600,
+    hp: 880, radius: 15, speed: 165, turnRate: 1.4, accel: 260,
+    altitude: 130, orbit: 175,
+    los: 460, mass: 2.4,
+    weapons: [W.bombBay],
+    wreckFraction: 0.0,
+    desc: 'Heavy bomber. Flattens a building a pass, if it survives the run in.',
+  },
+
+  bl_roost: {
+    id: 'bl_roost', name: 'Roost', short: 'RST', kind: 'building',
+    tier: 1, metal: 640, energy: 1320, buildTime: 6800,
+    hp: 2500, footprint: 6, los: 260,
+    buildPower: 96, factory: true,
+    desc: 'Hatches flying brood.',
+    build: ['bl_midge', 'bl_wing', 'bl_gorger'],
+  },
+  bl_spitter_aa: {
+    id: 'bl_spitter_aa', name: 'Spore Thrower', short: 'SPR', kind: 'building',
+    tier: 1, metal: 205, energy: 880, buildTime: 2500,
+    hp: 1120, footprint: 2, los: 420,
+    weapons: [W.aaCannon],
+    desc: 'Throws spores at anything overhead. Rapid, and short of reach.',
+  },
+  bl_midge: {
+    id: 'bl_midge', name: 'Midge', short: 'MDG', kind: 'unit', layer: 'air',
+    role: 'fighter', tier: 1,
+    metal: 104, energy: 225, buildTime: 2000,
+    hp: 300, radius: 10, speed: 215, turnRate: 2.8, accel: 420,
+    altitude: 105, orbit: 125,
+    los: 520, mass: 0.9,
+    weapons: [W.interceptorGun],
+    wreckFraction: 0.0,
+    desc: 'Swarming interceptor. Cheap enough to lose.',
+  },
+  bl_wing: {
+    id: 'bl_wing', name: 'Wing', short: 'WNG', kind: 'unit', layer: 'air',
+    role: 'gunship', tier: 1,
+    metal: 215, energy: 450, buildTime: 3300,
+    hp: 540, radius: 12, speed: 155, turnRate: 2.1, accel: 330,
+    altitude: 85, orbit: 105,
+    los: 480, mass: 1.3,
+    weapons: [W.gunship],
+    wreckFraction: 0.0,
+    desc: 'Flying brood that works both layers.',
+  },
+  bl_gorger: {
+    id: 'bl_gorger', name: 'Gorger', short: 'GRG', kind: 'unit', layer: 'air',
+    role: 'bomber', tier: 2,
+    metal: 505, energy: 1060, buildTime: 6000,
+    hp: 800, radius: 14, speed: 180, turnRate: 1.6, accel: 290,
+    altitude: 130, orbit: 165,
+    los: 460, mass: 2.1,
+    weapons: [W.bombBay],
+    wreckFraction: 0.0,
+    desc: 'Drops its load in one pass and labours round for another.',
+  },
+
+  // -------------------------------------------------------------- infantry
+  //
+  // Infantry are not small tanks. Three things separate them, and all three
+  // have to be true at once or there is no reason to build any:
+  //
+  //   armour   a tank shell passes through them; a machine gun does not (see
+  //            the armour table above)
+  //   squads   a barracks order produces `squad` of them at once, so they
+  //            arrive as a body of troops rather than as a trickle
+  //   footing  they cross rock that no vehicle or walker can climb, which
+  //            turns the broken ground the maps are full of into a route
+  //
+  // They are cheap and they die easily. What they buy is ground.
+
+  barracks: {
+    id: 'barracks', name: 'Barracks', short: 'BKS', kind: 'building',
+    tier: 1, metal: 320, energy: 620, buildTime: 3600,
+    hp: 2100, footprint: 5, los: 240,
+    buildPower: 90, factory: true,
+    desc: 'Trains infantry squads. Cheaper and quicker to raise than a bot lab.',
+    build: ['trooper', 'lancer', 'marksman'],
+  },
+  trooper: {
+    id: 'trooper', name: 'Trooper Squad', short: 'TRP', kind: 'unit',
+    role: 'assault', tier: 1, armour: 'infantry', squad: 6,
+    metal: 152, energy: 230, buildTime: 2900,
+    hp: 84, radius: 6, speed: 58, turnRate: 12, accel: 300,
+    los: 400, mass: 0.35,
+    weapons: [W.serviceRifle],
+    wreckFraction: 0.0,
+    desc: 'Six riflemen. Individually nothing; as a squad they hold ground and cross rock.',
+  },
+  lancer: {
+    id: 'lancer', name: 'Lancer Squad', short: 'LNC', kind: 'unit',
+    role: 'skirmisher', tier: 1, armour: 'infantry', squad: 4,
+    metal: 186, energy: 330, buildTime: 3400,
+    hp: 78, radius: 6, speed: 52, turnRate: 12, accel: 300,
+    los: 440, mass: 0.35,
+    weapons: [W.squadLauncher],
+    wreckFraction: 0.0,
+    desc: 'Four rocket troops. They open armour and fold instantly under return fire.',
+  },
+  marksman: {
+    id: 'marksman', name: 'Support Squad', short: 'SUP', kind: 'unit',
+    role: 'support', tier: 1, armour: 'infantry', squad: 3,
+    metal: 172, energy: 290, buildTime: 3100,
+    hp: 88, radius: 6, speed: 46, turnRate: 11, accel: 260,
+    los: 460, mass: 0.4,
+    weapons: [W.squadMg, W.squadStinger],
+    wreckFraction: 0.0,
+    desc: 'Support gunners with a shoulder SAM. The only infantry that can touch aircraft.',
+  },
+
+  // Concord field the real thing: conscripts with rifles. Their squads are
+  // larger and cheaper than anyone else's, which is the whole identity of a
+  // faction that has people to spend and not much else.
+  con_barracks: {
+    id: 'con_barracks', name: 'Muster Hall', short: 'MST', kind: 'building',
+    tier: 1, metal: 300, energy: 560, buildTime: 3300,
+    hp: 2300, footprint: 5, los: 240,
+    buildPower: 96, factory: true,
+    desc: 'Musters infantry. The cheapest way Concord has of putting bodies on the map.',
+    build: ['con_rifles', 'con_at', 'con_aa_team'],
+  },
+  con_rifles: {
+    id: 'con_rifles', name: 'Rifle Platoon', short: 'RFL', kind: 'unit',
+    role: 'assault', tier: 1, armour: 'infantry', squad: 8,
+    metal: 178, energy: 250, buildTime: 3200,
+    hp: 80, radius: 6, speed: 55, turnRate: 12, accel: 300,
+    los: 400, mass: 0.35,
+    weapons: [W.serviceRifle],
+    wreckFraction: 0.0,
+    desc: 'Eight rifles. Cheap, expendable, and there are always more.',
+  },
+  con_at: {
+    id: 'con_at', name: 'AT Team', short: 'ATT', kind: 'unit',
+    role: 'skirmisher', tier: 1, armour: 'infantry', squad: 4,
+    metal: 182, energy: 320, buildTime: 3350,
+    hp: 76, radius: 6, speed: 50, turnRate: 12, accel: 300,
+    los: 440, mass: 0.35,
+    weapons: [W.squadLauncher],
+    wreckFraction: 0.0,
+    desc: 'Anti-tank teams. A handful of them will stop an armoured push cold.',
+  },
+  con_aa_team: {
+    id: 'con_aa_team', name: 'SAM Team', short: 'SAM', kind: 'unit',
+    role: 'support', tier: 1, armour: 'infantry', squad: 3,
+    metal: 176, energy: 330, buildTime: 3200,
+    hp: 80, radius: 6, speed: 48, turnRate: 11, accel: 280,
+    los: 470, mass: 0.4,
+    weapons: [W.squadStinger, W.squadMg],
+    wreckFraction: 0.0,
+    desc: 'Mobile anti-air that walks with the army instead of waiting at home.',
+  },
+
   // ----------------------------------------------------------- Blight
   //
   // A hive rather than an army. Everything is cheap, quick and short-ranged,
@@ -533,7 +900,8 @@ export const DEFS = {
     desc: 'The colony made mobile. Lose it and the hive dies with it.',
     build: [
       'bl_tap', 'bl_vent', 'bl_gut', 'bl_bladder', 'bl_sac',
-      'bl_pit', 'bl_spire', 'bl_thorn', 'bl_antenna',
+      'bl_brood', 'bl_pit', 'bl_roost', 'bl_spire', 'bl_thorn', 'bl_spitter_aa',
+      'bl_antenna',
     ],
   },
 
@@ -642,7 +1010,8 @@ export const DEFS = {
     los: 380, mass: 2,
     desc: 'More build power, and the only thing that can grow a deep pit.',
     build: ['bl_tap', 'bl_vent', 'bl_bloom', 'bl_gut', 'bl_bladder', 'bl_sac',
-      'bl_pit', 'bl_deeppit', 'bl_spire', 'bl_thorn', 'bl_maw', 'bl_antenna'],
+      'bl_brood', 'bl_pit', 'bl_deeppit', 'bl_roost', 'bl_spire', 'bl_thorn', 'bl_spitter_aa',
+      'bl_maw', 'bl_antenna'],
   },
   bl_skitter: {
     id: 'bl_skitter', name: 'Skitter', short: 'SKT', kind: 'unit',
@@ -689,6 +1058,47 @@ export const DEFS = {
     weapons: [W.bileLob],
     desc: 'Breaks emplacements from outside their reach. Helpless up close.',
   },
+  // The hive's infantry are a swarm: the largest squads in the game, the
+  // cheapest bodies, and teeth that keep what they kill. A brood that catches
+  // a squad of anyone else's troops comes out the other side larger.
+  bl_brood: {
+    id: 'bl_brood', name: 'Brood Pit', short: 'BRD', kind: 'building',
+    tier: 1, metal: 280, energy: 520, buildTime: 3100,
+    hp: 2000, footprint: 5, los: 230,
+    buildPower: 88, factory: true,
+    desc: 'Spawns swarms. The cheapest structure that produces anything at all.',
+    build: ['bl_swarmer', 'bl_barbs', 'bl_screamer'],
+  },
+  bl_swarmer: {
+    id: 'bl_swarmer', name: 'Swarm', short: 'SWM', kind: 'unit',
+    role: 'assault', tier: 1, armour: 'infantry', squad: 10,
+    metal: 168, energy: 215, buildTime: 3000,
+    hp: 62, radius: 5, speed: 66, turnRate: 14, accel: 340,
+    los: 360, mass: 0.3,
+    weapons: [W.swarmerBite],
+    wreckFraction: 0.0,
+    desc: 'Ten of them, and each bite can take what it kills.',
+  },
+  bl_barbs: {
+    id: 'bl_barbs', name: 'Barb Cluster', short: 'BRB', kind: 'unit',
+    role: 'skirmisher', tier: 1, armour: 'infantry', squad: 4,
+    metal: 180, energy: 305, buildTime: 3300,
+    hp: 74, radius: 6, speed: 54, turnRate: 12, accel: 300,
+    los: 420, mass: 0.35,
+    weapons: [W.squadLauncher],
+    wreckFraction: 0.0,
+    desc: 'Spits a barb heavy enough to open a hull. Nothing to it but the spit.',
+  },
+  bl_screamer: {
+    id: 'bl_screamer', name: 'Screamer', short: 'SCR', kind: 'unit',
+    role: 'support', tier: 1, armour: 'infantry', squad: 3,
+    metal: 178, energy: 320, buildTime: 3200,
+    hp: 78, radius: 6, speed: 50, turnRate: 11, accel: 280,
+    los: 450, mass: 0.4,
+    weapons: [W.squadStinger, W.squadMg],
+    wreckFraction: 0.0,
+    desc: 'Screams something down out of the sky. The hive walking with its own anti-air.',
+  },
 };
 
 /**
@@ -717,6 +1127,10 @@ export const FACTIONS = {
       nano: 'nano', defence: 'llt', defenceT2: 'hlt', radar: 'radar',
       raider: 'scout', assault: 'rifle', skirmisher: 'rocket',
       heavy: 'heavy', artillery: 'siege',
+      airFactory: 'airpad', antiAir: 'aatower',
+      fighter: 'gnat', gunship: 'harrier', bomber: 'hammerhead',
+      barracks: 'barracks', trooper: 'trooper', lancer: 'lancer',
+      aaInfantry: 'marksman',
     },
   },
   legion: {
@@ -732,6 +1146,10 @@ export const FACTIONS = {
       nano: 'nano', defence: 'llt', defenceT2: 'hlt', radar: 'radar',
       raider: 'scout', assault: 'rifle', skirmisher: 'rocket',
       heavy: 'heavy', artillery: 'siege',
+      airFactory: 'airpad', antiAir: 'aatower',
+      fighter: 'gnat', gunship: 'harrier', bomber: 'hammerhead',
+      barracks: 'barracks', trooper: 'trooper', lancer: 'lancer',
+      aaInfantry: 'marksman',
     },
   },
   concord: {
@@ -749,12 +1167,18 @@ export const FACTIONS = {
       radar: 'con_radar',
       raider: 'con_jeep', assault: 'con_tank', skirmisher: 'con_missile',
       heavy: 'con_heavytank', artillery: 'con_howitzer',
+      airFactory: 'con_apron', antiAir: 'con_battery_aa',
+      fighter: 'con_needle', gunship: 'con_vulture', bomber: 'con_anvil',
+      barracks: 'con_barracks', trooper: 'con_rifles', lancer: 'con_at',
+      aaInfantry: 'con_aa_team',
     },
   },
   blight: {
     id: 'blight', name: 'Blight',
     blurb: 'A hive. Thick-skinned and short-ranged: it walks through your fire, and its teeth keep what they kill.',
     mods: { hp: 1.34, speed: 1.12, damage: 1, range: 0.95, cost: 1 },
+    // Its structures and bodies infect the ground they stand on; see creep.js.
+    spreadsCreep: true,
     roster: {
       commander: 'bl_hive',
       builder: 'bl_tender', builderT2: 'bl_tender2',
@@ -766,11 +1190,28 @@ export const FACTIONS = {
       radar: 'bl_antenna',
       raider: 'bl_skitter', assault: 'bl_husk', skirmisher: 'bl_spitter',
       heavy: 'bl_brute', artillery: 'bl_lobber',
+      airFactory: 'bl_roost', antiAir: 'bl_spitter_aa',
+      fighter: 'bl_midge', gunship: 'bl_wing', bomber: 'bl_gorger',
+      barracks: 'bl_brood', trooper: 'bl_swarmer', lancer: 'bl_barbs',
+      aaInfantry: 'bl_screamer',
     },
   },
 };
 
 export const FACTION_IDS = Object.keys(FACTIONS);
+
+// How far, in build cells, each of the hive's things infects the ground around
+// it. Applied here rather than written into thirty definitions: the rule is
+// simple (structures reach past their footprint, bodies leave a trail, the
+// hive itself is the wellspring) and the numbers only mean anything relative
+// to each other.
+for (const [id, d] of Object.entries(DEFS)) {
+  if (!id.startsWith('bl_')) continue;
+  if (d.isCommander) d.creep = 7;
+  else if (d.kind === 'building') d.creep = Math.round(((d.footprint || 2) * 0.9 + 2.2) * 10) / 10;
+  else if (d.layer === 'air') d.creep = 0;
+  else d.creep = d.armour === 'infantry' ? 0.8 : 1.4;
+}
 
 /** The roster for a faction, falling back to Vanguard for an unknown id. */
 export function rosterOf(factionId) {
@@ -802,6 +1243,17 @@ export function getDef(defId, factionId) {
     }));
   }
   d.maxWeaponRange = d.weapons ? d.weapons.reduce((a, w) => Math.max(a, w.range), 0) : 0;
+  // Which layers this thing can shoot at, worked out once rather than walked
+  // per tick: the AI reads it to decide whether it needs anti-air, and target
+  // scoring reads it to know what an aircraft should kill first.
+  d.layer = base.layer || 'ground';
+  // Armour class decides what a shell landing on this thing is worth. Infantry
+  // are the only class that differs from standard today, but the field is on
+  // everything so the damage path never has to ask whether it exists.
+  d.armour = base.armour || ARMOUR_STANDARD;
+  d.isInfantry = d.armour === ARMOUR_INFANTRY;
+  d.hitsAir = !!(d.weapons || []).some((w) => w.targets === 'air' || w.targets === 'both');
+  d.hitsGround = !!(d.weapons || []).some((w) => (w.targets || 'ground') !== 'air');
   d.footprintPx = base.footprint ? base.footprint * BUILD_CELL : 0;
   if (base.kind === 'building') d.radius = d.footprintPx * 0.5;
   d.wreckMetal = Math.round(d.metal * (base.wreckFraction !== undefined ? base.wreckFraction : 0.4));

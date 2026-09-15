@@ -1,6 +1,13 @@
-// Ground movement: path following, steering, unit separation and terrain
-// collision. Units push each other apart rather than colliding hard, which
-// keeps large groups from deadlocking in corridors.
+// Movement: path following, steering, unit separation and terrain collision.
+// Units push each other apart rather than colliding hard, which keeps large
+// groups from deadlocking in corridors.
+//
+// Aircraft take a different path through all of this. They do not ask the
+// pathfinder for a route, because there is nothing to route around; they do
+// not collide with terrain or with buildings; and they separate only from
+// other aircraft. What they have instead is a turn circle: an aircraft that
+// overshoots its target has to come round again, which is most of what makes
+// flying units feel like flying units rather than fast ground ones.
 
 import { clamp, dist, dist2, turnTowards } from '../core/math.js';
 
@@ -13,6 +20,10 @@ export function updateMovement(world, dt) {
 
   for (const e of world.entities) {
     if (!e.alive || e.isBuilding || !e.def.speed || e.underConstruction) continue;
+    if (e.def.layer === 'air') {
+      updateAircraft(world, e, dt, neighbours);
+      continue;
+    }
 
     const goal = e.moveGoal;
     if (goal && !(Number.isFinite(goal.x) && Number.isFinite(goal.y))) {
@@ -62,6 +73,106 @@ export function updateMovement(world, dt) {
   }
 }
 
+/**
+ * Fly towards the goal, banking rather than pivoting.
+ *
+ * An aircraft always moves at its cruise speed - it cannot stop in the air -
+ * so "arriving" means circling, and a target behind it means a turn. The rest
+ * of the movement code would have it stop dead over its destination, which
+ * reads as a hovering brick.
+ */
+function updateAircraft(world, e, dt, buf) {
+  const goal = e.moveGoal;
+  if (goal && !(Number.isFinite(goal.x) && Number.isFinite(goal.y))) {
+    e.moveGoal = null;
+    e.orders.length = 0;
+  }
+
+  // With nowhere to be, orbit where it is rather than hanging still.
+  let aimX;
+  let aimY;
+  if (e.moveGoal) {
+    aimX = e.moveGoal.x;
+    aimY = e.moveGoal.y;
+    const slack = e.moveGoal.slack || e.def.orbit || 120;
+    if (dist2(e.x, e.y, aimX, aimY) < slack * slack) {
+      // Inside the circle: aim at a point around the rim so it keeps flying.
+      e.orbitPhase = (e.orbitPhase || 0) + dt * 1.4;
+      aimX += Math.cos(e.orbitPhase) * slack;
+      aimY += Math.sin(e.orbitPhase) * slack;
+    }
+  } else {
+    e.orbitPhase = (e.orbitPhase || 0) + dt * 1.1;
+    const hold = e.def.orbit || 120;
+    aimX = (e.holdX === undefined ? e.x : e.holdX) + Math.cos(e.orbitPhase) * hold;
+    aimY = (e.holdY === undefined ? e.y : e.holdY) + Math.sin(e.orbitPhase) * hold;
+    if (e.holdX === undefined) {
+      e.holdX = e.x;
+      e.holdY = e.y;
+    }
+  }
+  if (e.moveGoal) {
+    e.holdX = undefined;
+    e.holdY = undefined;
+  }
+
+  // Bank towards the heading rather than snapping to it.
+  const desired = Math.atan2(aimY - e.y, aimX - e.x);
+  e.heading = turnTowards(e.heading, desired, e.def.turnRate * dt);
+  const speed = e.def.speed;
+  e.vx = Math.cos(e.heading) * speed;
+  e.vy = Math.sin(e.heading) * speed;
+  e.speed = speed;
+  e.x += e.vx * dt;
+  e.y += e.vy * dt;
+  // Bank angle, for the renderer to roll the model into its turn.
+  const turn = angleDeltaSigned(e.heading, desired);
+  e.bank = clamp((e.bank || 0) + (clamp(turn * 2.2, -0.7, 0.7) - (e.bank || 0)) * dt * 4, -0.7, 0.7);
+
+  // Climb to cruise height, and keep clear of other aircraft at that height.
+  const cruise = e.def.altitude || 90;
+  e.altitude = (e.altitude || 0) + (cruise - (e.altitude || 0)) * Math.min(1, dt * 1.5);
+  separateAir(world, e, buf, dt);
+
+  e.x = clamp(e.x, 8, world.map.width - 8);
+  e.y = clamp(e.y, 8, world.map.height - 8);
+  e.lastX = e.x;
+  e.lastY = e.y;
+  e.stuckTimer = 0;
+}
+
+/** Signed shortest turn from `a` to `b`, used for the bank angle. */
+function angleDeltaSigned(a, b) {
+  let d = (b - a) % (Math.PI * 2);
+  if (d > Math.PI) d -= Math.PI * 2;
+  if (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
+/** Aircraft push apart from each other only; the ground is not in their way. */
+function separateAir(world, e, buf, dt) {
+  const reach = e.radius * 3.2 + 20;
+  world.grid.query(e.x, e.y, reach, buf);
+  let px = 0;
+  let py = 0;
+  for (let i = 0; i < buf.length; i++) {
+    const o = buf[i];
+    if (o === e || !o.alive || o.def.layer !== 'air') continue;
+    const dx = e.x - o.x;
+    const dy = e.y - o.y;
+    const minDist = e.radius + o.radius + 12;
+    const d2 = dx * dx + dy * dy;
+    if (d2 >= minDist * minDist || d2 < 1e-9) continue;
+    const d = Math.sqrt(d2);
+    px += (dx / d) * (minDist - d) / minDist;
+    py += (dy / d) * (minDist - d) / minDist;
+  }
+  if (px || py) {
+    e.x += px * e.def.speed * dt * 0.6;
+    e.y += py * e.def.speed * dt * 0.6;
+  }
+}
+
 function ensurePath(world, e, goal) {
   const needsPath = !e.path
     || !e.pathGoal
@@ -89,7 +200,7 @@ function ensurePath(world, e, goal) {
       e.pathGoal = null;
       if (e.orders.length) e.orders.shift();
     }
-  }, priority);
+  }, priority, e.def.isInfantry === true);
 }
 
 function steer(world, e, aimX, aimY, dt) {
@@ -104,7 +215,9 @@ function steer(world, e, aimX, aimY, dt) {
   const facing = Math.cos(e.heading - desiredAngle);
   const turnPenalty = clamp(facing, 0.15, 1);
   const arrival = clamp(d / 60, 0.25, 1);
-  const targetSpeed = e.def.speed * turnPenalty * arrival;
+  // speedScale is set every tick by creep.js: faster on the hive's own
+  // ground, slower wading through it. 1 for everyone standing on clean dirt.
+  const targetSpeed = e.def.speed * (e.speedScale || 1) * turnPenalty * arrival;
 
   const tvx = Math.cos(e.heading) * targetSpeed;
   const tvy = Math.sin(e.heading) * targetSpeed;
@@ -155,7 +268,7 @@ function separate(world, e, buf, dt) {
 /** Integrate velocity with terrain collision, sliding along blocked edges. */
 function integrate(world, e, dt) {
   const speed = Math.hypot(e.vx, e.vy);
-  const maxSpeed = e.def.speed * 1.35;
+  const maxSpeed = e.def.speed * (e.speedScale || 1) * 1.35;
   if (speed > maxSpeed) {
     e.vx = (e.vx / speed) * maxSpeed;
     e.vy = (e.vy / speed) * maxSpeed;
@@ -167,17 +280,22 @@ function integrate(world, e, dt) {
   const nx = e.x + e.vx * dt;
   const ny = e.y + e.vy * dt;
 
-  if (map.isPassable(nx, ny)) {
+  // Infantry are allowed onto rock; everything else is stopped by it. The
+  // pathfinder already routed them differently, but the step test has to agree
+  // or a squad would path onto a ridge and then be shoved back off it.
+  const onFoot = e.def.isInfantry === true;
+
+  if (map.isPassableFor(nx, ny, onFoot)) {
     e.x = nx;
     e.y = ny;
     return;
   }
   // Blocked head-on: try each axis so units slide along walls instead of
   // sticking to them.
-  if (map.isPassable(nx, e.y)) {
+  if (map.isPassableFor(nx, e.y, onFoot)) {
     e.x = nx;
     e.vy *= 0.4;
-  } else if (map.isPassable(e.x, ny)) {
+  } else if (map.isPassableFor(e.x, ny, onFoot)) {
     e.y = ny;
     e.vx *= 0.4;
   } else {

@@ -166,10 +166,15 @@ function emitLathe(world, g, tx, ty) {
   }
 }
 
-/** Pop a finished unit out of its factory and send it to the rally point. */
-function completeFactoryItem(world, factory, item) {
-  const exit = factoryExit(world, factory);
-  const unit = world.spawn(item.defId, factory.player, exit.x, exit.y, { complete: true });
+/** Place one body from a factory order, scattered if it is part of a squad. */
+function spawnFromFactory(world, factory, defId, exit, index, count) {
+  // A squad is dealt out around the factory door rather than stacked on it,
+  // or the separation pass would spend its first second untangling them.
+  const ring = count > 1 ? 9 + count * 1.6 : 0;
+  const a = count > 1 ? (index / count) * Math.PI * 2 + world.rng() * 0.5 : 0;
+  const sx = exit.x + Math.cos(a) * ring;
+  const sy = exit.y + Math.sin(a) * ring;
+  const unit = world.spawn(defId, factory.player, sx, sy, { complete: true });
   unit.heading = factory.heading;
 
   if (factory.rally) {
@@ -181,10 +186,28 @@ function completeFactoryItem(world, factory, item) {
       y: factory.rally.y + (world.rng() - 0.5) * spread,
     });
   } else {
-    unit.orders.push({ type: 'move', x: exit.x, y: exit.y + factory.def.footprintPx * 0.9 });
+    unit.orders.push({ type: 'move', x: sx, y: sy + factory.def.footprintPx * 0.9 });
   }
 
   world.addEffect({ type: 'unitDone', x: unit.x, y: unit.y, player: factory.player });
+  return unit;
+}
+
+/** Pop a finished unit out of its factory and send it to the rally point. */
+function completeFactoryItem(world, factory, item) {
+  const exit = factoryExit(world, factory);
+  // Infantry come out as a squad: one order, one cost, one build time, and
+  // then `squad` bodies at once. Building them one at a time would make them
+  // strictly worse tanks -- the whole point of troops is that they arrive as a
+  // number. They are separate entities from the moment they leave the door,
+  // not a group that has to be held together: they take losses individually,
+  // spread out under fire, and can be split up like anything else.
+  const def = getDef(item.defId, world.players[factory.player].faction);
+  const count = def && def.squad > 1 ? def.squad : 1;
+
+  for (let i = 0; i < count; i++) {
+    spawnFromFactory(world, factory, item.defId, exit, i, count);
+  }
 
   item.count--;
   if (item.count <= 0) {

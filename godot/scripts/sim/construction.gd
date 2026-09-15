@@ -205,12 +205,18 @@ static func _emit_lathe(world: IdWorld, g: Dictionary, tx: float, ty: float) -> 
 		})
 
 
-## Pop a finished unit out of its factory and send it to the rally point.
-static func _complete_factory_item(world: IdWorld, factory: IdEntity, item: Dictionary) -> void:
-	var exit_point: Vector2 = _factory_exit(world, factory)
-	var unit: IdEntity = world.spawn(
-		item["defId"], factory.player, exit_point.x, exit_point.y, {"complete": true}
-	)
+## Place one body from a factory order, scattered if it is part of a squad.
+static func _spawn_from_factory(
+	world: IdWorld, factory: IdEntity, def_id: String, exit_point: Vector2,
+	index: int, count: int
+) -> IdEntity:
+	# A squad is dealt out around the factory door rather than stacked on it,
+	# or the separation pass would spend its first second untangling them.
+	var ring: float = (9.0 + float(count) * 1.6) if count > 1 else 0.0
+	var a: float = ((float(index) / float(count)) * TAU + world.rng.next() * 0.5) if count > 1 else 0.0
+	var sx: float = exit_point.x + cos(a) * ring
+	var sy: float = exit_point.y + sin(a) * ring
+	var unit: IdEntity = world.spawn(def_id, factory.player, sx, sy, {"complete": true})
 	unit.heading = factory.heading
 
 	if factory.has_rally:
@@ -226,13 +232,29 @@ static func _complete_factory_item(world: IdWorld, factory: IdEntity, item: Dict
 	else:
 		unit.orders.append({
 			"type": "move",
-			"x": exit_point.x,
-			"y": exit_point.y + float(factory.def.get("footprintPx", 0.0)) * 0.9,
+			"x": sx,
+			"y": sy + float(factory.def.get("footprintPx", 0.0)) * 0.9,
 		})
 
 	world.add_effect({
 		"type": "unitDone", "x": unit.x, "y": unit.y, "player": factory.player,
 	})
+	return unit
+
+
+## Pop a finished unit out of its factory and send it to the rally point.
+static func _complete_factory_item(world: IdWorld, factory: IdEntity, item: Dictionary) -> void:
+	var exit_point: Vector2 = _factory_exit(world, factory)
+	# Infantry come out as a squad: one order, one cost, one build time, and
+	# then `squad` bodies at once. Building them one at a time would make them
+	# strictly worse tanks -- the whole point of troops is that they arrive as a
+	# number. They are separate entities from the moment they leave the door.
+	var def: Dictionary = IdUnitDefs.get_def(
+		String(item["defId"]), world.players[factory.player].faction
+	)
+	var count: int = maxi(1, int(def.get("squad", 1)))
+	for i in count:
+		_spawn_from_factory(world, factory, String(item["defId"]), exit_point, i, count)
 
 	item["count"] = int(item["count"]) - 1
 	if int(item["count"]) <= 0:

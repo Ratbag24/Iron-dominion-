@@ -8,6 +8,11 @@ extends RefCounted
 ## Faction modifiers are applied here and the result cached, exactly as the
 ## reference build does.
 
+## Armour classes. See the table in src/sim/defs.js for what each weapon does
+## to them; the multipliers live on the weapons and travel in the data file.
+const ARMOUR_STANDARD := "standard"
+const ARMOUR_INFANTRY := "infantry"
+
 const BUILD_CELL: int = 16
 
 static var _defs: Dictionary = {}
@@ -107,6 +112,27 @@ static func get_def(def_id: String, faction_id: String) -> Dictionary:
 	else:
 		d["weapons"] = []
 	d["maxWeaponRange"] = max_range
+	# Which layers this thing can shoot at, worked out once rather than walked
+	# per tick: the AI reads it to decide whether it needs anti-air, and target
+	# scoring reads it to know what an aircraft should kill first.
+	d["layer"] = String(base.get("layer", "ground"))
+	var hits_air := false
+	var hits_ground := false
+	for w in d["weapons"]:
+		var t := String((w as Dictionary).get("targets", "ground"))
+		if t == "air" or t == "both":
+			hits_air = true
+		if t != "air":
+			hits_ground = true
+	d["hitsAir"] = hits_air
+	d["hitsGround"] = hits_ground
+	# Armour class decides what a shell landing on this thing is worth. Infantry
+	# are the only class that differs from standard today, but the field is on
+	# everything so the damage path never has to ask whether it exists.
+	d["armour"] = String(base.get("armour", ARMOUR_STANDARD))
+	d["isInfantry"] = d["armour"] == ARMOUR_INFANTRY
+	# How many bodies one build order produces. Infantry arrive as a squad.
+	d["squad"] = int(base.get("squad", 1))
 
 	var footprint := int(base.get("footprint", 0))
 	d["footprintPx"] = footprint * BUILD_CELL

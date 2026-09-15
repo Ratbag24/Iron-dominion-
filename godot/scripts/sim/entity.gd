@@ -22,10 +22,21 @@ var is_building: bool = false
 var alive: bool = true
 
 var max_hp: float = 1.0
+## Set every tick by creep.gd; movement multiplies by it.
+var speed_scale: float = 1.0
 var hp: float = 1.0
 var under_construction: bool = false
 var build_progress: float = 1.0
 var build_power_applied: float = 0.0
+
+## Aircraft only: height above the ground, and the roll they lean into a turn
+## with. Both are read by the renderer; neither affects the simulation, which
+## is two-dimensional.
+var altitude: float = 0.0
+var bank: float = 0.0
+var orbit_phase: float = 0.0
+var hold: Vector2 = Vector2.ZERO
+var has_hold: bool = false
 
 var vx: float = 0.0
 var vy: float = 0.0

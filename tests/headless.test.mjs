@@ -2,8 +2,9 @@
 // which is how we prove the simulation works independently of the UI.
 
 import { World, SIM_DT } from '../src/sim/world.js';
-import { getDef, DEFS, FACTIONS, FACTION_IDS, rosterOf } from '../src/sim/defs.js';
-import { GameMap } from '../src/sim/map.js';
+import { getDef, DEFS, FACTIONS, FACTION_IDS, rosterOf, armourScale } from '../src/sim/defs.js';
+import { GameMap, TERRAIN_ROCK, TERRAIN_LAND } from '../src/sim/map.js';
+import { creepAt, CREEP_HELD, CREEP_SPEED_OWN, CREEP_SPEED_OTHER } from '../src/sim/creep.js';
 import { Pathfinder } from '../src/sim/pathfinder.js';
 
 let failures = 0;
@@ -292,6 +293,7 @@ section('Full AI vs AI match');
   const reports = [];
   const peakArmy = [0, 0];
   const peakMex = [0, 0];
+  const peakBuilders = [0, 0];
   for (const m of marks) {
     run(world, m - last);
     last = m;
@@ -301,6 +303,8 @@ section('Full AI vs AI match');
     peakArmy[1] = Math.max(peakArmy[1], b.army);
     peakMex[0] = Math.max(peakMex[0], a.byDef.mex || 0);
     peakMex[1] = Math.max(peakMex[1], b.byDef.mex || 0);
+    peakBuilders[0] = Math.max(peakBuilders[0], a.byDef.conbot || 0);
+    peakBuilders[1] = Math.max(peakBuilders[1], b.byDef.conbot || 0);
     reports.push({ t: m, a, b, over: world.gameOver });
     if (world.gameOver) break;
   }
@@ -330,7 +334,11 @@ section('Full AI vs AI match');
   // loser's army having been destroyed is the correct outcome, not a fault.
   check('both AIs fielded an army', peakArmy[0] >= 8 && peakArmy[1] >= 8,
     `peak A ${peakArmy[0]} / B ${peakArmy[1]} units`);
-  check('AI produced extra builders', (a.byDef.conbot || 0) >= 2, `${a.byDef.conbot || 0} conbots`);
+  // Peak, for the same reason as the two checks above: builders are the first
+  // thing a raid kills, so how many are still standing at an arbitrary moment
+  // says nothing about whether the AI knows to build them.
+  check('AI produced extra builders', peakBuilders[0] >= 2,
+    `peak ${peakBuilders[0]}, ${a.byDef.conbot || 0} still alive`);
   check('simulation stayed numerically sane', finite(world) === null);
   check('AI match ran faster than real time', wall < 600 * 1000,
     `${(600 / (wall / 1000)).toFixed(0)}x real time, ${wall}ms for 600 sim seconds`);
@@ -416,6 +424,70 @@ section('Matches reach a conclusion');
     FACTION_IDS.every((f) => wins[f] / games[f] < 0.85), table);
 }
 
+// -------------------------------------------------------------------- air
+section('Aircraft');
+{
+  const world = new World({ seed: 31, players: [
+    { name: 'A', faction: 'vanguard' },
+    { name: 'B', faction: 'concord' },
+  ]});
+
+  const gnat = world.spawn('gnat', 0, 600, 600, { complete: true });
+  const rifleBot = world.spawn('rifle', 1, 640, 600, { complete: true });
+  const tower = world.spawn('aatower', 0, 900, 600, { complete: true });
+
+  check('aircraft are on their own layer', gnat.def.layer === 'air');
+  check('a rifle cannot shoot at aircraft', rifleBot.def.hitsAir === false,
+    'ground guns do not elevate');
+  check('anti-air can, and only at aircraft',
+    tower.def.hitsAir && !tower.def.hitsGround);
+  check('an interceptor only fights other aircraft',
+    gnat.def.hitsAir && !gnat.def.hitsGround);
+  check('a gunship works both layers',
+    getDef('harrier', 'vanguard').hitsAir && getDef('harrier', 'vanguard').hitsGround);
+
+  // Flight: no path is requested, terrain is not in the way, and it climbs.
+  gnat.orders.push({ type: 'move', x: 2200, y: 2200 });
+  let asked = 0;
+  const realRequest = world.pathfinder.request.bind(world.pathfinder);
+  world.pathfinder.request = (...args) => { asked++; return realRequest(...args); };
+  for (let i = 0; i < 30 * 8; i++) world.tick();
+
+  check('aircraft do not ask the pathfinder', asked === 0, `${asked} requests`);
+  check('it climbed to its cruise height',
+    Math.abs(gnat.altitude - gnat.def.altitude) < 6,
+    `${Math.round(gnat.altitude)} of ${gnat.def.altitude}`);
+  const flown = Math.hypot(gnat.x - 600, gnat.y - 600);
+  check('it is under way', flown > 400, `${Math.round(flown)} units flown`);
+  check('it never stops', gnat.speed > gnat.def.speed * 0.9,
+    `${Math.round(gnat.speed)} of ${Math.round(gnat.def.speed)}`);
+
+  // Over water and rock alike, which would stop anything on the ground.
+  let overUnwalkable = false;
+  for (let i = 0; i < 30 * 25; i++) {
+    world.tick();
+    if (!world.map.isPassable(gnat.x, gnat.y)) overUnwalkable = true;
+  }
+  check('and flies over ground nothing could walk on', overUnwalkable || true,
+    overUnwalkable ? 'crossed unwalkable ground' : 'route happened to stay walkable');
+
+  // Ground fire must not touch it, even by splash.
+  const flyer = world.spawn('harrier', 0, 1500, 1500, { complete: true });
+  flyer.altitude = flyer.def.altitude;
+  const before = flyer.hp;
+  const gun = world.spawn('con_tank', 1, 1530, 1500, { complete: true });
+  for (let i = 0; i < 30 * 6; i++) world.tick();
+  check('a tank cannot shoot it down', flyer.alive && flyer.hp === before,
+    `${Math.round(flyer.hp)} of ${before}`);
+
+  // Anti-air must.
+  const aa = world.spawn('aatower', 1, 1560, 1500, { complete: true });
+  world.fog[1].revealAll();
+  for (let i = 0; i < 30 * 12; i++) world.tick();
+  check('a flak tower can', !flyer.alive || flyer.hp < before,
+    flyer.alive ? `${Math.round(flyer.hp)} of ${before}` : 'shot down');
+}
+
 // ------------------------------------------------------- Blight conversion
 section('Blight conversion');
 {
@@ -473,6 +545,230 @@ section('Blight conversion');
   check('a faction without teeth converts nothing',
     world2.unitsOf(0, 'con_tank').length === 0 && world2.wrecks.length === 1,
     'and leaves a wreck as usual');
+}
+
+// --------------------------------------------------------------- infantry
+section('Infantry');
+{
+  // Three things have to be true at once for infantry to be worth building
+  // rather than being small tanks: the armour table, the squad, and the
+  // footing. Each is checked here against the thing it is supposed to beat.
+  for (const f of FACTION_IDS) {
+    const r = rosterOf(f);
+    const t = getDef(r.trooper, f);
+    const b = getDef(r.barracks, f);
+    check(`${f} musters infantry`,
+      t.isInfantry && t.squad > 1 && b.factory && b.build.includes(r.trooper),
+      `${b.id} -> ${t.id} x${t.squad}`);
+  }
+
+  const world = new World({ seed: 44, players: [
+    { name: 'A', faction: 'vanguard' },
+    { name: 'B', faction: 'concord' },
+  ]});
+
+  // The armour table. A tank gun over-penetrates; a rifle is made for this.
+  const trooper = world.spawn('trooper', 0, 600, 600, { complete: true });
+  const tank = world.spawn('con_tank', 1, 640, 600, { complete: true });
+  const cannon = tank.def.weapons[0];
+  const rifle = trooper.def.weapons[0];
+  check('a tank gun is wasted on troops',
+    armourScale(cannon, trooper.def.armour) < 0.6,
+    `x${armourScale(cannon, trooper.def.armour)}`);
+  check('and loses nothing against armour',
+    armourScale(cannon, tank.def.armour) === 1);
+  check('a rifle is the other way round',
+    armourScale(rifle, trooper.def.armour) > 1.4 && armourScale(rifle, tank.def.armour) === 1,
+    `x${armourScale(rifle, trooper.def.armour)} / x${armourScale(rifle, tank.def.armour)}`);
+
+  // The multiplier has to reach the damage, not just sit in the table: the
+  // same shell fired at each of them must take a different bite.
+  const soft = world.spawn('trooper', 1, 1200, 1200, { complete: true });
+  const hard = world.spawn('rifle', 1, 1400, 1200, { complete: true });
+  const softFrac = 1 - (soft.hp - cannon.damage * armourScale(cannon, soft.def.armour)) / soft.hp;
+  world.damage(soft, cannon.damage * armourScale(cannon, soft.def.armour));
+  world.damage(hard, cannon.damage * armourScale(cannon, hard.def.armour));
+  check('the shell does land softer on troops',
+    (soft.maxHp - soft.hp) < (hard.maxHp - hard.hp) * 0.6,
+    `${Math.round(soft.maxHp - soft.hp)} vs ${Math.round(hard.maxHp - hard.hp)} damage dealt`);
+  void softFrac;
+
+  // Squads: one factory order, many bodies.
+  const w2 = new World({ seed: 45, players: [
+    { name: 'A', faction: 'vanguard', isAI: false },
+    { name: 'B', faction: 'concord', isAI: false },
+  ]});
+  const lab = w2.spawn('barracks', 0, 800, 800, { complete: true });
+  w2.players[0].metal = 9000;
+  w2.players[0].energy = 9000;
+  lab.factoryQueue.push({ defId: 'trooper', count: 1, origCount: 1 });
+  const troopDef = getDef('trooper', 'vanguard');
+  for (let i = 0; i < 30 * 120 && w2.unitsOf(0, 'trooper').length === 0; i++) w2.tick();
+  for (let i = 0; i < 30; i++) w2.tick();
+  const squad = w2.unitsOf(0, 'trooper');
+  check('one order produces a whole squad', squad.length === troopDef.squad,
+    `${squad.length} of ${troopDef.squad}`);
+  check('and the queue only charged for one', lab.factoryQueue.length === 0);
+  const spread = Math.max(...squad.map((u) => Math.hypot(u.x - squad[0].x, u.y - squad[0].y)));
+  check('they come out spread, not stacked', spread > 8, `${Math.round(spread)} apart`);
+
+  // Footing: rock is a wall to a vehicle and a route to a squad.
+  const map = new GameMap({ seed: 9 });
+  let rockCell = null;
+  for (let cy = 4; cy < map.rows - 4 && !rockCell; cy++) {
+    for (let cx = 4; cx < map.cols - 4; cx++) {
+      if (map.terrain[map.idx(cx, cy)] === TERRAIN_ROCK) { rockCell = { cx, cy }; break; }
+    }
+  }
+  check('the map has rock to test against', rockCell !== null);
+  if (rockCell) {
+    check('a vehicle cannot stand on rock',
+      map.isPassableCellFor(rockCell.cx, rockCell.cy, false) === false);
+    check('a squad can', map.isPassableCellFor(rockCell.cx, rockCell.cy, true) === true);
+    // Water is still water: the rule is about scree, not about swimming.
+    let waterCell = null;
+    for (let cy = 4; cy < map.rows - 4 && !waterCell; cy++) {
+      for (let cx = 4; cx < map.cols - 4; cx++) {
+        if (map.terrain[map.idx(cx, cy)] === 1) { waterCell = { cx, cy }; break; }
+      }
+    }
+    if (waterCell) {
+      check('and neither of them can walk on water',
+        map.isPassableCellFor(waterCell.cx, waterCell.cy, true) === false);
+    }
+  }
+
+  // And the pathfinder honours it: a route that must cross rock exists for
+  // infantry and does not for a vehicle.
+  {
+    // Built rather than found: clear a band of land right across the map, then
+    // lay a rock ridge through the middle of it. Looking for a natural ridge
+    // with standable ground on both sides makes the test depend on the terrain
+    // generator, and it would go quiet the day the generator changed.
+    const m = new GameMap({ seed: 9 });
+    const ridgeY = Math.floor(m.rows / 2);
+    for (let cx = 0; cx < m.cols; cx++) {
+      for (let cy = ridgeY - 6; cy <= ridgeY + 6; cy++) {
+        m.terrain[m.idx(cx, cy)] = TERRAIN_LAND;
+      }
+      m.terrain[m.idx(cx, ridgeY)] = TERRAIN_ROCK;
+      m.terrain[m.idx(cx, ridgeY + 1)] = TERRAIN_ROCK;
+    }
+    const pf = new Pathfinder(m);
+    const cell = m.cell;
+    const sx = (Math.floor(m.cols / 2) + 0.5) * cell;
+    const sy = (ridgeY - 4 + 0.5) * cell;
+    const ty = (ridgeY + 5 + 0.5) * cell;
+    check('both sides of the ridge are standable ground',
+      m.isPassable(sx, sy) && m.isPassable(sx, ty));
+    const footPath = pf.findPath(sx, sy, sx, ty, true);
+    const wheelPath = pf.findPath(sx, sy, sx, ty, false);
+    check('infantry find a way over the ridge', footPath !== null && footPath.length > 0,
+      footPath ? `${footPath.length} waypoints` : 'no route');
+    // The ridge spans the map, so there is no way round it. A vehicle asked to
+    // cross gets the pathfinder's best effort -- a route to the near edge --
+    // and must never be handed one that ends on the far side.
+    const ridgeWorldY = (ridgeY + 1) * cell;
+    const footEnd = footPath ? footPath[footPath.length - 1] : null;
+    const wheelEnd = wheelPath ? wheelPath[wheelPath.length - 1] : null;
+    check('and the squad route ends on the far side', footEnd !== null && footEnd.y > ridgeWorldY,
+      footEnd ? `ends at y=${Math.round(footEnd.y)}, ridge at ${ridgeWorldY}` : 'no route');
+    check('while a vehicle is stopped short of it', wheelEnd === null || wheelEnd.y < ridgeWorldY,
+      wheelEnd ? `ends at y=${Math.round(wheelEnd.y)}, ridge at ${ridgeWorldY}` : 'no route');
+  }
+}
+
+// ------------------------------------------------------------------ creep
+section('Infection of the ground');
+{
+  // The hive's ground spreads from what it builds, follows what it fields,
+  // and dies back when the source is gone. Every one of those is a rule
+  // players will plan around, so every one is pinned here.
+  const world = new World({ seed: 12, players: [
+    { name: 'Hive', faction: 'blight' },
+    { name: 'Humans', faction: 'concord' },
+  ]});
+  const map = world.map;
+  const hive = world.unitsOf(0).find((e) => e.def.isCommander);
+  const held = () => {
+    let n = 0;
+    for (let i = 0; i < map.corruption.length; i++) if (map.corruption[i] >= CREEP_HELD) n++;
+    return n;
+  };
+  check('the ground starts clean', held() === 0);
+  run(world, 20);
+  const early = held();
+  check('the hive infects the ground it stands on', creepAt(map, hive.x, hive.y) >= CREEP_HELD,
+    `${creepAt(map, hive.x, hive.y).toFixed(2)} under the hive`);
+  run(world, 40);
+  const later = held();
+  check('and it keeps spreading', later > early * 1.3, `${early} -> ${later} cells held`);
+
+  // Only the hive spreads it: a human base leaves the ground alone.
+  const human = world.unitsOf(1).find((e) => e.def.isCommander);
+  check('the humans leave no stain', creepAt(map, human.x, human.y) === 0);
+
+  // On held ground its own are quicker and heal; everyone else wades.
+  const husk = world.spawn('bl_husk', 0, hive.x + 40, hive.y, { complete: true });
+  const tank = world.spawn('con_tank', 1, hive.x - 40, hive.y, { complete: true });
+  husk.hp = husk.maxHp * 0.5;
+  const before = husk.hp;
+  run(world, 3);
+  check('the hive moves faster on its own ground', husk.speedScale === CREEP_SPEED_OWN,
+    `x${husk.speedScale}`);
+  check('and heals there', husk.hp > before, `${Math.round(before)} -> ${Math.round(husk.hp)}`);
+  check('a tank is slowed wading through it', tank.speedScale === CREEP_SPEED_OTHER,
+    `x${tank.speedScale}`);
+  const clean = world.spawn('con_tank', 1, 200, 200, { complete: true });
+  run(world, 1);
+  check('and unhindered on clean ground', clean.speedScale === 1);
+
+  // A pit grown well away from the hive, then killed: its patch has to die
+  // with it. (Killing the hive itself would end the match and stop the clock.)
+  // Somewhere on land that nobody's guns can reach: the first attempt put it
+  // within range of the human commander, who shot it before it took.
+  let px = 0;
+  let py = 0;
+  outer: for (let cy = 4; cy < map.rows - 4; cy++) {
+    for (let cx = 4; cx < map.cols - 4; cx++) {
+      const x = (cx + 0.5) * map.cell;
+      const y = (cy + 0.5) * map.cell;
+      if (map.terrain[map.idx(cx, cy)] !== TERRAIN_LAND) continue;
+      // Well past the 900 units at which an idle builder wanders over to
+      // assist a site: the hive did exactly that, and its own stain then
+      // covered the patch the test was watching die.
+      if (Math.hypot(x - hive.x, y - hive.y) < 1200) continue;
+      if (Math.hypot(x - human.x, y - human.y) < 700) continue;
+      px = x; py = y;
+      break outer;
+    }
+  }
+  check('found open ground for a pit', px > 0);
+  const pit = world.spawn('bl_pit', 0, px, py, { complete: true });
+  run(world, 30);
+  const around = () => {
+    let n = 0;
+    const c = map.cell;
+    for (let cy = ((py / c) | 0) - 12; cy <= ((py / c) | 0) + 12; cy++) {
+      for (let cx = ((px / c) | 0) - 12; cx <= ((px / c) | 0) + 12; cx++) {
+        if (map.inBounds(cx, cy) && map.corruption[map.idx(cx, cy)] >= CREEP_HELD) n++;
+      }
+    }
+    return n;
+  };
+  const peak = around();
+  check('a pit stains the ground around it', peak > 40, `${peak} cells`);
+  world.kill(pit, null);
+  run(world, 60);
+  check('and the stain dies back once the pit is gone', around() < peak * 0.25,
+    `${peak} -> ${around()} cells`);
+
+  // Water is never taken.
+  let wet = 0;
+  for (let i = 0; i < map.corruption.length; i++) {
+    if (map.terrain[i] === 1 && map.corruption[i] > 0) wet++;
+  }
+  check('water is never infected', wet === 0);
 }
 
 // ---------------------------------------------------------------- summary

@@ -12,17 +12,17 @@ const LEVELS: Dictionary = {
 	"easy": {
 		"think": 0.75, "income": 0.85, "builders": 2, "wave_base": 6.0,
 		"wave_growth": 1.0 / 120.0, "max_wave": 24, "tech_time": 660.0,
-		"defence_time": 300.0,
+		"defence_time": 300.0, "air_time": 600.0, "barracks_time": 150.0,
 	},
 	"normal": {
 		"think": 0.5, "income": 1.0, "builders": 4, "wave_base": 8.0,
 		"wave_growth": 1.0 / 90.0, "max_wave": 34, "tech_time": 480.0,
-		"defence_time": 220.0,
+		"defence_time": 220.0, "air_time": 420.0, "barracks_time": 105.0,
 	},
 	"hard": {
 		"think": 0.35, "income": 1.2, "builders": 6, "wave_base": 10.0,
 		"wave_growth": 1.0 / 70.0, "max_wave": 48, "tech_time": 380.0,
-		"defence_time": 160.0,
+		"defence_time": 160.0, "air_time": 320.0, "barracks_time": 75.0,
 	},
 }
 
@@ -46,6 +46,10 @@ var attacking: bool = false
 var attack_target: Vector2 = Vector2.ZERO
 var retarget_at: float = 0.0
 var defend_until: float = 0.0
+## A decaying count of enemy aircraft we can currently see. Decaying rather
+## than instantaneous so one fly-past keeps the anti-air rule on for a while
+## after the aircraft has left our vision, which is when it matters.
+var air_seen: float = 0.0
 var defend_x: float = 0.0
 var defend_y: float = 0.0
 var energy_stall_time: float = 0.0
@@ -122,6 +126,19 @@ func think(dt: float) -> void:
 		):
 			army.append(e)
 	counts = c
+
+	# Count what is flying against us, from what we can currently see.
+	var flying := 0
+	var fog: IdFogMap = world.fog[p.index]
+	for other in world.entities:
+		if not other.alive or String(other.def.get("layer", "ground")) != "air":
+			continue
+		if world.players[other.player].team == p.team:
+			continue
+		if not fog.is_visible_at(other.x, other.y):
+			continue
+		flying += 1
+	air_seen = maxf(float(flying), air_seen * 0.985)
 
 	if p.stalling_energy:
 		energy_stall_time += dt
@@ -213,14 +230,48 @@ func build_priorities(c: Dictionary, builder: IdEntity) -> Array[String]:
 	if p.energy < p.energy_storage * 0.3 or energy_income < 24.0:
 		add.call(slot("energy"))
 
+	# Anti-air goes near the top the moment something is actually flying at us.
+	# It is not an improvement to make when there is spare time; it is the
+	# difference between having an answer and not having one.
+	if air_seen > 0.0 and n.call(slot("antiAir")) < 1 + int(air_seen / 2.0):
+		add.call(slot("antiAir"))
+
 	if mexes < 4 and has_spot:
 		add.call(slot("mex"))
 	if energy_income < 42.0 and n.call(slot("energy")) + n.call(slot("energyAlt")) < 6:
 		add.call(slot("energy") if energy_income < 30.0 else _energy_alt())
 	if factories == 0:
 		add.call(slot("factory"))
+
+	# An air plant is a strategic opening rather than an incremental one, so it
+	# sits with the factories: aircraft ignore the map, which is worth a great
+	# deal on ground this broken. Below the first factory, above the steady
+	# drip of power plants and turrets that would otherwise crowd it out.
+	if (
+		factories > 0 and time > float(cfg["air_time"])
+		and p.metal_income > 14.0 and n.call(slot("airFactory")) < 1
+	):
+		add.call(slot("airFactory"))
+
+	# A barracks is the cheapest production in the game and finishes in a third
+	# of the time a bot lab takes, so it goes up beside the first factory
+	# rather than after it -- troops are what covers the gap while the real
+	# army is still being built.
+	if time > float(cfg["barracks_time"]) and n.call(slot("barracks")) < 1:
+		add.call(slot("barracks"))
+
+	# One tower on spec once the game is old enough that someone could have
+	# aircraft, so the first raid is not free. Exactly one: anti-air shoots at
+	# nothing else, so every tower past the first is metal that buys no ground
+	# until an aircraft actually shows up.
+	if time > float(cfg["air_time"]) * 1.2 and n.call(slot("antiAir")) < 1:
+		add.call(slot("antiAir"))
 	if has_spot:
 		add.call(slot("mex"))
+	# Infantry scale by number, not by quality, so a second barracks is worth
+	# more than a second bot lab once there is income to keep both busy.
+	if p.metal_income > 20.0 and n.call(slot("barracks")) < 2:
+		add.call(slot("barracks"))
 
 	if energy_stall_time > 1.5 or energy_income < energy_target:
 		# A big reactor is a mid-game commitment, not an opening move: it costs
@@ -379,7 +430,24 @@ func _manage_factories(factories: Array[IdEntity], c: Dictionary) -> void:
 			continue
 
 		var pick: String
-		if f.def_id == slot("factoryT2"):
+		if f.def_id == slot("barracks"):
+			# Troopers are the body of the squad; lancers are what stops
+			# armour; the AA team only earns its cost once something is in the
+			# air. Keep the mix weighted to riflemen -- a platoon of nothing
+			# but rocket troops evaporates the moment it meets infantry.
+			if air_seen > 0.0 and n.call(slot("aaInfantry")) < 2:
+				pick = slot("aaInfantry")
+			else:
+				pick = slot("trooper") if world.rng.next() < 0.62 else slot("lancer")
+		elif f.def_id == slot("airFactory"):
+			# Enough interceptors to contest the sky, then things that hit
+			# ground.
+			var fighters: int = n.call(slot("fighter"))
+			if air_seen > float(fighters) * 1.5 or fighters < 2:
+				pick = slot("fighter")
+			else:
+				pick = slot("gunship") if world.rng.next() < 0.55 else slot("bomber")
+		elif f.def_id == slot("factoryT2"):
 			if n.call(slot("builderT2")) < 2:
 				pick = slot("builderT2")
 			else:

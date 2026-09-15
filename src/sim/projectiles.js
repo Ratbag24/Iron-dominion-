@@ -4,9 +4,11 @@
 // shells arc to a predicted impact point and detonate with splash damage.
 
 import { dist, clamp, turnTowards } from '../core/math.js';
+import { armourScale } from './defs.js';
 
 export function spawnProjectile(world, shooter, weapon, target, aimX, aimY) {
   const w = weapon.def;
+  const targets = w.targets || 'ground';
   const spread = w.spread || 0;
   const baseAngle = Math.atan2(aimY - shooter.y, aimX - shooter.x);
   const angle = baseAngle + (world.rng() - 0.5) * 2 * spread;
@@ -29,6 +31,13 @@ export function spawnProjectile(world, shooter, weapon, target, aimX, aimY) {
     // it kills; the shooter alone cannot say, since a unit may hold more than
     // one weapon.
     infects: w.infects || 0,
+    // What the shell is allowed to hit, so a ground-only splash cannot rake
+    // aircraft out of the sky by accident.
+    targets,
+    // Armour multipliers travel with the shell rather than being looked up at
+    // impact: one splash can land on several armour classes at once, so the
+    // scaling has to happen per target, not per shot.
+    vs: w.vs || null,
     life: clamp((w.range * 1.6) / w.speed, 0.25, 6),
     z: 0,
     trail: w.kind === 'laser' ? 22 : 0,
@@ -118,6 +127,7 @@ function hitCheck(world, p, buf) {
   for (const e of buf) {
     if (!e.alive || e.id === p.ownerId) continue;
     if (world.players[e.player].team === world.players[p.player].team) continue;
+    if (!reaches(p, e)) continue;
     const r = e.radius + 3;
     // Segment check so fast projectiles cannot tunnel through small units.
     if (segmentHitsCircle(p.px, p.py, p.x, p.y, e.x, e.y, r)) {
@@ -126,6 +136,14 @@ function hitCheck(world, p, buf) {
     }
   }
   return false;
+}
+
+/** Whether this projectile is allowed to touch that entity's layer. */
+function reaches(p, e) {
+  const targets = p.targets || 'ground';
+  if (targets === 'both') return true;
+  const flying = e.def.layer === 'air';
+  return targets === 'air' ? flying : !flying;
 }
 
 function segmentHitsCircle(x0, y0, x1, y1, cx, cy, r) {
@@ -141,11 +159,16 @@ function segmentHitsCircle(x0, y0, x1, y1, cx, cy, r) {
   return ddx * ddx + ddy * ddy <= r * r;
 }
 
+/** How much of this shell's damage the target's armour actually takes. */
+function scaleFor(p, target) {
+  return p.vs ? armourScale(p, target.def.armour) : 1;
+}
+
 function detonate(world, p, buf, directHit) {
   const shooter = world.get(p.ownerId);
 
   if (directHit) {
-    world.damage(directHit, p.damage, shooter, p.infects);
+    world.damage(directHit, p.damage * scaleFor(p, directHit), shooter, p.infects);
   }
 
   if (p.aoe > 0) {
@@ -153,12 +176,13 @@ function detonate(world, p, buf, directHit) {
     for (const e of buf) {
       if (!e.alive || e === directHit) continue;
       if (world.players[e.player].team === world.players[p.player].team) continue;
+      if (!reaches(p, e)) continue;
       const d = dist(p.x, p.y, e.x, e.y) - e.radius;
       if (d > p.aoe) continue;
       const falloff = 1 - clamp(d / p.aoe, 0, 1);
       // Splash does not convert: a shell that takes a whole group would make
       // the hive's artillery the only weapon worth building.
-      world.damage(e, p.damage * falloff * 0.85, shooter);
+      world.damage(e, p.damage * falloff * 0.85 * scaleFor(p, e), shooter);
     }
     world.addEffect({ type: 'explosion', x: p.x, y: p.y, size: p.aoe * 1.15, color: p.color });
   } else {

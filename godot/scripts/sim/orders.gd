@@ -484,6 +484,9 @@ static func find_nearby_enemy(world: IdWorld, e: IdEntity, radius: float) -> IdE
 	for other in found:
 		if not other.alive or not world.is_enemy(e, other):
 			continue
+		# No sense walking towards something none of our weapons can reach.
+		if not e.weapons.is_empty() and not IdCombat.can_engage(e, other):
+			continue
 		var d: float = IdMath.dist(e.x, e.y, other.x, other.y)
 		if d > radius:
 			continue

@@ -17,6 +17,7 @@ var difficulty: String = IdMatchSettings.difficulty
 
 var world: IdWorld
 var terrain: IdTerrainBuilder
+var ground: IdGroundView
 var units: IdUnitView
 var cam: IdRtsCamera
 var effects: IdEffectsView
@@ -64,6 +65,11 @@ func _ready() -> void:
 			IdMatchSettings.team_mode = arg.substr(8)
 		elif arg == "--action":
 			_focus_action = true
+		# Which factions play, for renders of a particular match-up.
+		elif arg.begins_with("--player="):
+			IdMatchSettings.player_faction = arg.substr(9)
+		elif arg.begins_with("--enemy="):
+			IdMatchSettings.enemy_faction = arg.substr(8)
 
 	_loading = IdLoadingScreen.new()
 	_loading.name = "Loading"
@@ -97,6 +103,9 @@ func _generate() -> void:
 	_terrain_mesh = terrain.build_mesh()
 	_minimap_image = terrain.minimap_image(192)
 	IdTerrainBuilder.detail_normal_image()
+	# The ground textures are a second or two of noise generation: done here,
+	# behind the loading screen, rather than as a stall when the match begins.
+	IdSceneSetup.prepare_ground_textures()
 	_generate_ms = Time.get_ticks_msec() - t0
 
 
@@ -118,8 +127,13 @@ func _build_scene() -> void:
 	print("world generated in %dms" % _generate_ms)
 
 	IdSceneSetup.build_environment(self)
-	IdSceneSetup.build_terrain(self, terrain, false, _terrain_mesh)
+	var ground_mesh := IdSceneSetup.build_terrain(self, terrain, false, _terrain_mesh)
 	IdSceneSetup.build_water(self, world.map, terrain)
+
+	ground = IdGroundView.new()
+	ground.name = "Ground"
+	add_child(ground)
+	ground.setup(world, ground_mesh.material_override as ShaderMaterial)
 
 	units = IdUnitView.new()
 	units.name = "Units"
@@ -226,6 +240,7 @@ func _process(dt: float) -> void:
 			_look_at_the_fighting()
 		units.sync()
 		effects.sync()
+		ground.sync()
 		return
 
 	if running and not world.game_over:
