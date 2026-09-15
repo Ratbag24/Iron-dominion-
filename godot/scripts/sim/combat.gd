@@ -107,18 +107,28 @@ static func _resolve_target(
 
 
 static func _acquire(world: IdWorld, e: IdEntity, max_range: float, buf: Array) -> IdEntity:
-	world.grid.query(e.x, e.y, max_range + 40.0, buf)
+	# Only the other side's cells are visited, and the cheap rejects come
+	# before any method call: the same lesson as the orders scan, where this
+	# loop was most of the tick at scale.
+	var reach: float = max_range + 40.0
+	world.grid.query_enemies(e.x, e.y, reach, world.allies_of(e.player), buf)
 	var fog: IdFogMap = world.fog[e.player]
 	var best: IdEntity = null
 	var best_score: float = -INF
+	var reach2: float = reach * reach
 
 	for o in buf:
-		if not o.alive or not world.is_enemy(e, o):
+		if not o.alive:
+			continue
+		var ddx: float = o.x - e.x
+		var ddy: float = o.y - e.y
+		var d2: float = ddx * ddx + ddy * ddy
+		if d2 > reach2:
+			continue
+		var d: float = sqrt(d2) - o.radius
+		if d > max_range:
 			continue
 		if not can_engage(e, o):
-			continue
-		var d: float = IdMath.dist(e.x, e.y, o.x, o.y) - o.radius
-		if d > max_range:
 			continue
 		if not fog.is_visible_at(o.x, o.y):
 			continue
