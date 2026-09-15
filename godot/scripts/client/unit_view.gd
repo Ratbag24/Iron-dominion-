@@ -36,6 +36,14 @@ var _legs: Dictionary = {}
 var _walk: Dictionary = {}        ## entity id -> gait phase, radians
 ## entity id -> simulation time of its last shot, for recoil. See _recoil.
 var _fired: Dictionary = {}
+## entity id -> whether it leaves a wreck, remembered at spawn because the
+## entity is gone by the time its node is found stale.
+var _leaves_wreck: Dictionary = {}
+## Nodes of the dead that are still falling: id -> {node, t0, air, y0}. A
+## unit that leaves no wreck - infantry, aircraft, the hive's bodies - used to
+## vanish on the frame it died. Now it falls.
+var _dying: Dictionary = {}
+const DEATH_TIME: float = 1.1
 const RECOIL_TIME: float = 0.22
 var _scene_cache: Dictionary = {} ## def id -> PackedScene
 var _missing: Dictionary = {}     ## def ids we have already warned about
@@ -137,12 +145,56 @@ func sync() -> void:
 	for id in stale:
 		var node: Node3D = _nodes[id]
 		if is_instance_valid(node):
-			node.queue_free()
+			if _leaves_wreck.get(id, true):
+				# The wreck takes over from here.
+				node.queue_free()
+			else:
+				_dying[id] = {
+					"node": node, "t0": world.time,
+					"air": node.position.y - terrain.height_at(node.position.x, node.position.z) > 20.0,
+					"y0": node.position.y,
+				}
 		_nodes.erase(id)
 		_turrets.erase(id)
 		_legs.erase(id)
 		_walk.erase(id)
 		_fired.erase(id)
+		_leaves_wreck.erase(id)
+	_animate_deaths()
+
+
+## Let the dead fall.
+##
+## A body keels over sideways and sinks into the ground; an aircraft drops
+## with a spin and hits it. Both over about a second, then the node goes.
+func _animate_deaths() -> void:
+	if _dying.is_empty():
+		return
+	var done: Array = []
+	for id in _dying:
+		var d: Dictionary = _dying[id]
+		var node: Node3D = d["node"]
+		if not is_instance_valid(node):
+			done.append(id)
+			continue
+		var k: float = clampf((world.time - float(d["t0"])) / DEATH_TIME, 0.0, 1.0)
+		if bool(d["air"]):
+			var ground: float = terrain.height_at(node.position.x, node.position.z)
+			node.position.y = maxf(ground, float(d["y0"]) - (float(d["y0"]) - ground) * k * k)
+			node.rotation.z += 0.12
+			node.rotation.x += 0.05
+		else:
+			# Ease into the fall, then lie flat and sink.
+			var fall: float = minf(1.0, k * 1.6)
+			node.rotation.x = fall * fall * 1.45
+			node.position.y -= (0.02 + k * 0.05) * node.scale.y
+		if k >= 1.0:
+			done.append(id)
+	for id in done:
+		var node: Node3D = _dying[id]["node"]
+		if is_instance_valid(node):
+			node.queue_free()
+		_dying.erase(id)
 
 
 ## Wrecks are the dead unit's own model, darkened and sunk into the ground.
@@ -280,6 +332,7 @@ func _create(e: IdEntity) -> Node3D:
 		IdTeamColour.apply(inst, _team_colours[e.player])
 	add_child(inst)
 	_nodes[e.id] = inst
+	_leaves_wreck[e.id] = float(e.def.get("wreckMetal", 0.0)) > 0.0 or e.is_building
 	# Parts are found by name anywhere in the tree: the procedural exporter
 	# puts them at the top, an artist's model nests them under a body node.
 	var turret: Node = inst.find_child("turret", true, false)

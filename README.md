@@ -6,6 +6,8 @@ that grow until one commander is left standing.
 
 **Play it at https://ratbag24.github.io/Iron-dominion-/**
 
+![A Concord platoon and Vanguard walkers trading fire in the Godot build](docs/godot-port.png)
+
 It runs in a browser with no install, no build step and no network: open the
 page and play. Every push rebuilds that page automatically, and the simulation
 tests have to pass before it deploys.
