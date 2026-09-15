@@ -671,11 +671,14 @@
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
+          "Trim",
           "Concrete",
+          "Steel",
           "Team",
-          "Hull",
-          "HullLight"
+          "HullLight",
+          "HullDark",
+          "StoreEnergy",
+          "Drum"
         ]
       },
       "spinner": {
@@ -684,206 +687,254 @@
         "axis": "x",
         "speed": 1.5,
         "materials": [
-          "TeamLight",
-          "HullDark"
+          "HullLight",
+          "Team",
+          "HullDark",
+          "Hull"
         ]
       }
     },
-    "triangles": 572
+    "triangles": 1620
   },
   "con_diesel": {
     "file": "con_diesel.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
+          "Trim",
           "Concrete",
+          "Steel",
           "Team",
           "Hull",
-          "Trim",
-          "HullDark"
+          "HullDark",
+          "Rubber",
+          "HullLight",
+          "Indicator",
+          "Glass",
+          "Drum"
         ]
       }
     },
-    "triangles": 444
+    "triangles": 1816
   },
   "con_fusion": {
     "file": "con_fusion.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
+          "Trim",
           "Concrete",
+          "Steel",
           "Team",
           "Hull",
-          "Glow",
           "HullLight",
-          "TeamDark"
+          "HullDark",
+          "Glow",
+          "Indicator"
         ]
       }
     },
-    "triangles": 728
+    "triangles": 3304
   },
   "con_refinery": {
     "file": "con_refinery.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
+          "Trim",
           "Concrete",
+          "Steel",
           "Team",
           "Hull",
+          "HullDark",
           "HullLight",
-          "Indicator",
-          "HullDark"
+          "Warhead",
+          "StoreEnergy",
+          "Drum"
         ]
       }
     },
-    "triangles": 420
+    "triangles": 2268
   },
   "con_battery": {
     "file": "con_battery.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
+          "Trim",
           "Concrete",
+          "Steel",
           "Team",
           "StoreEnergy",
-          "HullDark"
+          "HullDark",
+          "HullLight",
+          "Drum"
         ]
       }
     },
-    "triangles": 404
+    "triangles": 3276
   },
   "con_silo": {
     "file": "con_silo.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
+          "Trim",
           "Concrete",
+          "Steel",
           "Team",
           "Hull",
-          "HullDark"
+          "HullDark",
+          "HullLight",
+          "Drum"
         ]
       }
     },
-    "triangles": 404
+    "triangles": 3276
   },
   "con_yard": {
     "file": "con_yard.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
-          "Team",
-          "HullDark",
-          "Hull",
-          "HullLight",
-          "Deck",
           "Trim",
-          "TeamLight"
+          "Concrete",
+          "Steel",
+          "Team",
+          "Hull",
+          "HullDark",
+          "HullLight",
+          "Glass",
+          "Deck",
+          "Drum",
+          "Indicator"
         ]
       }
     },
-    "triangles": 972
+    "triangles": 3644
   },
   "con_works": {
     "file": "con_works.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
-          "Team",
-          "HullDark",
-          "Hull",
-          "HullLight",
-          "Deck",
           "Trim",
-          "TeamLight",
+          "Concrete",
+          "Steel",
+          "Team",
+          "Hull",
+          "HullDark",
+          "HullLight",
+          "Glass",
+          "Deck",
+          "Drum",
+          "Indicator",
+          "Rubber",
           "Glow"
         ]
       }
     },
-    "triangles": 1168
+    "triangles": 4240
   },
   "con_crane": {
     "file": "con_crane.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
+          "Trim",
           "Concrete",
+          "Steel",
           "Team",
-          "Hull"
+          "HullDark",
+          "Drum"
         ]
       },
       "turret": {
         "pivotY": 31.36,
         "materials": [
           "HullLight",
+          "Glass",
+          "Steel",
           "HullDark",
+          "Rubber",
           "Glow"
         ]
       }
     },
-    "triangles": 560
+    "triangles": 1604
   },
   "con_pillbox": {
     "file": "con_pillbox.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
+          "Trim",
           "Concrete",
+          "Steel",
           "Team",
-          "Webbing"
+          "Sandbag",
+          "Drum",
+          "HullDark"
         ]
       },
       "turret": {
-        "pivotY": 12.16,
+        "pivotY": 12.88,
         "materials": [
           "Hull",
-          "HullLight"
+          "HullDark",
+          "Steel",
+          "HullLight",
+          "Trim",
+          "Glow",
+          "Glass"
         ]
       }
     },
-    "triangles": 616
+    "triangles": 2396
   },
   "con_bastion": {
     "file": "con_bastion.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
+          "Trim",
           "Concrete",
+          "Steel",
           "Team",
-          "Webbing"
+          "Sandbag",
+          "Drum",
+          "HullDark"
         ]
       },
       "turret": {
-        "pivotY": 22.080000000000002,
+        "pivotY": 22.56,
         "materials": [
           "Hull",
-          "HullLight"
+          "HullDark",
+          "Steel",
+          "HullLight",
+          "Trim",
+          "Glow",
+          "Glass"
         ]
       }
     },
-    "triangles": 648
+    "triangles": 2428
   },
   "con_radar": {
     "file": "con_radar.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
+          "Trim",
           "Concrete",
+          "Steel",
           "Team",
+          "HullLight",
+          "Rubber",
           "Hull",
-          "HullLight"
+          "HullDark",
+          "Glass"
         ]
       },
       "spinner": {
@@ -892,12 +943,16 @@
         "axis": "y",
         "speed": 1.3,
         "materials": [
+          "HullLight",
+          "Hull",
           "Team",
-          "HullLight"
+          "Steel",
+          "Glow",
+          "HullDark"
         ]
       }
     },
-    "triangles": 616
+    "triangles": 1360
   },
   "con_engineer": {
     "file": "con_engineer.glb",

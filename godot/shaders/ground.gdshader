@@ -129,7 +129,15 @@ void fragment() {
 	// Fog of war last, over everything: unexplored ground is near-black
 	// with a cold cast, explored-but-unseen ground is dimmed and desaturated,
 	// and only what a unit can see right now is shown as it is.
-	float f = texture(fog_map, world_pos.xz / map_size).r;
+	// Five taps a third of a cell apart, so the edge of vision is a soft
+	// band rather than a staircase of 32-unit cells.
+	vec2 fuv = world_pos.xz / map_size;
+	vec2 fo = vec2(11.0) / map_size;
+	float f = texture(fog_map, fuv).r * 0.36
+		+ texture(fog_map, fuv + vec2(fo.x, 0.0)).r * 0.16
+		+ texture(fog_map, fuv - vec2(fo.x, 0.0)).r * 0.16
+		+ texture(fog_map, fuv + vec2(0.0, fo.y)).r * 0.16
+		+ texture(fog_map, fuv - vec2(0.0, fo.y)).r * 0.16;
 	float seen = smoothstep(0.0, 0.45, f);
 	float now = smoothstep(0.5, 0.95, f);
 	vec3 grey = vec3(dot(alb, vec3(0.3, 0.59, 0.11)));

@@ -1087,88 +1087,280 @@ function conTank(r, c) {
     turretY: r * 1.02,
   };
 }
+// Concord structures: a field base, not a factory floor. Poured concrete
+// pads with steel bollards, sandbags where something shoots, corrugated
+// walls, floodlights, drums and pipe racks - the furniture of a human army
+// that arrived by truck. Team colour is a hazard stripe and a pennant; the
+// walls are steel and concrete, as they are on the hulls.
+
+const CONCRETE = '#5b6068';   // the exporter's Concrete slot
+const CONCRETE_DARK = DARK;
+const SANDBAG = '#8a7d5e';
+const DRUM = '#4c6b3a';
+
+/** A concrete pad with joint lines, corner bollards and one striped edge. */
+function conPad(s, c, h = 2.5) {
+  const parts = [
+    box(s, h, s, CONCRETE_DARK, { y: h * 0.5 }),
+    box(s * 0.92, h * 0.5, s * 0.92, CONCRETE, { y: h * 1.1 }),
+  ];
+  // Expansion joints, cut as thin dark lines across the slab.
+  for (const t of [-0.25, 0.25]) {
+    parts.push(box(s * 0.92, h * 0.12, s * 0.014, CONCRETE_DARK, { z: t * s, y: h * 1.36 }));
+    parts.push(box(s * 0.014, h * 0.12, s * 0.92, CONCRETE_DARK, { x: t * s, y: h * 1.36 }));
+  }
+  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    parts.push(cylinder(s * 0.03, s * 0.035, h * 2.2, STEEL, { x: dx * s * 0.44, z: dz * s * 0.44, y: h * 1.6 }, 8));
+    parts.push(cylinder(s * 0.032, s * 0.032, h * 0.5, c.primary, { x: dx * s * 0.44, z: dz * s * 0.44, y: h * 2.5 }, 8));
+  }
+  // Hazard stripe along the front edge, where the traffic is.
+  for (let i = 0; i < 6; i++) {
+    parts.push(box(s * 0.11, h * 0.08, s * 0.05, i % 2 ? c.primary : DARK, {
+      x: (i - 2.5) * s * 0.14, z: s * 0.44, y: h * 1.38,
+    }));
+  }
+  return parts;
+}
+
+/** A ring of sandbags, two courses high, with a gap on +X. */
+function sandbags(s, { radius = 0.4, y = 0, gap = true }) {
+  const parts = [];
+  const n = Math.max(10, Math.round(radius * s / 5));
+  for (let course = 0; course < 2; course++) {
+    for (let i = 0; i < n; i++) {
+      const a = (i + course * 0.5) / n * Math.PI * 2;
+      if (gap && Math.abs(a) < 0.35) continue;
+      parts.push(box(s * 0.11, s * 0.045, s * 0.06, SANDBAG, {
+        x: Math.cos(a) * s * radius, z: Math.sin(a) * s * radius,
+        y: y + s * (0.025 + course * 0.045), ry: -a,
+      }));
+    }
+  }
+  return parts;
+}
+
+/** A corrugated wall: a slab with vertical seams and a top rail. */
+function corrugated(s, w, hgt, thick, { x = 0, y = 0, z = 0, ry = 0, colour = HULL } = {}) {
+  const parts = [box(w, hgt, thick, colour, { x, y, z, ry })];
+  const n = Math.max(3, Math.round(w / (s * 0.08)));
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n - 0.5;
+    parts.push(box(w * 0.01, hgt * 0.92, thick * 1.3, HULL_DARK, {
+      x: x + Math.cos(ry) * t * w, z: z - Math.sin(ry) * t * w, y, ry,
+    }));
+  }
+  parts.push(box(w, hgt * 0.06, thick * 1.5, HULL_LIGHT, { x, y: y + hgt * 0.5, z, ry }));
+  return parts;
+}
+
+/** A floodlight on a mast: what says "people work here at night". */
+function floodlight(s, { x = 0, z = 0, y = 0, h = 0.7, face = 0 }) {
+  return [
+    cylinder(s * 0.018, s * 0.022, s * h, STEEL, { x, z, y: y + s * h * 0.5 }, 6),
+    box(s * 0.09, s * 0.06, s * 0.05, HULL_DARK, { x: x + Math.cos(face) * s * 0.04, z: z - Math.sin(face) * s * 0.04, y: y + s * h, ry: face }),
+    box(s * 0.05, s * 0.045, s * 0.012, '#ffd76a', { x: x + Math.cos(face) * s * 0.075, z: z - Math.sin(face) * s * 0.075, y: y + s * h, ry: face }),
+  ];
+}
+
+/** Fuel drums, stacked as a depot would. */
+function drums(s, { x = 0, z = 0, y = 0, count = 3 }) {
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const dx = (i % 2) * s * 0.075;
+    const dz = Math.floor(i / 2) * s * 0.075;
+    parts.push(cylinder(s * 0.035, s * 0.035, s * 0.1, DRUM, { x: x + dx, z: z + dz, y: y + s * 0.05 }, 8));
+    parts.push(cylinder(s * 0.037, s * 0.037, s * 0.008, HULL_DARK, { x: x + dx, z: z + dz, y: y + s * 0.03 }, 8));
+    parts.push(cylinder(s * 0.037, s * 0.037, s * 0.008, HULL_DARK, { x: x + dx, z: z + dz, y: y + s * 0.08 }, 8));
+  }
+  return parts;
+}
+
+/** A pipe run with elbows and a flange, between two points at one height. */
+function pipeRun(s, from, to, { r = 0.02, colour = STEEL } = {}) {
+  const dx = to[0] - from[0];
+  const dz = to[2] - from[2];
+  const len = Math.hypot(dx, dz);
+  const parts = [cylinder(s * r, s * r, len, colour, {
+    x: (from[0] + to[0]) / 2, y: from[1], z: (from[2] + to[2]) / 2,
+    ry: -Math.atan2(dz, dx), rz: Math.PI / 2,
+  }, 8)];
+  parts.push(cylinder(s * r * 1.5, s * r * 1.5, s * r * 1.2, HULL_DARK, {
+    x: from[0] + dx * 0.3, y: from[1], z: from[2] + dz * 0.3, ry: -Math.atan2(dz, dx), rz: Math.PI / 2,
+  }, 8));
+  parts.push(sphere(s * r * 1.3, colour, { x: from[0], y: from[1], z: from[2] }, 6, 5));
+  parts.push(sphere(s * r * 1.3, colour, { x: to[0], y: to[1], z: to[2] }, 6, 5));
+  return parts;
+}
+
+/** A ladder up a face. */
+function ladder(s, { x = 0, z = 0, y = 0, h = 0.5, ry = 0 }) {
+  const parts = [];
+  const rungs = Math.max(3, Math.round(h * s / 5));
+  for (const side of [-1, 1]) {
+    parts.push(box(s * 0.012, s * h, s * 0.012, STEEL, {
+      x: x + Math.cos(ry) * side * s * 0.03, z: z - Math.sin(ry) * side * s * 0.03, y: y + s * h * 0.5,
+    }));
+  }
+  for (let i = 0; i < rungs; i++) {
+    parts.push(box(s * 0.07, s * 0.01, s * 0.01, STEEL, { x, z, y: y + s * h * (i + 0.5) / rungs, ry }));
+  }
+  return parts;
+}
+
 function conTankStore(s, c, metalKind) {
-  const parts = foundation(s, c);
+  const parts = conPad(s, c);
   const tint = metalKind ? HULL : '#d8b24a';
-  parts.push(cylinder(s * 0.3, s * 0.3, s * 0.62, tint, { z: -s * 0.18, y: s * 0.44 }, 12));
-  parts.push(cylinder(s * 0.3, s * 0.3, s * 0.62, tint, { z: s * 0.18, y: s * 0.44 }, 12));
-  parts.push(box(s * 0.06, s * 0.06, s * 0.4, HULL_DARK, { y: s * 0.7 }));
+  for (const z of [-0.2, 0.2]) {
+    parts.push(cylinder(s * 0.24, s * 0.24, s * 0.6, tint, { z: z * s, y: s * 0.42 }, 14));
+    parts.push(cylinder(s * 0.25, s * 0.25, s * 0.03, HULL_DARK, { z: z * s, y: s * 0.72 }, 14));
+    for (const y of [0.22, 0.42, 0.62]) {
+      parts.push(...boltRing(s, { z: z * s, y: s * y, radius: 0.245, count: 12, size: 0.012 }));
+    }
+    parts.push(cylinder(s * 0.06, s * 0.06, s * 0.04, HULL_LIGHT, { z: z * s, y: s * 0.74 }, 8));
+    parts.push(...ladder(s, { x: s * 0.25, z: z * s, y: s * 0.12, h: 0.6 }));
+  }
+  parts.push(...pipeRun(s, [0, s * 0.5, -s * 0.2], [0, s * 0.5, s * 0.2]));
+  parts.push(...pipeRun(s, [-s * 0.1, s * 0.16, s * 0.2], [-s * 0.42, s * 0.16, s * 0.2]));
+  parts.push(box(s * 0.16, s * 0.05, s * 0.5, c.primary, { x: -s * 0.36, y: s * 0.15 }));
+  parts.push(...drums(s, { x: s * 0.3, z: -s * 0.4, y: s * 0.13, count: 3 }));
   return { body: merge(parts) };
 }
 
 function conYard(s, c, advanced) {
   const h = advanced ? 3.0 : 2.6;
-  const parts = foundation(s, c, h);
+  const parts = conPad(s, c, h);
   const wallH = s * (advanced ? 0.42 : 0.36);
-  // A shed with a roller door on +Z, the side vehicles drive out of.
-  parts.push(box(s * 0.9, wallH, s * 0.1, c.primary, { z: -s * 0.4, y: wallH * 0.5 + h }));
-  parts.push(box(s * 0.1, wallH, s * 0.8, c.primary, { x: s * 0.4, y: wallH * 0.5 + h }));
-  parts.push(box(s * 0.1, wallH, s * 0.8, c.primary, { x: -s * 0.4, y: wallH * 0.5 + h }));
-  // A lighter roof deck with ribs, trim and hardware, rather than one dark
-  // plate the size of the whole footprint.
-  parts.push(box(s * 0.9, s * 0.08, s * 0.9, '#5a6069', { y: wallH + h }));
-  parts.push(...roofPanels(s, wallH + h + s * 0.04, c, { ribs: 4, span: 0.86 }));
-  // Skylight strip down the middle of the shed.
-  parts.push(box(s * 0.2, s * 0.03, s * 0.7, '#243544', { y: wallH + h + s * 0.05 }));
-  parts.push(box(s * 0.66, wallH * 0.7, s * 0.06, '#1b1f24', { z: s * 0.4, y: wallH * 0.35 + h }));
-  parts.push(box(s * 0.9, s * 0.07, s * 0.12, c.light, { z: s * 0.4, y: wallH + h }));
-  // Hardstanding apron the vehicles roll onto.
-  parts.push(box(s * 0.7, s * 0.04, s * 0.3, '#2c3036', { z: s * 0.62, y: h }));
+  const wy = wallH * 0.5 + h;
+  // A steel shed with corrugated walls and a roller door on +Z, the side
+  // vehicles drive out of.
+  parts.push(...corrugated(s, s * 0.9, wallH, s * 0.05, { z: -s * 0.4, y: wy }));
+  parts.push(...corrugated(s, s * 0.8, wallH, s * 0.05, { x: s * 0.4, y: wy, ry: Math.PI / 2 }));
+  parts.push(...corrugated(s, s * 0.8, wallH, s * 0.05, { x: -s * 0.4, y: wy, ry: Math.PI / 2 }));
+  // Roof: two pitched slabs meeting at a ridge, with skylights.
+  const ry = wallH + h;
+  parts.push(box(s * 0.94, s * 0.04, s * 0.5, HULL_DARK, { z: -s * 0.23, y: ry + s * 0.04, rx: -0.16 }));
+  parts.push(box(s * 0.94, s * 0.04, s * 0.5, HULL_DARK, { z: s * 0.23, y: ry + s * 0.04, rx: 0.16 }));
+  parts.push(box(s * 0.96, s * 0.05, s * 0.06, HULL_LIGHT, { y: ry + s * 0.08 }));
+  for (const x of [-0.3, 0, 0.3]) {
+    parts.push(box(s * 0.16, s * 0.012, s * 0.14, GLASS, { x: x * s, z: -s * 0.22, y: ry + s * 0.07, rx: -0.16 }));
+  }
+  parts.push(...boltLine(s, { from: [-s * 0.42, ry + s * 0.09, 0], to: [s * 0.42, ry + s * 0.09, 0], count: 7, size: 0.014 }));
+  // Roller door, its rail, and the lintel with the hazard stripe.
+  parts.push(box(s * 0.62, wallH * 0.82, s * 0.04, DARK, { z: s * 0.4, y: wallH * 0.41 + h }));
+  for (let i = 0; i < 6; i++) {
+    parts.push(box(s * 0.62, wallH * 0.012, s * 0.05, DARK, { z: s * 0.4, y: h + wallH * (0.1 + i * 0.13) }));
+  }
+  parts.push(box(s * 0.9, s * 0.07, s * 0.1, HULL_DARK, { z: s * 0.4, y: wallH + h }));
+  for (let i = 0; i < 8; i++) {
+    parts.push(box(s * 0.1, s * 0.04, s * 0.012, i % 2 ? c.primary : DARK, { x: (i - 3.5) * s * 0.11, z: s * 0.43, y: wallH + h }));
+  }
+  // Hardstanding apron, drums, a floodlight and a pennant.
+  parts.push(box(s * 0.7, s * 0.03, s * 0.28, '#33373d', { z: s * 0.6, y: h }));
+  parts.push(...drums(s, { x: -s * 0.4, z: s * 0.5, y: h, count: 4 }));
+  parts.push(...floodlight(s, { x: s * 0.44, z: s * 0.52, y: h, h: 0.5, face: Math.PI }));
+  parts.push(cylinder(s * 0.012, s * 0.012, s * 0.5, STEEL, { x: -s * 0.42, z: -s * 0.42, y: ry + s * 0.2 }, 6));
+  parts.push(box(s * 0.008, s * 0.08, s * 0.14, c.primary, { x: -s * 0.42, z: -s * 0.35, y: ry + s * 0.4 }));
   if (advanced) {
-    parts.push(box(s * 0.5, s * 0.14, s * 0.5, c.light, { y: wallH + h + s * 0.08 }));
-    parts.push(cylinder(s * 0.08, s * 0.1, s * 0.5, HULL_LIGHT, { x: s * 0.3, z: -s * 0.3, y: wallH + h + s * 0.28 }, 8));
-    parts.push(sphere(s * 0.1, GLOW, { y: wallH + h + s * 0.2 }));
+    // A gantry crane on the roof and a second, taller stack of plant.
+    parts.push(box(s * 0.05, s * 0.3, s * 0.05, STEEL, { x: s * 0.3, z: -s * 0.3, y: ry + s * 0.2 }));
+    parts.push(box(s * 0.05, s * 0.3, s * 0.05, STEEL, { x: -s * 0.3, z: -s * 0.3, y: ry + s * 0.2 }));
+    parts.push(box(s * 0.7, s * 0.05, s * 0.06, HULL_LIGHT, { z: -s * 0.3, y: ry + s * 0.36 }));
+    parts.push(...cable(s, [s * 0.3, ry + s * 0.34, -s * 0.3], [-s * 0.3, ry + s * 0.34, -s * 0.3], { sag: 0.05 }));
+    parts.push(...grille(s, { x: s * 0.28, y: ry + s * 0.09, z: s * 0.18, w: 0.2, d: 0.16, slats: 5 }));
+    parts.push(sphere(s * 0.05, GLOW, { z: -s * 0.3, y: ry + s * 0.3 }));
   }
   return { body: merge(parts) };
 }
 
 function conCrane(s, c) {
-  const parts = foundation(s, c, 2);
-  parts.push(box(s * 0.16, s * 0.9, s * 0.16, HULL, { y: s * 0.48 }));
+  const parts = conPad(s, c, 2);
+  // Lattice mast: four legs, cross-braces, a ladder up one face.
+  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    parts.push(box(s * 0.04, s * 0.95, s * 0.04, STEEL, { x: dx * s * 0.1, z: dz * s * 0.1, y: s * 0.5 }));
+  }
+  for (let i = 0; i < 5; i++) {
+    const y = s * (0.12 + i * 0.18);
+    parts.push(box(s * 0.24, s * 0.02, s * 0.02, STEEL, { z: s * 0.1, y }));
+    parts.push(box(s * 0.24, s * 0.02, s * 0.02, STEEL, { z: -s * 0.1, y }));
+    parts.push(box(s * 0.02, s * 0.02, s * 0.24, STEEL, { x: s * 0.1, y }));
+    parts.push(box(s * 0.24, s * 0.02, s * 0.02, HULL_DARK, { z: s * 0.1, y: y + s * 0.09, rz: 0.6 }));
+  }
+  parts.push(...ladder(s, { x: -s * 0.11, y: s * 0.05, h: 0.85, ry: Math.PI / 2 }));
+  parts.push(...drums(s, { x: s * 0.3, z: s * 0.3, y: 2, count: 2 }));
+  parts.push(box(s * 0.12, s * 0.05, s * 0.3, c.primary, { x: -s * 0.36, y: 2.5 }));
   return {
     body: merge(parts),
     turret: merge([
-      box(s * 0.24, s * 0.16, s * 0.24, HULL_LIGHT, {}),
-      box(s * 0.8, s * 0.08, s * 0.08, HULL_LIGHT, { x: s * 0.4, rz: -0.14 }),
-      box(s * 0.24, s * 0.08, s * 0.08, HULL_DARK, { x: -s * 0.16 }),
-      sphere(s * 0.1, GLOW, { x: s * 0.78, y: s * 0.1 }),
+      box(s * 0.26, s * 0.14, s * 0.26, HULL_LIGHT, {}),
+      box(s * 0.08, s * 0.1, s * 0.16, GLASS, { x: s * 0.12, y: s * 0.03 }),
+      box(s * 0.9, s * 0.07, s * 0.07, STEEL, { x: s * 0.42, rz: -0.12 }),
+      box(s * 0.3, s * 0.07, s * 0.07, HULL_DARK, { x: -s * 0.2 }),
+      box(s * 0.1, s * 0.12, s * 0.1, HULL_DARK, { x: -s * 0.32, y: -s * 0.02 }),
+      ...cable(s, [s * 0.86, s * 0.02, 0], [s * 0.86, -s * 0.3, 0], { sag: 0.0, segments: 1 }),
+      box(s * 0.06, s * 0.05, s * 0.06, HULL_LIGHT, { x: s * 0.86, y: -s * 0.3 }),
+      sphere(s * 0.06, GLOW, { x: s * 0.86, y: -s * 0.36 }),
     ]),
     turretY: s * 0.98,
   };
 }
 
 function conBunker(s, c, big) {
-  const parts = foundation(s, c, big ? 2.4 : 2.0);
-  // Sloped concrete casemate rather than an open turret ring.
-  parts.push(box(s * 0.7, s * (big ? 0.34 : 0.28), s * 0.7, '#5b6068', { y: s * (big ? 0.2 : 0.17) }));
-  parts.push(box(s * 0.56, s * 0.1, s * 0.56, c.primary, { y: s * (big ? 0.4 : 0.33) }));
-  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-    parts.push(box(s * 0.12, s * 0.16, s * 0.12, '#494e56', { x: dx * s * 0.38, z: dz * s * 0.38, y: s * 0.1 }));
+  const h = big ? 2.4 : 2.0;
+  const parts = conPad(s, c, h);
+  // Sandbags around a low concrete casemate with a firing slit.
+  parts.push(...sandbags(s, { radius: big ? 0.42 : 0.4, y: h, gap: false }));
+  parts.push(box(s * 0.56, s * (big ? 0.3 : 0.24), s * 0.56, CONCRETE, { y: h + s * (big ? 0.15 : 0.12) }));
+  parts.push(box(s * 0.6, s * 0.05, s * 0.6, CONCRETE_DARK, { y: h + s * (big ? 0.32 : 0.26) }));
+  parts.push(box(s * 0.62, s * 0.04, s * 0.14, DARK, { x: s * 0.0, y: h + s * (big ? 0.2 : 0.16), z: s * 0.29 }));
+  parts.push(...boltLine(s, { from: [-s * 0.26, h + s * 0.3, -s * 0.31], to: [s * 0.26, h + s * 0.3, -s * 0.31], count: 4, size: 0.014 }));
+  for (const [dx, dz] of [[1, 1], [-1, 1], [-1, -1]]) {
+    parts.push(box(s * 0.08, s * 0.05, s * 0.16, c.primary, { x: dx * s * 0.26, z: dz * s * 0.26, y: h + s * (big ? 0.35 : 0.29) }));
   }
+  parts.push(...drums(s, { x: -s * 0.45, z: -s * 0.45, y: h, count: 1 }));
   return {
     body: merge(parts),
     turret: merge([
-      box(s * 0.36, s * 0.26, s * 0.5, HULL, {}),
-      box(s * (big ? 0.9 : 0.75), s * (big ? 0.17 : 0.12), s * (big ? 0.17 : 0.12), HULL_LIGHT, { x: s * (big ? 0.6 : 0.5) }),
+      box(s * 0.36, s * 0.24, s * 0.46, HULL, {}),
+      box(s * 0.3, s * 0.06, s * 0.4, HULL_DARK, { y: s * 0.14 }),
+      ...boltRing(s, { y: -s * 0.1, radius: 0.22, count: 10, size: 0.013 }),
+      box(s * (big ? 0.9 : 0.75), s * (big ? 0.15 : 0.11), s * (big ? 0.15 : 0.11), HULL_LIGHT, { x: s * (big ? 0.6 : 0.5) }),
+      cylinder(s * (big ? 0.1 : 0.08), s * (big ? 0.1 : 0.08), s * 0.14, HULL_DARK, { x: s * 0.24, rz: Math.PI / 2 }, 8),
       ...(big ? [cylinder(s * 0.13, s * 0.11, s * 0.24, HULL, { x: s * 1.06, rz: Math.PI / 2 }, 8)] : []),
+      ...optics(s * 0.5, { x: -s * 0.1, y: s * 0.16, z: s * 0.14, scale: 0.6 }),
     ]),
-    turretY: s * (big ? 0.46 : 0.38),
+    turretY: h + s * (big ? 0.42 : 0.34),
   };
 }
 
 function conRadar(s, c) {
-  const parts = foundation(s, c, 2);
-  // Lattice mast rather than a single pole.
+  const parts = conPad(s, c, 2);
+  // Lattice mast with guy cables and a small hut at its foot.
   for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-    parts.push(box(s * 0.05, s * 0.85, s * 0.05, HULL, { x: dx * s * 0.11, z: dz * s * 0.11, y: s * 0.45 }));
+    parts.push(box(s * 0.04, s * 0.88, s * 0.04, STEEL, { x: dx * s * 0.1, z: dz * s * 0.1, y: s * 0.46 }));
   }
-  parts.push(box(s * 0.3, s * 0.05, s * 0.3, HULL_LIGHT, { y: s * 0.5 }));
-  parts.push(box(s * 0.3, s * 0.05, s * 0.3, HULL_LIGHT, { y: s * 0.86 }));
+  for (let i = 0; i < 4; i++) {
+    const y = s * (0.2 + i * 0.2);
+    parts.push(box(s * 0.24, s * 0.018, s * 0.018, STEEL, { z: s * 0.1, y }));
+    parts.push(box(s * 0.018, s * 0.018, s * 0.24, STEEL, { x: s * 0.1, y }));
+  }
+  parts.push(box(s * 0.28, s * 0.04, s * 0.28, HULL_LIGHT, { y: s * 0.9 }));
+  for (const [dx, dz] of [[1, 1], [-1, 1], [1, -1]]) {
+    parts.push(...cable(s, [dx * s * 0.1, s * 0.86, dz * s * 0.1], [dx * s * 0.42, 2, dz * s * 0.42], { sag: 0.02, segments: 2, thickness: 0.012 }));
+  }
+  parts.push(box(s * 0.28, s * 0.2, s * 0.22, HULL, { x: -s * 0.28, z: s * 0.28, y: 2 + s * 0.1 }));
+  parts.push(box(s * 0.3, s * 0.03, s * 0.24, HULL_DARK, { x: -s * 0.28, z: s * 0.28, y: 2 + s * 0.21 }));
+  parts.push(box(s * 0.06, s * 0.06, s * 0.05, GLASS, { x: -s * 0.13, z: s * 0.28, y: 2 + s * 0.12 }));
+  parts.push(box(s * 0.28, s * 0.03, s * 0.05, c.primary, { x: -s * 0.28, z: s * 0.4, y: 2 + s * 0.21 }));
   return {
     body: merge(parts),
     spinner: merge([
-      box(s * 0.1, s * 0.44, s * 0.62, c.primary, { rz: 0.3 }),
-      box(s * 0.16, s * 0.06, s * 0.06, HULL_LIGHT, { x: -s * 0.12 }),
+      // A dish: a shallow cone facing +X, on a yoke.
+      cone(s * 0.3, s * 0.1, HULL_LIGHT, { x: s * 0.1, rz: -Math.PI / 2 }, 14),
+      cylinder(s * 0.3, s * 0.3, s * 0.02, HULL, { x: s * 0.04, rz: Math.PI / 2 }, 14),
+      box(s * 0.02, s * 0.02, s * 0.5, c.primary, { x: s * 0.13 }),
+      cylinder(s * 0.012, s * 0.012, s * 0.26, STEEL, { x: s * 0.2, rz: Math.PI / 2 }, 6),
+      sphere(s * 0.03, GLOW, { x: s * 0.34 }),
+      box(s * 0.08, s * 0.1, s * 0.1, HULL_DARK, { x: -s * 0.04 }),
     ]),
     spinnerAxis: 'y',
     spinnerY: s * 1.02,
@@ -1176,23 +1368,35 @@ function conRadar(s, c) {
   };
 }
 
-// ---------------------------------------------------------------- dispatch
-
-
 function conDerrick(s, c) {
-  const parts = foundation(s, c);
-  // Four legs meeting at a head, with a walking beam that rocks as it pumps.
+  const parts = conPad(s, c);
+  // Pumpjack: a braced A-frame, a wellhead with a valve wheel, and a
+  // walking beam that rocks as it pumps.
   for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-    parts.push(box(s * 0.09, s * 0.95, s * 0.09, HULL, {
-      x: dx * s * 0.21, z: dz * s * 0.21, y: s * 0.5, rx: dz * 0.16, rz: -dx * 0.16,
+    parts.push(box(s * 0.07, s * 0.95, s * 0.07, STEEL, {
+      x: dx * s * 0.2, z: dz * s * 0.2, y: s * 0.5, rx: dz * 0.16, rz: -dx * 0.16,
     }));
   }
-  parts.push(box(s * 0.3, s * 0.12, s * 0.3, HULL_LIGHT, { y: s * 1.0 }));
+  for (const y of [0.35, 0.7]) {
+    const w = 0.4 - y * 0.16;
+    parts.push(box(s * w, s * 0.02, s * 0.02, STEEL, { z: s * w * 0.5, y: s * y }));
+    parts.push(box(s * w, s * 0.02, s * 0.02, STEEL, { z: -s * w * 0.5, y: s * y }));
+  }
+  parts.push(box(s * 0.26, s * 0.1, s * 0.26, HULL_LIGHT, { y: s * 1.0 }));
+  parts.push(...boltRing(s, { y: s * 1.06, radius: 0.1, count: 6, size: 0.014 }));
+  // Wellhead and valve wheel.
+  parts.push(cylinder(s * 0.06, s * 0.07, s * 0.2, HULL_DARK, { x: s * 0.36, y: 2.5 + s * 0.1 }, 8));
+  parts.push(cylinder(s * 0.08, s * 0.08, s * 0.012, '#d8b24a', { x: s * 0.36, y: 2.5 + s * 0.22 }, 10));
+  parts.push(...pipeRun(s, [s * 0.36, 2.5 + s * 0.12, 0], [-s * 0.42, 2.5 + s * 0.12, -s * 0.3]));
+  parts.push(...drums(s, { x: -s * 0.42, z: s * 0.3, y: 2.5, count: 2 }));
+  parts.push(box(s * 0.1, s * 0.04, s * 0.3, c.primary, { x: s * 0.38, z: -s * 0.3, y: 2.5 }));
   return {
     body: merge(parts),
     spinner: merge([
-      box(s * 0.8, s * 0.1, s * 0.12, c.light, {}),
-      box(s * 0.14, s * 0.3, s * 0.14, HULL_DARK, { x: s * 0.36, y: -s * 0.18 }),
+      box(s * 0.84, s * 0.08, s * 0.1, HULL_LIGHT, {}),
+      box(s * 0.84, s * 0.02, s * 0.12, c.primary, { y: s * 0.05 }),
+      box(s * 0.14, s * 0.32, s * 0.12, HULL_DARK, { x: s * 0.38, y: -s * 0.18 }),
+      cylinder(s * 0.09, s * 0.09, s * 0.1, HULL, { x: -s * 0.4, rx: Math.PI / 2 }, 10),
     ]),
     spinnerAxis: 'x',
     spinnerY: s * 1.08,
@@ -1201,30 +1405,50 @@ function conDerrick(s, c) {
 }
 
 function conDiesel(s, c) {
-  const parts = foundation(s, c);
-  parts.push(box(s * 0.78, s * 0.46, s * 0.66, HULL, { y: s * 0.33 }));
-  parts.push(box(s * 0.8, s * 0.1, s * 0.7, c.primary, { y: s * 0.58 }));
-  // Radiator grille and exhaust stacks.
-  parts.push(box(s * 0.06, s * 0.3, s * 0.56, '#22262b', { x: s * 0.4, y: s * 0.33 }));
-  for (const dz of [-0.22, 0.22]) {
-    parts.push(cylinder(s * 0.07, s * 0.08, s * 0.5, HULL_DARK, { x: -s * 0.28, z: dz * s, y: s * 0.78 }, 6));
+  const parts = conPad(s, c);
+  // A generator in a container: grille one end, stacks, a control cabinet,
+  // drums and the cable that leaves it.
+  parts.push(box(s * 0.76, s * 0.44, s * 0.6, HULL, { y: s * 0.32 }));
+  parts.push(...seam(s, { from: [-s * 0.38, s * 0.32, -s * 0.31], to: [s * 0.38, s * 0.32, -s * 0.31], width: 0.02 }));
+  parts.push(box(s * 0.78, s * 0.04, s * 0.62, HULL_DARK, { y: s * 0.55 }));
+  parts.push(box(s * 0.78, s * 0.03, s * 0.08, c.primary, { y: s * 0.58, z: s * 0.28 }));
+  parts.push(...grille(s, { x: s * 0.39, y: s * 0.32, z: 0, w: 0.02, d: 0.44, slats: 7 }));
+  parts.push(box(s * 0.03, s * 0.32, s * 0.5, DARK, { x: s * 0.39, y: s * 0.32 }));
+  for (const dz of [-0.18, 0.18]) {
+    parts.push(cylinder(s * 0.05, s * 0.06, s * 0.42, HULL_DARK, { x: -s * 0.24, z: dz * s, y: s * 0.74 }, 8));
+    parts.push(cylinder(s * 0.065, s * 0.065, s * 0.03, STEEL, { x: -s * 0.24, z: dz * s, y: s * 0.94 }, 8));
   }
+  parts.push(box(s * 0.16, s * 0.24, s * 0.1, HULL_LIGHT, { x: s * 0.2, z: s * 0.36, y: 2.5 + s * 0.12 }));
+  parts.push(...optics(s * 0.6, { x: s * 0.2, y: 2.5 + s * 0.2, z: s * 0.42, scale: 0.35, glow: '#ffd76a' }));
+  parts.push(...boltLine(s, { from: [-s * 0.3, s * 0.12, s * 0.31], to: [s * 0.3, s * 0.12, s * 0.31], count: 5, size: 0.012 }));
+  parts.push(...drums(s, { x: -s * 0.45, z: -s * 0.45, y: 2.5, count: 3 }));
+  parts.push(...cable(s, [s * 0.2, 2.5 + s * 0.02, s * 0.42], [s * 0.45, 2.5 + s * 0.02, s * 0.45], { sag: 0.0, segments: 2 }));
   return { body: merge(parts) };
 }
 
 function conFusion(s, c) {
-  const parts = foundation(s, c, 3);
-  parts.push(cylinder(s * 0.3, s * 0.36, s * 0.4, HULL, { y: s * 0.28 }, 12));
-  parts.push(sphere(s * 0.3, c.primary, { y: s * 0.58 }, 12));
-  parts.push(sphere(s * 0.19, GLOW, { y: s * 0.58 }, 10));
-  // Cooling towers at the corners.
-  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-    parts.push(cylinder(s * 0.1, s * 0.14, s * 0.54, HULL_LIGHT, {
-      x: dx * s * 0.34, z: dz * s * 0.34, y: s * 0.32,
-    }, 8));
+  const parts = conPad(s, c, 3);
+  // A containment dome on a drum, four cooling towers, and the pipe runs
+  // that tie them together. The warning stripe is the team colour.
+  parts.push(cylinder(s * 0.3, s * 0.34, s * 0.36, HULL, { y: s * 0.26 }, 14));
+  for (const y of [0.14, 0.3]) parts.push(...boltRing(s, { y: s * y, radius: 0.32, count: 14, size: 0.013 }));
+  parts.push(sphere(s * 0.29, HULL_LIGHT, { y: s * 0.56 }, 14));
+  parts.push(...seam(s, { from: [-s * 0.29, s * 0.56, 0], to: [s * 0.29, s * 0.56, 0], width: 0.02 }));
+  parts.push(sphere(s * 0.15, GLOW, { y: s * 0.56 }, 10));
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    parts.push(box(s * 0.05, s * 0.03, s * 0.08, i % 2 ? c.primary : DARK, {
+      x: Math.cos(a) * s * 0.35, z: Math.sin(a) * s * 0.35, y: s * 0.45, ry: -a,
+    }));
   }
-  parts.push(box(s * 0.86, s * 0.06, s * 0.1, c.dark, { y: s * 0.1 }));
-  parts.push(box(s * 0.1, s * 0.06, s * 0.86, c.dark, { y: s * 0.1 }));
+  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    parts.push(cylinder(s * 0.09, s * 0.13, s * 0.5, CONCRETE, { x: dx * s * 0.34, z: dz * s * 0.34, y: s * 0.3 }, 10));
+    parts.push(cylinder(s * 0.1, s * 0.1, s * 0.02, HULL_DARK, { x: dx * s * 0.34, z: dz * s * 0.34, y: s * 0.55 }, 10));
+    parts.push(...pipeRun(s, [dx * s * 0.34, s * 0.16, dz * s * 0.34], [dx * s * 0.2, s * 0.16, dz * s * 0.2], { r: 0.022 }));
+  }
+  parts.push(...ladder(s, { x: -s * 0.32, y: 3, h: 0.36, ry: Math.PI / 2 }));
+  parts.push(...railing(s, { from: [-s * 0.44, 3, s * 0.44], to: [s * 0.44, 3, s * 0.44], posts: 4 }));
+  parts.push(...floodlight(s, { x: s * 0.44, z: -s * 0.44, y: 3, h: 0.5, face: Math.PI * 0.75 }));
   return { body: merge(parts) };
 }
 
@@ -1376,11 +1600,24 @@ function conMissile(r, c) {
 }
 
 function conRefinery(s, c) {
-  const parts = foundation(s, c);
-  parts.push(cylinder(s * 0.22, s * 0.24, s * 0.7, HULL, { x: -s * 0.16, y: s * 0.42 }, 10));
-  parts.push(cylinder(s * 0.15, s * 0.16, s * 0.5, HULL_LIGHT, { x: s * 0.22, z: s * 0.18, y: s * 0.32 }, 8));
-  parts.push(cylinder(s * 0.12, s * 0.12, s * 0.1, '#ffd76a', { x: -s * 0.16, y: s * 0.8 }, 10));
-  parts.push(box(s * 0.5, s * 0.07, s * 0.07, HULL_DARK, { x: s * 0.04, z: -s * 0.2, y: s * 0.5 }));
+  const parts = conPad(s, c);
+  // Two tanks, a flare stack, a pipe rack and the valves between them.
+  parts.push(cylinder(s * 0.2, s * 0.22, s * 0.66, HULL, { x: -s * 0.18, y: s * 0.4 }, 12));
+  for (const y of [0.2, 0.4, 0.6]) parts.push(...boltRing(s, { x: -s * 0.18, y: s * y, radius: 0.215, count: 10, size: 0.012 }));
+  parts.push(cylinder(s * 0.21, s * 0.21, s * 0.03, HULL_DARK, { x: -s * 0.18, y: s * 0.74 }, 12));
+  parts.push(cylinder(s * 0.14, s * 0.15, s * 0.48, HULL_LIGHT, { x: s * 0.22, z: s * 0.18, y: s * 0.3 }, 10));
+  parts.push(...boltRing(s, { x: s * 0.22, z: s * 0.18, y: s * 0.4, radius: 0.15, count: 8, size: 0.012 }));
+  // Flare stack with its flame.
+  parts.push(cylinder(s * 0.04, s * 0.05, s * 0.86, STEEL, { x: s * 0.28, z: -s * 0.26, y: s * 0.5 }, 8));
+  parts.push(cylinder(s * 0.06, s * 0.06, s * 0.04, HULL_DARK, { x: s * 0.28, z: -s * 0.26, y: s * 0.94 }, 8));
+  parts.push(sphere(s * 0.05, '#ff9a5b', { x: s * 0.28, z: -s * 0.26, y: s * 0.99 }, 8, 6));
+  // Pipe rack: two runs on posts, with the valve wheel.
+  parts.push(...pipeRun(s, [-s * 0.18, s * 0.5, 0], [s * 0.22, s * 0.5, s * 0.18]));
+  parts.push(...pipeRun(s, [-s * 0.18, s * 0.28, -s * 0.2], [s * 0.28, s * 0.28, -s * 0.26], { r: 0.016 }));
+  parts.push(cylinder(s * 0.06, s * 0.06, s * 0.012, '#d8b24a', { x: 0, y: s * 0.56, z: s * 0.08, rz: Math.PI / 2 }, 10));
+  parts.push(...ladder(s, { x: -s * 0.4, y: 2.5, h: 0.62, ry: Math.PI / 2 }));
+  parts.push(...drums(s, { x: s * 0.3, z: s * 0.36, y: 2.5, count: 2 }));
+  parts.push(box(s * 0.12, s * 0.04, s * 0.36, c.primary, { x: -s * 0.4, z: s * 0.26, y: 2.5 }));
   return { body: merge(parts) };
 }
 

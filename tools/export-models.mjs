@@ -56,6 +56,9 @@ name('#8ef6ff', 'Glow', { emissive: true });
 // A handful of extra slots for shades the models use that are not in the
 // runtime palette, so the whole asset set shares one small material list.
 name('#5b6068', 'Concrete');
+// Concord's field furniture.
+name('#8a7d5e', 'Sandbag');
+name('#4c6b3a', 'Drum');
 name('#33373d', 'Deck');
 name(PALETTE.STEEL, 'Steel');
 name(PALETTE.GREASE, 'Rubber');
