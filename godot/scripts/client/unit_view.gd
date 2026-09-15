@@ -268,17 +268,21 @@ func _create(e: IdEntity) -> Node3D:
 		IdTeamColour.apply(inst, _team_colours[e.player])
 	add_child(inst)
 	_nodes[e.id] = inst
-	var turret: Node = inst.get_node_or_null("turret")
+	# Parts are found by name anywhere in the tree: the procedural exporter
+	# puts them at the top, an artist's model nests them under a body node.
+	var turret: Node = inst.find_child("turret", true, false)
 	_turrets[e.id] = turret if turret is Node3D else null
 	var legs: Array = []
-	for child in inst.get_children():
-		if child is Node3D and child.name.begins_with("leg_"):
-			legs.append({
-				"node": child,
-				# The exporter names each leg with the half of the gait it is
-				# on: "a" swings forward while "b" plants, then they trade.
-				"phase": PI if child.name.ends_with("_b") else 0.0,
-			})
+	for child in inst.find_children("leg_*", "Node3D", true, false):
+		legs.append({
+			"node": child,
+			# The exporter names each leg with the half of the gait it is
+			# on: "a" swings forward while "b" plants, then they trade.
+			"phase": PI if child.name.ends_with("_b") else 0.0,
+			# The swing is applied on top of the rest pose, in the parent's
+			# frame, so a leg that was drawn at an angle keeps that angle.
+			"rest": (child as Node3D).transform.basis,
+		})
 	if not legs.is_empty():
 		_legs[e.id] = legs
 		_walk[e.id] = 0.0
@@ -307,7 +311,7 @@ func _animate_walk(e: IdEntity, node: Node3D, dt: float) -> float:
 	for leg in legs:
 		var n: Node3D = leg["node"]
 		var swing: float = sin(phase + float(leg["phase"])) * amp
-		n.rotation = Vector3(0.0, 0.0, swing)
+		n.transform.basis = Basis(Vector3.BACK, swing) * leg["rest"]
 	# The bob: up on each planted step. Small, or units look like they are
 	# on springs.
 	return absf(sin(phase)) * e.radius * 0.05 * pace

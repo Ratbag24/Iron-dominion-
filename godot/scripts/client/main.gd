@@ -36,11 +36,17 @@ func _ready() -> void:
 
 	var diag := false
 	var closeup := ""
+	# --facing=<radians>: the heading close-up models are shown at. Zero shows
+	# the +X face, which is the way a unit drives; the default three-quarter
+	# view is better for judging detail but hides which way a model points.
+	_closeup_facing = PI * 0.15
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--diag":
 			diag = true
 		elif arg.begins_with("--closeup="):
 			closeup = arg.substr(10)
+		elif arg.begins_with("--facing="):
+			_closeup_facing = float(arg.substr(9))
 	IdSceneSetup.build_environment(self)
 	IdSceneSetup.build_terrain(self, terrain, diag)
 	if not diag:
@@ -61,6 +67,8 @@ func _ready() -> void:
 		var helper := preload("res://scripts/client/screenshot.gd").new()
 		helper.out_path = shot_path
 		add_child(helper)
+
+var _closeup_facing: float = PI * 0.15
 
 func _count_nodes(n: Node) -> int:
 	var total := 1
@@ -135,7 +143,7 @@ func _place_closeup(ids: PackedStringArray) -> void:
 			colours = GREEN
 		elif not id.begins_with("con_"):
 			colours = RED
-		var node := spawn_model(id, ox, oz, colours, PI * 0.15)
+		var node := spawn_model(id, ox, oz, colours, _closeup_facing)
 		if node != null:
 			spawned.append(node)
 

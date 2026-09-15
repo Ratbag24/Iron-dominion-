@@ -6,6 +6,7 @@ set -uo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/godot-bin.sh"
 OUT="${1:?usage: godot-closeup.sh <out.png> <id,id,...>}"
 IDS="${2:?usage: godot-closeup.sh <out.png> <id,id,...>}"
+FACING="${3:-}"   # optional heading in radians; 0 shows the +X face
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
@@ -15,7 +16,7 @@ cd "$ROOT"
 # one that had.
 "$GODOT" --headless --path godot --import >/dev/null 2>&1
 RUN=("$GODOT" --path godot --rendering-driver opengl3 --display-driver x11
-     --resolution 1600x900 scenes/main.tscn -- "--closeup=$IDS" "--shot=$OUT")
+     --resolution 1600x900 scenes/main.tscn -- "--closeup=$IDS" "--shot=$OUT" ${FACING:+"--facing=$FACING"})
 if [ -n "${DISPLAY:-}" ]; then
   "${RUN[@]}"
 else

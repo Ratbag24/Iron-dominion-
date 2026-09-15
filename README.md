@@ -108,6 +108,22 @@ the top. `tools/export-models.mjs` regenerates them from the procedural source
 in `src/client/gfx/models.js`, and `tools/export-data.mjs` writes the unit and
 faction data both builds read.
 
+Hand-made models go in through `tools/import-asset.py`, which runs Blender as
+a Python module (`pip install bpy`) and needs no Blender install:
+
+```
+python3 tools/import-asset.py --src model.gltf --id heavy --height 34 \
+    --yaw 90 --turret tower --legs "left thigh:a,right thigh:b"
+```
+
+It takes glTF, `.blend`, `.x3d`, FBX or OBJ, turns the model to face +X,
+scales it to the height given, names the turret and legs so the game can aim
+and animate them, packs the textures and writes the `.glb` next to the
+procedural ones. Its id goes in `assets/models/handmade.json` so the
+procedural exporter leaves the file alone, and its licence goes in
+`assets/CREDITS.md`, which must ship with the game. Painted models take a
+tint of the team colour until they carry a team mask of their own.
+
 ## Controls
 
 | | |

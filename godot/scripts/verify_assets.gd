@@ -29,6 +29,29 @@ func _init() -> void:
 			continue
 		var root: Node = scene.instantiate()
 
+		# An artist's model (tools/import-asset.py) keeps its own hierarchy:
+		# the root is the body, and any turret or legs sit wherever the artist
+		# put them. Check that it has geometry and that the parts the view
+		# looks for are findable, and leave the pivots to the importer.
+		if bool(manifest[id].get("handmade", false)):
+			var meshes := root.find_children("*", "MeshInstance3D", true, false)
+			if meshes.is_empty():
+				failures.append("%s: hand-made model has no meshes" % id)
+			for m in meshes:
+				total_meshes += 1
+				var mesh: Mesh = (m as MeshInstance3D).mesh
+				if mesh == null:
+					continue
+				total_surfaces += mesh.get_surface_count()
+				for s in mesh.get_surface_count():
+					var mat: Material = mesh.surface_get_material(s)
+					if mat != null:
+						materials[mat.resource_name] = true
+			if root.find_child("turret", true, false) != null:
+				with_turret += 1
+			root.free()
+			continue
+
 		var found := {}
 		for child in root.get_children():
 			if child is MeshInstance3D:

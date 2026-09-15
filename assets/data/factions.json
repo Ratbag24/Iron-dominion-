@@ -91,13 +91,13 @@
     "concord": {
       "id": "concord",
       "name": "Concord",
-      "blurb": "The human remnant. Crewed armour, splash damage and dug-in guns.",
+      "blurb": "The human remnant. Kinetic guns that hit hard, armour that takes it, and dug-in positions - slow, expensive, and unpleasant to attack.",
       "mods": {
-        "hp": 1,
-        "speed": 1,
-        "damage": 1,
+        "hp": 1.12,
+        "speed": 0.94,
+        "damage": 1.16,
         "range": 1,
-        "cost": 1
+        "cost": 1.06
       },
       "roster": {
         "commander": "con_commander",
@@ -135,13 +135,13 @@
     "blight": {
       "id": "blight",
       "name": "Blight",
-      "blurb": "A hive. Thick-skinned and short-ranged: it walks through your fire, and its teeth keep what they kill.",
+      "blurb": "A hive. Cheap, fast and fragile, it dies in numbers and comes back in greater ones; its teeth keep what they kill, and the ground it takes feeds it.",
       "mods": {
-        "hp": 1.34,
-        "speed": 1.12,
-        "damage": 1,
+        "hp": 0.78,
+        "speed": 1.16,
+        "damage": 1.42,
         "range": 0.95,
-        "cost": 1
+        "cost": 0.88
       },
       "spreadsCreep": true,
       "roster": {

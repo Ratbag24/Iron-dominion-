@@ -1154,8 +1154,10 @@ export const FACTIONS = {
   },
   concord: {
     id: 'concord', name: 'Concord',
-    blurb: 'The human remnant. Crewed armour, splash damage and dug-in guns.',
-    mods: { hp: 1, speed: 1, damage: 1, range: 1, cost: 1 },
+    blurb: 'The human remnant. Kinetic guns that hit hard, armour that takes it, and dug-in positions - slow, expensive, and unpleasant to attack.',
+    // Kinetic: every shot is a shell with mass behind it. More damage and
+    // more armour than the machines, paid for in speed and price.
+    mods: { hp: 1.12, speed: 0.94, damage: 1.16, range: 1, cost: 1.06 },
     roster: {
       commander: 'con_commander',
       builder: 'con_engineer', builderT2: 'con_engineer2',
@@ -1175,8 +1177,14 @@ export const FACTIONS = {
   },
   blight: {
     id: 'blight', name: 'Blight',
-    blurb: 'A hive. Thick-skinned and short-ranged: it walks through your fire, and its teeth keep what they kill.',
-    mods: { hp: 1.34, speed: 1.12, damage: 1, range: 0.95, cost: 1 },
+    blurb: 'A hive. Cheap, fast and fragile, it dies in numbers and comes back in greater ones; its teeth keep what they kill, and the ground it takes feeds it.',
+    // Glass teeth: far more damage than anyone, far less health, and cheap
+    // enough to lose. What keeps a swarm alive is not armour but numbers,
+    // speed, and the creep it heals on - see creep.js. The first version of
+    // this faction was the thickest-skinned in the game, which made it a
+    // slow wall with a bite; that is the opposite of the thing it is meant
+    // to be.
+    mods: { hp: 0.78, speed: 1.16, damage: 1.42, range: 0.95, cost: 0.88 },
     // Its structures and bodies infect the ground they stand on; see creep.js.
     spreadsCreep: true,
     roster: {

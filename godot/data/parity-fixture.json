@@ -107,13 +107,13 @@
       "radius": 10
     },
     "con_tank|concord": {
-      "hp": 1300,
-      "metal": 165,
-      "energy": 250,
-      "buildTime": 2700,
-      "speed": 45,
+      "hp": 1456,
+      "metal": 175,
+      "energy": 265,
+      "buildTime": 2862,
+      "speed": 42.3,
       "maxWeaponRange": 255,
-      "wreckMetal": 66,
+      "wreckMetal": 70,
       "radius": 12
     },
     "mex|vanguard": {
@@ -137,13 +137,13 @@
       "radius": 15
     },
     "con_fusion|concord": {
-      "hp": 3200,
-      "metal": 1800,
-      "energy": 3000,
-      "buildTime": 22000,
+      "hp": 3584,
+      "metal": 1908,
+      "energy": 3180,
+      "buildTime": 23320,
       "speed": null,
       "maxWeaponRange": 0,
-      "wreckMetal": 720,
+      "wreckMetal": 763,
       "radius": 40
     }
   },

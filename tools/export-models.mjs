@@ -14,7 +14,7 @@
 // them independently without knowing anything about how the model was made.
 
 import * as THREE from '../vendor/three.module.js';
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, readFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { DEFS, getDef } from '../src/sim/defs.js';
@@ -269,6 +269,12 @@ function translateGeometry(geo, dx, dy, dz) {
 // ------------------------------------------------------------------ export
 for (const dir of OUTPUTS) await mkdir(dir, { recursive: true });
 
+// Definitions whose model an artist made (see tools/import-asset.py). The
+// procedural builder still has a version of each, and the browser build still
+// uses it, but the .glb on disk is theirs and is not overwritten here.
+const HANDMADE = new Set(JSON.parse(await readFile(
+  new URL('../assets/models/handmade.json', import.meta.url), 'utf8')));
+
 const manifest = {};
 let totalTris = 0;
 const allMaterials = new Set();
@@ -321,6 +327,10 @@ for (const id of Object.keys(DEFS)) {
   }
 
   const bytes = glb.build();
+  if (HANDMADE.has(id)) {
+    manifest[id] = { file: id + '.glb', handmade: true, parts: {} };
+    continue;
+  }
   for (const dir of OUTPUTS) await writeFile(join(dir, id + '.glb'), bytes);
   manifest[id] = { file: id + '.glb', parts, triangles: tris };
   totalTris += tris;

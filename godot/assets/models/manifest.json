@@ -490,70 +490,8 @@
   },
   "rifle": {
     "file": "rifle.glb",
-    "parts": {
-      "body": {
-        "materials": [
-          "HullDark",
-          "Steel",
-          "Hull",
-          "Team",
-          "Glow",
-          "HullLight",
-          "Rubber",
-          "TeamDark"
-        ]
-      },
-      "turret": {
-        "pivotY": 16,
-        "materials": [
-          "HullDark",
-          "Steel",
-          "Hull",
-          "HullLight",
-          "Rubber",
-          "Team"
-        ]
-      },
-      "legs": [
-        {
-          "node": "leg_0_a",
-          "pivot": [
-            0,
-            8.74,
-            -4.8
-          ],
-          "phase": 0,
-          "materials": [
-            "Hull",
-            "HullDark",
-            "Steel",
-            "HullLight",
-            "TeamDark",
-            "Rubber",
-            "Deck"
-          ]
-        },
-        {
-          "node": "leg_1_b",
-          "pivot": [
-            0,
-            8.74,
-            4.8
-          ],
-          "phase": 1,
-          "materials": [
-            "Hull",
-            "HullDark",
-            "Steel",
-            "HullLight",
-            "TeamDark",
-            "Rubber",
-            "Deck"
-          ]
-        }
-      ]
-    },
-    "triangles": 3048
+    "handmade": true,
+    "parts": {}
   },
   "rocket": {
     "file": "rocket.glb",
@@ -626,72 +564,8 @@
   },
   "heavy": {
     "file": "heavy.glb",
-    "parts": {
-      "body": {
-        "materials": [
-          "HullDark",
-          "Steel",
-          "Hull",
-          "TeamDark",
-          "Team",
-          "Glow",
-          "Trim",
-          "Glass",
-          "Rubber",
-          "HullLight"
-        ]
-      },
-      "turret": {
-        "pivotY": 30.800000000000004,
-        "materials": [
-          "HullDark",
-          "Steel",
-          "Hull",
-          "HullLight",
-          "Rubber",
-          "Team"
-        ]
-      },
-      "legs": [
-        {
-          "node": "leg_0_a",
-          "pivot": [
-            0,
-            17.388,
-            -8.68
-          ],
-          "phase": 0,
-          "materials": [
-            "Hull",
-            "HullDark",
-            "Steel",
-            "HullLight",
-            "TeamDark",
-            "Rubber",
-            "Deck"
-          ]
-        },
-        {
-          "node": "leg_1_b",
-          "pivot": [
-            0,
-            17.388,
-            8.68
-          ],
-          "phase": 1,
-          "materials": [
-            "Hull",
-            "HullDark",
-            "Steel",
-            "HullLight",
-            "TeamDark",
-            "Rubber",
-            "Deck"
-          ]
-        }
-      ]
-    },
-    "triangles": 3912
+    "handmade": true,
+    "parts": {}
   },
   "siege": {
     "file": "siege.glb",
@@ -1802,49 +1676,8 @@
   },
   "con_rifles": {
     "file": "con_rifles.glb",
-    "parts": {
-      "body": {
-        "materials": [
-          "Fatigue",
-          "Webbing",
-          "Rubber",
-          "Team",
-          "Skin",
-          "Trim",
-          "TeamLight",
-          "Steel"
-        ]
-      },
-      "legs": [
-        {
-          "node": "leg_0_a",
-          "pivot": [
-            0,
-            9.3,
-            -1.209
-          ],
-          "phase": 0,
-          "materials": [
-            "Fatigue",
-            "Trim"
-          ]
-        },
-        {
-          "node": "leg_1_b",
-          "pivot": [
-            0,
-            9.3,
-            1.209
-          ],
-          "phase": 1,
-          "materials": [
-            "Fatigue",
-            "Trim"
-          ]
-        }
-      ]
-    },
-    "triangles": 1108
+    "handmade": true,
+    "parts": {}
   },
   "con_at": {
     "file": "con_at.glb",
@@ -2599,115 +2432,8 @@
   },
   "bl_husk": {
     "file": "bl_husk.glb",
-    "parts": {
-      "body": {
-        "materials": [
-          "Chitin",
-          "ChitinDark",
-          "ChitinLight",
-          "Team",
-          "TeamLight",
-          "TeamDark",
-          "Flesh",
-          "Bile"
-        ]
-      },
-      "turret": {
-        "pivotY": 13.4,
-        "materials": [
-          "Flesh",
-          "ChitinLight",
-          "ChitinDark"
-        ]
-      },
-      "legs": [
-        {
-          "node": "leg_0_b",
-          "pivot": [
-            -5,
-            8.2,
-            -3.15
-          ],
-          "phase": 1,
-          "materials": [
-            "ChitinDark",
-            "Chitin",
-            "ChitinLight"
-          ]
-        },
-        {
-          "node": "leg_1_a",
-          "pivot": [
-            -5,
-            8.2,
-            3.15
-          ],
-          "phase": 0,
-          "materials": [
-            "ChitinDark",
-            "Chitin",
-            "ChitinLight"
-          ]
-        },
-        {
-          "node": "leg_2_a",
-          "pivot": [
-            -0.2500000000000002,
-            8.2,
-            -3.15
-          ],
-          "phase": 0,
-          "materials": [
-            "ChitinDark",
-            "Chitin",
-            "ChitinLight"
-          ]
-        },
-        {
-          "node": "leg_3_b",
-          "pivot": [
-            -0.2500000000000002,
-            8.2,
-            3.15
-          ],
-          "phase": 1,
-          "materials": [
-            "ChitinDark",
-            "Chitin",
-            "ChitinLight"
-          ]
-        },
-        {
-          "node": "leg_4_b",
-          "pivot": [
-            4.5,
-            8.2,
-            -3.15
-          ],
-          "phase": 1,
-          "materials": [
-            "ChitinDark",
-            "Chitin",
-            "ChitinLight"
-          ]
-        },
-        {
-          "node": "leg_5_a",
-          "pivot": [
-            4.5,
-            8.2,
-            3.15
-          ],
-          "phase": 0,
-          "materials": [
-            "ChitinDark",
-            "Chitin",
-            "ChitinLight"
-          ]
-        }
-      ]
-    },
-    "triangles": 2266
+    "handmade": true,
+    "parts": {}
   },
   "bl_spitter": {
     "file": "bl_spitter.glb",
