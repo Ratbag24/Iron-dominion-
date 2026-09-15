@@ -133,7 +133,15 @@ python3 tools/import-asset.py --src model.gltf --id heavy --height 34 \
 It takes glTF, `.blend`, `.x3d`, FBX or OBJ, turns the model to face +X,
 scales it to the height given, names the turret and legs so the game can aim
 and animate them, packs the textures and writes the `.glb` next to the
-procedural ones. Its id goes in `assets/models/handmade.json` so the
+procedural ones. Every node comes out as a plain translation with its
+hierarchy intact, so a leg swings about the world's sideways axis and a
+turret carries whatever hangs off it. For models without named parts:
+`--legs-from-bones "thigh.L:a,thigh.R:b"` cuts legs out of a rigged mesh by
+bone weight, `--legs-from-height 0.47` cuts an unrigged biped at the hip,
+`--pose "upper_arm.L=0,0,-65;..."` turns bones before baking (a T-pose
+down to a stance), `--only low.001` keeps one figure out of a pack, and
+`--recolour "Skull=#cbbfa4,..."` gives flat colours to materials whose
+textures did not come with the file. Its id goes in `assets/models/handmade.json` so the
 procedural exporter leaves the file alone, and its licence goes in
 `assets/CREDITS.md`, which must ship with the game. Painted models take a
 tint of the team colour until they carry a team mask of their own.

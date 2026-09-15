@@ -59,6 +59,10 @@ def world_bounds(objs):
     lo = Vector((1e9, 1e9, 1e9))
     hi = Vector((-1e9, -1e9, -1e9))
     for o in objs:
+        # A stand-in for an empty has no vertices and a bound box at its
+        # origin, which would drag the bounds towards it.
+        if o.type == "MESH" and len(o.data.vertices) == 0:
+            continue
         for c in o.bound_box:
             w = o.matrix_world @ Vector(c)
             lo = Vector(map(min, lo, w))
@@ -90,6 +94,8 @@ def main():
         help='"bone=x,y,z;bone=..." pose-bone rotations in degrees, applied before baking')
     ap.add_argument("--legs-from-bones", default="",
         help='"thigh.L:a,thigh.R:b" split a rigged mesh into leg nodes by bone weight')
+    ap.add_argument("--legs-from-height", type=float, default=None,
+        help="fraction of the height below which an unrigged biped is cut into two legs")
     ap.add_argument("--recolour", default="",
         help='"Material=#rrggbb[:emissive],..." base colours for materials that lost their textures')
     ap.add_argument("--out", action="append", default=None)
@@ -165,6 +171,55 @@ def main():
             c.matrix_world = m
         bpy.data.objects.remove(o, do_unlink=True)
 
+    # An unrigged biped: everything below the hip line is a leg, left or
+    # right by which side of the centre it is on. Cruder than bone weights,
+    # and enough for a soldier seen from an RTS camera.
+    if args.legs_from_height is not None and meshes:
+        src = meshes[0]
+        lo0, hi0 = world_bounds([src])
+        hip_z = lo0.z + (hi0.z - lo0.z) * args.legs_from_height
+        mid = (lo0 + hi0) * 0.5
+        for i, (side_name, side_sign, phase) in enumerate([("L", 1.0, "a"), ("R", -1.0, "b")]):
+            bpy.ops.object.select_all(action="DESELECT")
+            src.select_set(True)
+            bpy.context.view_layer.objects.active = src
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action="DESELECT")
+            bpy.ops.object.mode_set(mode="OBJECT")
+            picked = 0
+            mw = src.matrix_world
+            # Sideways is whichever horizontal axis the model is narrower in
+            # after orientation; before the yaw is applied that is unknown,
+            # so both are tried and the wider one is treated as sideways.
+            wide_axis = 0 if (hi0.x - lo0.x) >= (hi0.y - lo0.y) else 1
+            for v in src.data.vertices:
+                w = mw @ v.co
+                side = (w.x - mid.x) if wide_axis == 0 else (w.y - mid.y)
+                v.select = w.z < hip_z and side * side_sign > 0.0
+                picked += 1 if v.select else 0
+            if picked == 0:
+                log("WARNING: nothing below the hip on side", side_name)
+                continue
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_mode(type="VERT")
+            bpy.ops.mesh.separate(type="SELECTED")
+            bpy.ops.object.mode_set(mode="OBJECT")
+            leg = [o for o in mesh_objects() if o is not src and not o.name.startswith("leg_")][-1]
+            leg.name = f"leg_{i}_{phase}"
+            llo, lhi = world_bounds([leg])
+            head = Vector((
+                (llo.x + lhi.x) * 0.5, (llo.y + lhi.y) * 0.5, hip_z))
+            bpy.context.scene.cursor.location = head
+            bpy.ops.object.select_all(action="DESELECT")
+            leg.select_set(True)
+            bpy.context.view_layer.objects.active = leg
+            bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+            m = leg.matrix_world.copy()
+            leg.parent = src
+            leg.matrix_world = m
+            log("leg", leg.name, "from", picked, "vertices, pivot", tuple(round(c, 2) for c in head))
+        meshes = mesh_objects()
+
     for name, family, head in leg_specs:
         src = meshes[0]
         idx = {g.index: g.name for g in src.vertex_groups}
@@ -208,40 +263,63 @@ def main():
             bpy.ops.object.modifier_apply(modifier=mod.name)
         log(f"decimated to {sum(len(m.data.polygons) for m in meshes)} polygons")
 
-    # Find the roots: objects with no parent. Wrap them in one root empty so
-    # the whole thing can be turned, scaled and grounded as a unit.
-    roots = [o for o in bpy.data.objects if o.parent is None]
-    root = bpy.data.objects.new("body", None)
-    bpy.context.scene.collection.objects.link(root)
-    for o in roots:
-        m = o.matrix_world.copy()
-        o.parent = root
-        o.matrix_world = m
-
-    # Orientation and scale. Blender is Z up; the glTF exporter turns that
-    # into Y up. Facing +X in Blender is facing +X in the game.
+    # Orientation and scale, as one matrix applied to every root. Blender is
+    # Z up; the glTF exporter turns that into Y up. Facing +X in Blender is
+    # facing +X in the game.
     lo, hi = world_bounds(meshes)
     height = hi.z - lo.z
     scale = args.height / max(height, 1e-6)
-    root.matrix_world = (
+    orient = (
         Matrix.Scale(scale, 4)
         @ Matrix.Rotation(math.radians(args.yaw), 4, "Z")
         @ Matrix.Translation(Vector((-(lo.x + hi.x) / 2, -(lo.y + hi.y) / 2, -lo.z)))
     )
+    for o in bpy.data.objects:
+        if o.parent is None:
+            o.matrix_world = orient @ o.matrix_world
     bpy.context.view_layer.update()
 
-    # Bake the root's transform into the children so the exported root is
-    # identity and every part's pivot is where it was drawn.
+    # Bake every object into a pure translation, keeping the hierarchy.
+    #
+    # The parts these models arrive with are empties with mesh children and
+    # rotations of their own (Sketchfab's wrapper chain has a quarter turn in
+    # it), and apply-transform cannot bake an empty. The view swings a leg
+    # about an axis in its parent's frame, so every frame has to be the
+    # world's: each mesh's vertices are moved into world space relative to
+    # the object's own pivot, each empty becomes a mesh with no vertices, and
+    # every node ends up as a translation and nothing else.
+    world_pos = {o: o.matrix_world.translation.copy() for o in bpy.data.objects}
+    for o in list(bpy.data.objects):
+        if o.type == "EMPTY":
+            stand_in = bpy.data.objects.new(o.name + "_", bpy.data.meshes.new(o.name))
+            bpy.context.scene.collection.objects.link(stand_in)
+            stand_in.matrix_world = o.matrix_world.copy()
+            for c in list(o.children):
+                cm = c.matrix_world.copy()
+                c.parent = stand_in
+                c.matrix_world = cm
+            parent = o.parent
+            name = o.name
+            bpy.data.objects.remove(o, do_unlink=True)
+            stand_in.name = name
+            if parent is not None:
+                m = stand_in.matrix_world.copy()
+                stand_in.parent = parent
+                stand_in.matrix_world = m
+            world_pos[stand_in] = stand_in.matrix_world.translation.copy()
+    for o in mesh_objects():
+        pivot = o.matrix_world.translation.copy()
+        o.data.transform(Matrix.Translation(-pivot) @ o.matrix_world)
+        o.matrix_world = Matrix.Translation(pivot)
+    # Re-express every child's placement as an offset from its parent, with
+    # no inverse matrix left over to hide a rotation in.
     for o in bpy.data.objects:
-        o.select_set(o is not root)
-    bpy.context.view_layer.objects.active = meshes[0]
-    for c in list(root.children):
-        m = c.matrix_world.copy()
-        c.parent = None
-        c.matrix_world = m
-    bpy.data.objects.remove(root, do_unlink=True)
-    bpy.ops.object.select_all(action="SELECT")
-    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+        if o.parent is not None:
+            pos = o.matrix_world.translation.copy()
+            ppos = o.parent.matrix_world.translation
+            o.matrix_parent_inverse = Matrix.Identity(4)
+            o.matrix_local = Matrix.Translation(pos - ppos)
+    bpy.context.view_layer.update()
 
     lo, hi = world_bounds(meshes)
     log(f"bounds x {lo.x:.1f}..{hi.x:.1f}  y {lo.y:.1f}..{hi.y:.1f}  z {lo.z:.1f}..{hi.z:.1f}")
