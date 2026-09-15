@@ -69,11 +69,17 @@
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
+          "Deck",
+          "HullDark",
+          "Glow",
+          "Steel",
           "Team",
+          "TeamLight",
           "Hull",
-          "HullDark"
+          "HullLight",
+          "Trim",
+          "Glass",
+          "Rubber"
         ]
       },
       "spinner": {
@@ -82,38 +88,48 @@
         "axis": "y",
         "speed": 1.7,
         "materials": [
-          "TeamLight",
+          "HullLight",
+          "Team",
           "Glow"
         ]
       }
     },
-    "triangles": 448
+    "triangles": 1908
   },
   "solar": {
     "file": "solar.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
+          "Deck",
+          "HullDark",
+          "Glow",
+          "Steel",
           "Team",
+          "TeamLight",
           "Hull",
-          "Glass"
+          "Glass",
+          "Rubber",
+          "HullLight"
         ]
       }
     },
-    "triangles": 396
+    "triangles": 1400
   },
   "wind": {
     "file": "wind.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
+          "Deck",
+          "HullDark",
+          "Glow",
+          "Steel",
           "Team",
+          "TeamLight",
           "Hull",
-          "HullLight"
+          "HullLight",
+          "Rubber"
         ]
       },
       "spinner": {
@@ -122,163 +138,212 @@
         "axis": "x",
         "speed": 3.2,
         "materials": [
-          "TeamLight"
+          "HullDark",
+          "HullLight",
+          "Team"
         ]
       }
     },
-    "triangles": 472
+    "triangles": 1292
   },
   "converter": {
     "file": "converter.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
+          "Deck",
+          "HullDark",
+          "Glow",
+          "Steel",
           "Team",
+          "TeamLight",
           "Hull",
-          "Indicator",
-          "HullDark"
+          "HullLight",
+          "Indicator"
         ]
       }
     },
-    "triangles": 432
+    "triangles": 2660
   },
   "estore": {
     "file": "estore.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
+          "Deck",
+          "HullDark",
+          "Glow",
+          "Steel",
           "Team",
-          "StoreEnergy",
-          "HullDark"
+          "TeamLight",
+          "Hull",
+          "StoreEnergy"
         ]
       }
     },
-    "triangles": 408
+    "triangles": 1940
   },
   "mstore": {
     "file": "mstore.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
+          "Deck",
+          "HullDark",
+          "Glow",
+          "Steel",
           "Team",
-          "Hull",
-          "HullDark"
+          "TeamLight",
+          "StoreMetal"
         ]
       }
     },
-    "triangles": 408
+    "triangles": 1292
   },
   "botlab": {
     "file": "botlab.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
+          "Deck",
+          "HullDark",
+          "Glow",
+          "Steel",
           "Team",
+          "TeamLight",
           "Hull",
+          "Rubber",
           "HullLight",
-          "Trim",
-          "Glow"
+          "Trim"
         ]
       }
     },
-    "triangles": 936
+    "triangles": 2572
   },
   "advbotlab": {
     "file": "advbotlab.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
-          "Team",
-          "Hull",
-          "HullLight",
-          "Trim",
+          "Deck",
+          "HullDark",
           "Glow",
-          "TeamLight"
+          "Steel",
+          "Team",
+          "TeamLight",
+          "Hull",
+          "Rubber",
+          "HullLight",
+          "Trim"
         ]
       }
     },
-    "triangles": 1164
+    "triangles": 3316
   },
   "nano": {
     "file": "nano.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
+          "Deck",
+          "HullDark",
+          "Glow",
+          "Steel",
           "Team",
-          "Hull"
+          "TeamLight",
+          "Hull",
+          "HullLight"
         ]
       },
       "turret": {
         "pivotY": 32,
         "materials": [
           "HullLight",
-          "Glow"
+          "Hull",
+          "HullDark",
+          "Glow",
+          "Team"
         ]
       }
     },
-    "triangles": 460
+    "triangles": 1280
   },
   "llt": {
     "file": "llt.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
-          "Team"
-        ]
-      },
-      "turret": {
-        "pivotY": 16,
-        "materials": [
+          "Deck",
+          "HullDark",
+          "Glow",
+          "Steel",
+          "Team",
+          "TeamLight",
           "Hull",
           "HullLight"
         ]
+      },
+      "turret": {
+        "pivotY": 12.440000000000001,
+        "materials": [
+          "Hull",
+          "HullLight",
+          "Steel",
+          "HullDark",
+          "Glow",
+          "Team",
+          "Trim",
+          "Glass"
+        ]
       }
     },
-    "triangles": 392
+    "triangles": 1716
   },
   "hlt": {
     "file": "hlt.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
-          "Team"
-        ]
-      },
-      "turret": {
-        "pivotY": 24,
-        "materials": [
+          "Deck",
+          "HullDark",
+          "Glow",
+          "Steel",
+          "Team",
+          "TeamLight",
           "Hull",
           "HullLight"
         ]
+      },
+      "turret": {
+        "pivotY": 17.96,
+        "materials": [
+          "Hull",
+          "HullLight",
+          "Steel",
+          "HullDark",
+          "Glow",
+          "Team",
+          "Trim",
+          "Glass"
+        ]
       }
     },
-    "triangles": 436
+    "triangles": 1920
   },
   "radar": {
     "file": "radar.glb",
     "parts": {
       "body": {
         "materials": [
-          "Rubber",
-          "Concrete",
+          "Deck",
+          "HullDark",
+          "Glow",
+          "Steel",
           "Team",
-          "Hull"
+          "TeamLight",
+          "Hull",
+          "HullLight",
+          "Rubber"
         ]
       },
       "spinner": {
@@ -287,12 +352,16 @@
         "axis": "y",
         "speed": 1.1,
         "materials": [
-          "Team",
-          "HullLight"
+          "HullLight",
+          "Hull",
+          "Steel",
+          "Glow",
+          "HullDark",
+          "Team"
         ]
       }
     },
-    "triangles": 364
+    "triangles": 1192
   },
   "conbot": {
     "file": "conbot.glb",
@@ -2070,7 +2139,10 @@
       "body": {
         "materials": [
           "ChitinDark",
-          "TeamDark"
+          "TeamDark",
+          "Chitin",
+          "Flesh",
+          "Team"
         ]
       },
       "spinner": {
@@ -2080,11 +2152,12 @@
         "speed": 0.5,
         "materials": [
           "Flesh",
+          "ChitinLight",
           "Bile"
         ]
       }
     },
-    "triangles": 548
+    "triangles": 996
   },
   "bl_pit": {
     "file": "bl_pit.glb",
@@ -2124,13 +2197,14 @@
           "ChitinDark",
           "TeamDark",
           "Chitin",
+          "ChitinLight",
           "Team",
           "Bile",
           "Flesh"
         ]
       }
     },
-    "triangles": 536
+    "triangles": 1194
   },
   "bl_thorn": {
     "file": "bl_thorn.glb",
@@ -2139,19 +2213,22 @@
         "materials": [
           "ChitinDark",
           "TeamDark",
+          "Chitin",
+          "ChitinLight",
           "Team"
         ]
       },
       "turret": {
-        "pivotY": 10.88,
+        "pivotY": 11.52,
         "materials": [
           "Chitin",
           "ChitinLight",
+          "ChitinDark",
           "Bile"
         ]
       }
     },
-    "triangles": 572
+    "triangles": 1160
   },
   "bl_maw": {
     "file": "bl_maw.glb",
@@ -2160,19 +2237,22 @@
         "materials": [
           "ChitinDark",
           "TeamDark",
+          "Chitin",
+          "ChitinLight",
           "Team"
         ]
       },
       "turret": {
-        "pivotY": 20.16,
+        "pivotY": 21.12,
         "materials": [
           "Chitin",
           "ChitinLight",
+          "ChitinDark",
           "Bile"
         ]
       }
     },
-    "triangles": 572
+    "triangles": 1160
   },
   "bl_tender": {
     "file": "bl_tender.glb",

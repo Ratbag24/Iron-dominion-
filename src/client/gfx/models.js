@@ -372,15 +372,80 @@ function foundation(s, c, h = 2.5) {
   ];
 }
 
+// Machine-faction structures. The robots build clean: a plated pad with
+// light conduits running to a core, coolant rings, and team colour as a
+// strip of light rather than a painted wall. The same rule as the hulls -
+// the metal is the metal, the colour says whose - but with the glow the
+// energy factions are about.
+
+/** A plated pad with conduits, corner cleats and a team-colour light strip. */
+function techPad(s, c, h = 2.5) {
+  const parts = [
+    box(s, h, s, '#33373d', { y: h * 0.5 }),
+    box(s * 0.92, h * 0.5, s * 0.92, HULL_DARK, { y: h * 1.1 }),
+  ];
+  // Plate seams and the conduits that run under them to the core.
+  for (const t of [-0.3, 0, 0.3]) {
+    parts.push(...seam(s, { from: [-s * 0.44, h * 1.36, t * s], to: [s * 0.44, h * 1.36, t * s], width: 0.012 }));
+  }
+  for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    parts.push(box(s * 0.3, h * 0.08, s * 0.03, GLOW, {
+      x: Math.cos(a) * s * 0.28, z: Math.sin(a) * s * 0.28, y: h * 1.37, ry: -a,
+    }));
+  }
+  for (const [dx, dz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    parts.push(box(s * 0.08, h * 1.4, s * 0.08, STEEL, { x: dx * s * 0.44, z: dz * s * 0.44, y: h * 1.1 }));
+    parts.push(box(s * 0.09, h * 0.3, s * 0.09, c.primary, { x: dx * s * 0.44, z: dz * s * 0.44, y: h * 1.9 }));
+  }
+  parts.push(box(s * 0.7, h * 0.1, s * 0.03, c.light, { z: s * 0.45, y: h * 1.36 }));
+  return parts;
+}
+
+/** A coolant ring: a torus-ish band of segments around a core. */
+function coolantRing(s, { y = 0, radius = 0.3, count = 12, colour = HULL_LIGHT, size = 0.04 } = {}) {
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    parts.push(box(s * size * 1.6, s * size, s * size, i % 3 === 0 ? colour : HULL_DARK, {
+      x: Math.cos(a) * s * radius, z: Math.sin(a) * s * radius, y, ry: -a,
+    }));
+  }
+  return parts;
+}
+
+/** A light strip: the team's colour as something lit, not painted. */
+function lightStrip(s, from, to, colour, thickness = 0.03) {
+  const dx = to[0] - from[0];
+  const dz = to[2] - from[2];
+  const dy = to[1] - from[1];
+  const len = Math.hypot(dx, dy, dz) || s * 0.05;
+  return [box(len, s * thickness, s * thickness * 1.6, colour, {
+    x: (from[0] + to[0]) / 2, y: (from[1] + to[1]) / 2, z: (from[2] + to[2]) / 2,
+    ry: -Math.atan2(dz, dx), rz: Math.atan2(dy, Math.hypot(dx, dz)),
+  })];
+}
+
 function mex(s, c) {
-  const parts = foundation(s, c);
-  parts.push(cylinder(s * 0.3, s * 0.36, s * 0.5, HULL, { y: s * 0.3 }, 10));
-  parts.push(cylinder(s * 0.16, s * 0.16, s * 0.62, HULL_DARK, { y: s * 0.66 }, 8));
+  const parts = techPad(s, c);
+  // Drill housing on a ring of stanchions, the shaft going down through the
+  // pad, and a conduit taking the metal off to one side.
+  parts.push(cylinder(s * 0.28, s * 0.34, s * 0.42, HULL, { y: s * 0.26 }, 12));
+  parts.push(...boltRing(s, { y: s * 0.12, radius: 0.33, count: 10, size: 0.014 }));
+  parts.push(...coolantRing(s, { y: s * 0.4, radius: 0.32, count: 10 }));
+  parts.push(cylinder(s * 0.14, s * 0.14, s * 0.6, HULL_DARK, { y: s * 0.66 }, 8));
+  for (let i = 0; i < 3; i++) {
+    parts.push(cylinder(s * 0.16, s * 0.16, s * 0.03, HULL_LIGHT, { y: s * (0.5 + i * 0.16) }, 8));
+  }
+  parts.push(...lightStrip(s, [s * 0.14, s * 0.3, 0], [s * 0.44, s * 0.18, s * 0.3], GLOW));
+  parts.push(box(s * 0.14, s * 0.12, s * 0.16, HULL_LIGHT, { x: s * 0.36, z: s * 0.3, y: 2.5 + s * 0.06 }));
+  parts.push(...optics(s * 0.6, { x: s * 0.36, y: 2.5 + s * 0.1, z: s * 0.38, scale: 0.4 }));
+  parts.push(...cable(s, [s * 0.1, s * 0.5, -s * 0.2], [s * 0.42, 2.5 + s * 0.02, -s * 0.42], { sag: 0.08 }));
   return {
     body: merge(parts),
     spinner: merge([
-      box(s * 0.62, s * 0.1, s * 0.13, c.light, { x: s * 0.2 }),
-      box(s * 0.13, s * 0.1, s * 0.62, c.light, { z: s * 0.2 }),
+      box(s * 0.62, s * 0.08, s * 0.12, HULL_LIGHT, { x: s * 0.2 }),
+      box(s * 0.12, s * 0.08, s * 0.62, HULL_LIGHT, { z: s * 0.2 }),
+      box(s * 0.62, s * 0.02, s * 0.04, c.primary, { x: s * 0.2, y: s * 0.05 }),
       cylinder(s * 0.1, s * 0.1, s * 0.2, GLOW, {}, 6),
     ]),
     spinnerAxis: 'y',
@@ -390,23 +455,49 @@ function mex(s, c) {
 }
 
 function solar(s, c) {
-  const parts = foundation(s, c, 2);
-  parts.push(box(s * 0.16, s * 0.42, s * 0.16, HULL, { y: s * 0.24 }));
-  parts.push(box(s * 0.92, s * 0.05, s * 0.92, GLASS, { y: s * 0.5, rz: 0.22 }));
-  parts.push(box(s * 0.92, s * 0.02, s * 0.08, c.primary, { y: s * 0.54, rz: 0.22 }));
+  const parts = techPad(s, c, 2);
+  // A tilted array of cells on a yoke, with the cells drawn as a grid so it
+  // reads as panels rather than as a sheet of glass.
+  parts.push(box(s * 0.14, s * 0.4, s * 0.14, HULL, { y: s * 0.22 }));
+  parts.push(cylinder(s * 0.06, s * 0.06, s * 0.6, STEEL, { y: s * 0.44, rx: Math.PI / 2 }, 8));
+  parts.push(box(s * 0.94, s * 0.04, s * 0.94, HULL_DARK, { y: s * 0.5, rz: 0.22 }));
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 4; j++) {
+      const x = (i - 1.5) * s * 0.225;
+      const z = (j - 1.5) * s * 0.225;
+      parts.push(box(s * 0.2, s * 0.012, s * 0.2, GLASS, {
+        x: x * Math.cos(0.22), y: s * 0.53 + x * Math.sin(0.22), z, rz: 0.22,
+      }));
+    }
+  }
+  parts.push(box(s * 0.94, s * 0.025, s * 0.05, c.primary, { y: s * 0.53, z: s * 0.47, rz: 0.22 }));
+  parts.push(...cable(s, [s * 0.4, s * 0.62, s * 0.3], [s * 0.44, 2 + s * 0.02, s * 0.44], { sag: 0.06 }));
+  parts.push(box(s * 0.12, s * 0.1, s * 0.12, HULL_LIGHT, { x: -s * 0.4, z: -s * 0.4, y: 2 + s * 0.05 }));
   return { body: merge(parts) };
 }
 
 function wind(s, c) {
-  const parts = foundation(s, c, 2);
-  parts.push(cylinder(s * 0.1, s * 0.16, s * 1.35, HULL, { y: s * 0.7 }, 8));
-  parts.push(box(s * 0.36, s * 0.22, s * 0.22, HULL_LIGHT, { x: s * 0.1, y: s * 1.4 }));
+  const parts = techPad(s, c, 2);
+  // Tapered tower with a service hatch and ladder rungs, a nacelle with a
+  // vent and a tail fin; the blades are the spinner.
+  parts.push(cylinder(s * 0.1, s * 0.15, s * 1.35, HULL, { y: s * 0.7 }, 10));
+  parts.push(...boltRing(s, { y: s * 0.06, radius: 0.15, count: 8, size: 0.013 }));
+  for (let i = 0; i < 6; i++) {
+    parts.push(box(s * 0.06, s * 0.012, s * 0.012, STEEL, { x: s * 0.13, y: s * (0.2 + i * 0.16) }));
+  }
+  parts.push(box(s * 0.02, s * 0.14, s * 0.08, HULL_DARK, { x: -s * 0.12, y: s * 0.4 }));
+  parts.push(box(s * 0.4, s * 0.2, s * 0.2, HULL_LIGHT, { x: s * 0.08, y: s * 1.4 }));
+  parts.push(...seam(s, { from: [-s * 0.1, s * 1.5, 0], to: [s * 0.26, s * 1.5, 0], width: 0.015 }));
+  parts.push(box(s * 0.12, s * 0.14, s * 0.02, c.primary, { x: -s * 0.18, y: s * 1.46 }));
+  parts.push(...grille(s, { x: 0, y: s * 1.51, z: 0, w: 0.16, d: 0.12, slats: 4 }));
   return {
     body: merge(parts),
     spinner: merge([
-      box(s * 0.06, s * 0.95, s * 0.12, c.light, { y: s * 0.42 }),
-      box(s * 0.06, s * 0.95, s * 0.12, c.light, { y: -s * 0.21, z: s * 0.36, rx: 2.094 }),
-      box(s * 0.06, s * 0.95, s * 0.12, c.light, { y: -s * 0.21, z: -s * 0.36, rx: -2.094 }),
+      cylinder(s * 0.08, s * 0.08, s * 0.08, HULL_DARK, { rz: Math.PI / 2 }, 10),
+      box(s * 0.05, s * 0.95, s * 0.11, HULL_LIGHT, { y: s * 0.42 }),
+      box(s * 0.05, s * 0.95, s * 0.11, HULL_LIGHT, { y: -s * 0.21, z: s * 0.36, rx: 2.094 }),
+      box(s * 0.05, s * 0.95, s * 0.11, HULL_LIGHT, { y: -s * 0.21, z: -s * 0.36, rx: -2.094 }),
+      box(s * 0.056, s * 0.3, s * 0.04, c.primary, { y: s * 0.7 }),
     ]),
     spinnerAxis: 'x',
     spinnerY: s * 1.4,
@@ -416,103 +507,186 @@ function wind(s, c) {
 }
 
 function converter(s, c) {
-  const parts = foundation(s, c);
-  parts.push(cylinder(s * 0.3, s * 0.3, s * 0.7, HULL, { y: s * 0.45 }, 10));
-  parts.push(cylinder(s * 0.33, s * 0.33, s * 0.1, '#ffd76a', { y: s * 0.62 }, 10));
-  parts.push(box(s * 0.12, s * 0.12, s * 0.8, HULL_DARK, { x: s * 0.36, y: s * 0.3 }));
-  parts.push(box(s * 0.12, s * 0.12, s * 0.8, HULL_DARK, { x: -s * 0.36, y: s * 0.3 }));
+  const parts = techPad(s, c);
+  // A reactor drum between two coil banks, with the light showing through
+  // the coils: the thing that turns energy into metal should look like it
+  // is doing something.
+  parts.push(cylinder(s * 0.26, s * 0.28, s * 0.66, HULL, { y: s * 0.42 }, 12));
+  parts.push(...coolantRing(s, { y: s * 0.3, radius: 0.3, count: 12 }));
+  parts.push(...coolantRing(s, { y: s * 0.5, radius: 0.3, count: 12 }));
+  parts.push(cylinder(s * 0.3, s * 0.3, s * 0.06, '#ffd76a', { y: s * 0.62 }, 12));
+  parts.push(cylinder(s * 0.2, s * 0.2, s * 0.08, HULL_LIGHT, { y: s * 0.78 }, 10));
+  for (const x of [-0.36, 0.36]) {
+    parts.push(box(s * 0.12, s * 0.3, s * 0.7, HULL_DARK, { x: x * s, y: s * 0.24 }));
+    for (let i = 0; i < 5; i++) {
+      parts.push(box(s * 0.14, s * 0.02, s * 0.1, HULL_LIGHT, { x: x * s, z: (i - 2) * s * 0.14, y: s * 0.4 }));
+    }
+    parts.push(...lightStrip(s, [x * s, s * 0.12, -s * 0.34], [x * s, s * 0.12, s * 0.34], GLOW, 0.02));
+  }
+  parts.push(...pipeRun(s, [-s * 0.3, s * 0.5, 0], [-s * 0.14, s * 0.5, 0], { r: 0.018 }));
+  parts.push(...pipeRun(s, [s * 0.3, s * 0.5, 0], [s * 0.14, s * 0.5, 0], { r: 0.018 }));
+  parts.push(box(s * 0.5, s * 0.03, s * 0.05, c.primary, { y: 2.5 + s * 0.02, z: -s * 0.42 }));
   return { body: merge(parts) };
 }
 
 function storage(s, c, metalKind) {
-  const parts = foundation(s, c);
-  const tint = metalKind ? HULL : '#d8b24a';
-  parts.push(cylinder(s * 0.34, s * 0.34, s * 0.75, tint, { y: s * 0.5 }, 12));
-  parts.push(cylinder(s * 0.37, s * 0.37, s * 0.08, HULL_DARK, { y: s * 0.5 }, 12));
-  parts.push(cylinder(s * 0.3, s * 0.3, s * 0.06, c.primary, { y: s * 0.89 }, 12));
+  const parts = techPad(s, c);
+  // Metal is stacked in racked cells; energy is a bank of capacitor drums
+  // with the charge showing at the top.
+  if (metalKind) {
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 2; j++) {
+        parts.push(box(s * 0.24, s * 0.16, s * 0.34, '#9aa3ad', {
+          x: (i - 1) * s * 0.27, z: (j - 0.5) * s * 0.38, y: s * 0.1 + (i % 2) * s * 0.02,
+        }));
+        parts.push(box(s * 0.26, s * 0.02, s * 0.36, HULL_DARK, { x: (i - 1) * s * 0.27, z: (j - 0.5) * s * 0.38, y: s * 0.19 }));
+      }
+    }
+    parts.push(box(s * 0.9, s * 0.04, s * 0.04, STEEL, { y: s * 0.24, z: 0 }));
+    parts.push(...railing(s, { from: [-s * 0.44, 2.5, -s * 0.44], to: [s * 0.44, 2.5, -s * 0.44], posts: 4 }));
+  } else {
+    for (const [x, z] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) {
+      parts.push(cylinder(s * 0.15, s * 0.15, s * 0.5, HULL, { x: x * s, z: z * s, y: s * 0.27 }, 10));
+      parts.push(...boltRing(s, { x: x * s, z: z * s, y: s * 0.14, radius: 0.155, count: 8, size: 0.011 }));
+      parts.push(cylinder(s * 0.1, s * 0.1, s * 0.04, '#d8b24a', { x: x * s, z: z * s, y: s * 0.54 }, 10));
+    }
+    parts.push(...pipeRun(s, [-s * 0.2, s * 0.45, -s * 0.2], [s * 0.2, s * 0.45, s * 0.2], { r: 0.016 }));
+    parts.push(...pipeRun(s, [s * 0.2, s * 0.45, -s * 0.2], [-s * 0.2, s * 0.45, s * 0.2], { r: 0.016 }));
+  }
+  parts.push(box(s * 0.16, s * 0.04, s * 0.4, c.primary, { x: -s * 0.4, y: 2.5 + s * 0.02 }));
   return { body: merge(parts) };
 }
 
 function lab(s, c, advanced) {
   const h = advanced ? 3.0 : 2.6;
-  const parts = foundation(s, c, h);
-
-  // An open-fronted hangar: side walls, a back wall and a roof that stops
-  // short of the mouth, so finished units are visible driving out on +Z.
+  const parts = techPad(s, c, h);
+  // An open-fronted hangar: plated side walls with light strips, a back
+  // wall, and a roof that stops short of the mouth so finished units are
+  // visible driving out on +Z.
   const wallH = s * (advanced ? 0.44 : 0.38);
-  const wallT = s * 0.12;
-  parts.push(box(wallT, wallH, s * 0.84, c.primary, { x: s * 0.38, y: wallH * 0.5 + h }));
-  parts.push(box(wallT, wallH, s * 0.84, c.primary, { x: -s * 0.38, y: wallH * 0.5 + h }));
-  parts.push(box(s * 0.88, wallH, wallT, c.primary, { z: -s * 0.38, y: wallH * 0.5 + h }));
-
-  // Roof: two slabs with a service gap down the middle, plus dressing so it
-  // is not a blank plate when seen from overhead.
-  parts.push(box(s * 0.88, s * 0.07, s * 0.3, '#575d67', { z: -s * 0.27, y: wallH + h }));
-  parts.push(box(s * 0.88, s * 0.07, s * 0.16, '#575d67', { z: s * 0.1, y: wallH + h }));
-  parts.push(box(s * 0.8, s * 0.025, s * 0.05, c.primary, { z: -s * 0.27, y: wallH + h + s * 0.045 }));
+  const wallT = s * 0.1;
+  const wy = wallH * 0.5 + h;
+  for (const x of [-0.38, 0.38]) {
+    parts.push(box(wallT, wallH, s * 0.84, HULL, { x: x * s, y: wy }));
+    parts.push(...armourPlate(s, { x: x * s * 1.05, y: wy, z: -s * 0.2, w: 0.02, h: wallH / s * 0.7, d: 0.3, tilt: 0, colour: HULL_DARK, c }));
+    parts.push(...lightStrip(s, [x * s * 1.06, wy + wallH * 0.3, -s * 0.4], [x * s * 1.06, wy + wallH * 0.3, s * 0.36], c.primary, 0.02));
+    parts.push(...boltLine(s, { from: [x * s * 1.06, h + wallH * 0.12, -s * 0.38], to: [x * s * 1.06, h + wallH * 0.12, s * 0.36], count: 5, size: 0.012 }));
+  }
+  parts.push(box(s * 0.88, wallH, wallT, HULL, { z: -s * 0.38, y: wy }));
+  parts.push(...grille(s, { x: 0, y: wy, z: -s * 0.44, w: 0.4, d: 0.02, slats: 6 }));
+  // Roof: two slabs with a service gap, conduits, and the lathe housing.
+  parts.push(box(s * 0.88, s * 0.06, s * 0.3, HULL_DARK, { z: -s * 0.27, y: wallH + h }));
+  parts.push(box(s * 0.88, s * 0.06, s * 0.16, HULL_DARK, { z: s * 0.1, y: wallH + h }));
+  parts.push(...seam(s, { from: [-s * 0.4, wallH + h + s * 0.03, -s * 0.27], to: [s * 0.4, wallH + h + s * 0.03, -s * 0.27], width: 0.014 }));
   parts.push(box(s * 0.24, s * 0.09, s * 0.14, HULL, { x: -s * 0.26, z: -s * 0.27, y: wallH + h + s * 0.07 }));
+  parts.push(...coolantRing(s, { y: wallH + h + s * 0.08, radius: 0.1, count: 8, size: 0.02 }));
   parts.push(cylinder(s * 0.04, s * 0.04, s * 0.14, HULL_LIGHT, { x: s * 0.26, z: -s * 0.3, y: wallH + h + s * 0.08 }, 6));
-
+  parts.push(...lightStrip(s, [-s * 0.4, wallH + h + s * 0.04, s * 0.1], [s * 0.4, wallH + h + s * 0.04, s * 0.1], GLOW, 0.015));
   // Gantry arch over the hangar mouth.
-  parts.push(box(s * 0.1, wallH * 0.95, s * 0.1, HULL, { x: s * 0.38, z: s * 0.36, y: wallH * 0.5 + h }));
-  parts.push(box(s * 0.1, wallH * 0.95, s * 0.1, HULL, { x: -s * 0.38, z: s * 0.36, y: wallH * 0.5 + h }));
+  parts.push(box(s * 0.1, wallH * 0.95, s * 0.1, HULL_LIGHT, { x: s * 0.38, z: s * 0.36, y: wy }));
+  parts.push(box(s * 0.1, wallH * 0.95, s * 0.1, HULL_LIGHT, { x: -s * 0.38, z: s * 0.36, y: wy }));
   parts.push(box(s * 0.86, s * 0.1, s * 0.12, HULL_LIGHT, { z: s * 0.36, y: wallH + h }));
-
+  parts.push(box(s * 0.7, s * 0.03, s * 0.13, c.primary, { z: s * 0.36, y: wallH + h + s * 0.06 }));
   // Interior floor plate and the lathe head that assembles units.
   parts.push(box(s * 0.66, s * 0.05, s * 0.72, '#23272d', { y: h + s * 0.02, z: -s * 0.02 }));
+  parts.push(...seam(s, { from: [-s * 0.3, h + s * 0.05, 0], to: [s * 0.3, h + s * 0.05, 0], width: 0.012, colour: GLOW }));
   parts.push(box(s * 0.18, s * 0.14, s * 0.18, HULL_LIGHT, { y: wallH * 0.72 + h, z: -s * 0.05 }));
   parts.push(sphere(s * 0.07, GLOW, { y: wallH * 0.6 + h, z: -s * 0.05 }));
-
+  parts.push(...toolRack(s, { x: -s * 0.3, y: h, z: -s * 0.3, count: 3 }));
   if (advanced) {
     parts.push(cylinder(s * 0.09, s * 0.13, s * 0.6, HULL_LIGHT, { x: s * 0.3, z: -s * 0.3, y: wallH + h + s * 0.3 }, 8));
     parts.push(cylinder(s * 0.09, s * 0.13, s * 0.6, HULL_LIGHT, { x: -s * 0.3, z: -s * 0.3, y: wallH + h + s * 0.3 }, 8));
-    parts.push(box(s * 0.5, s * 0.08, s * 0.5, c.light, { y: wallH + h + s * 0.1 }));
+    parts.push(...coolantRing(s, { y: wallH + h + s * 0.5, radius: 0.32, count: 10, size: 0.025 }));
+    parts.push(box(s * 0.5, s * 0.08, s * 0.5, HULL, { y: wallH + h + s * 0.1 }));
+    parts.push(box(s * 0.5, s * 0.02, s * 0.06, c.light, { y: wallH + h + s * 0.15 }));
     parts.push(sphere(s * 0.1, GLOW, { y: wallH + h + s * 0.62, z: -s * 0.3 }));
   }
   return { body: merge(parts) };
 }
 
 function nano(s, c) {
-  const parts = foundation(s, c, 2);
-  parts.push(cylinder(s * 0.14, s * 0.22, s * 0.95, HULL, { y: s * 0.5 }, 8));
+  const parts = techPad(s, c, 2);
+  // A tapered column with a coolant ring and light conduit, the lathe arm
+  // on top.
+  parts.push(cylinder(s * 0.14, s * 0.22, s * 0.95, HULL, { y: s * 0.5 }, 10));
+  parts.push(...boltRing(s, { y: s * 0.06, radius: 0.22, count: 8, size: 0.013 }));
+  parts.push(...coolantRing(s, { y: s * 0.6, radius: 0.19, count: 8, size: 0.03 }));
+  parts.push(...lightStrip(s, [0, s * 0.15, s * 0.19], [0, s * 0.9, s * 0.13], GLOW, 0.02));
+  parts.push(box(s * 0.1, s * 0.12, s * 0.02, c.primary, { x: -s * 0.2, y: s * 0.3 }));
   return {
     body: merge(parts),
     turret: merge([
-      box(s * 0.62, s * 0.2, s * 0.2, HULL_LIGHT, { x: s * 0.3 }),
-      sphere(s * 0.14, GLOW, { x: s * 0.62 }),
+      box(s * 0.62, s * 0.18, s * 0.18, HULL_LIGHT, { x: s * 0.3 }),
+      box(s * 0.2, s * 0.22, s * 0.22, HULL, { x: -s * 0.02 }),
+      ...seam(s, { from: [s * 0.05, s * 0.1, 0], to: [s * 0.58, s * 0.1, 0], width: 0.012 }),
+      cylinder(s * 0.06, s * 0.08, s * 0.1, HULL_DARK, { x: s * 0.66, rz: Math.PI / 2 }, 8),
+      sphere(s * 0.12, GLOW, { x: s * 0.72 }),
+      box(s * 0.16, s * 0.02, s * 0.06, c.primary, { x: s * 0.3, y: s * 0.1 }),
     ]),
     turretY: s * 1.0,
   };
 }
 
 function turret(s, c, big) {
-  const parts = foundation(s, c, big ? 2.6 : 2.2);
-  parts.push(cylinder(s * (big ? 0.36 : 0.3), s * (big ? 0.4 : 0.34), s * 0.34, c.primary, { y: s * 0.3 }, 10));
+  const h = big ? 2.6 : 2.2;
+  const parts = techPad(s, c, h);
+  // A plated drum on the pad with a coolant ring at the trunnion.
+  parts.push(cylinder(s * (big ? 0.34 : 0.28), s * (big ? 0.38 : 0.32), s * 0.3, HULL, { y: h + s * 0.15 }, 12));
+  parts.push(...boltRing(s, { y: h + s * 0.04, radius: big ? 0.37 : 0.31, count: 12, size: 0.013 }));
+  parts.push(...coolantRing(s, { y: h + s * 0.3, radius: big ? 0.33 : 0.27, count: 10, size: 0.035 }));
+  parts.push(box(s * 0.16, s * 0.04, s * 0.06, c.primary, { x: -s * (big ? 0.34 : 0.28), y: h + s * 0.22 }));
   return {
     body: merge(parts),
     turret: merge([
-      box(s * 0.5, s * 0.36, s * 0.62, HULL, {}),
-      box(s * (big ? 0.95 : 0.8), s * (big ? 0.24 : 0.17), s * (big ? 0.24 : 0.17), HULL_LIGHT, { x: s * (big ? 0.6 : 0.5) }),
-      ...(big ? [box(s * 0.16, s * 0.3, s * 0.3, HULL, { x: s * 1.02 })] : []),
+      box(s * 0.48, s * 0.32, s * 0.58, HULL, {}),
+      ...armourPlate(s, { x: s * 0.24, y: 0, z: 0, w: 0.06, h: 0.26, d: 0.5, tilt: 0.3, colour: HULL_LIGHT, c }),
+      box(s * (big ? 0.95 : 0.8), s * (big ? 0.2 : 0.15), s * (big ? 0.2 : 0.15), HULL_LIGHT, { x: s * (big ? 0.6 : 0.5) }),
+      cylinder(s * (big ? 0.13 : 0.1), s * (big ? 0.13 : 0.1), s * 0.16, HULL_DARK, { x: s * 0.3, rz: Math.PI / 2 }, 8),
+      ...(big ? [box(s * 0.16, s * 0.28, s * 0.28, HULL, { x: s * 1.02 })] : []),
+      ...lightStrip(s, [-s * 0.2, s * 0.17, s * 0.2], [s * 0.2, s * 0.17, s * 0.2], GLOW, 0.015),
+      ...lightStrip(s, [-s * 0.2, s * 0.17, -s * 0.2], [s * 0.2, s * 0.17, -s * 0.2], GLOW, 0.015),
+      box(s * 0.3, s * 0.02, s * 0.5, c.primary, { x: -s * 0.05, y: s * 0.17 }),
+      ...optics(s * 0.6, { x: s * 0.1, y: s * 0.2, z: s * 0.2, scale: 0.4 }),
     ]),
-    turretY: s * 0.5,
+    turretY: h + s * 0.32,
   };
 }
 
 function radar(s, c) {
-  const parts = foundation(s, c, 2);
-  parts.push(cylinder(s * 0.1, s * 0.16, s * 0.85, HULL, { y: s * 0.45 }, 8));
+  const parts = techPad(s, c, 2);
+  // A tapered mast with light conduits, a housing at the top, and a dish
+  // with a feed horn as the spinner.
+  parts.push(cylinder(s * 0.1, s * 0.16, s * 0.85, HULL, { y: s * 0.45 }, 10));
+  parts.push(...boltRing(s, { y: s * 0.06, radius: 0.16, count: 8, size: 0.012 }));
+  parts.push(...lightStrip(s, [s * 0.13, s * 0.1, 0], [s * 0.1, s * 0.8, 0], GLOW, 0.02));
+  parts.push(...lightStrip(s, [-s * 0.13, s * 0.1, 0], [-s * 0.1, s * 0.8, 0], GLOW, 0.02));
+  parts.push(box(s * 0.2, s * 0.1, s * 0.2, HULL_LIGHT, { y: s * 0.9 }));
+  parts.push(box(s * 0.2, s * 0.03, s * 0.05, c.primary, { y: s * 0.96, z: s * 0.1 }));
+  parts.push(box(s * 0.3, s * 0.16, s * 0.2, HULL, { x: -s * 0.3, z: s * 0.3, y: 2 + s * 0.08 }));
+  parts.push(...grille(s, { x: -s * 0.3, y: 2 + s * 0.17, z: s * 0.3, w: 0.2, d: 0.14, slats: 4 }));
   return {
     body: merge(parts),
     spinner: merge([
-      cone(s * 0.42, s * 0.26, c.primary, { rx: Math.PI / 2, z: s * 0.1 }, 12),
-      box(s * 0.06, s * 0.06, s * 0.3, HULL_LIGHT, { z: -s * 0.1 }),
+      cone(s * 0.4, s * 0.2, HULL_LIGHT, { rx: Math.PI / 2, z: s * 0.1 }, 14),
+      cylinder(s * 0.4, s * 0.4, s * 0.02, HULL, { rx: Math.PI / 2, z: s * 0.0 }, 14),
+      box(s * 0.03, s * 0.03, s * 0.5, STEEL, { z: s * 0.15 }),
+      sphere(s * 0.04, GLOW, { z: s * 0.4 }),
+      box(s * 0.06, s * 0.06, s * 0.3, HULL_DARK, { z: -s * 0.1 }),
+      box(s * 0.3, s * 0.02, s * 0.04, c.primary, { y: s * 0.1, z: s * 0.02 }),
     ]),
     spinnerAxis: 'y',
     spinnerY: s * 0.95,
     spinSpeed: 1.1,
   };
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -2242,40 +2416,74 @@ function blPit(s, c, deep) {
 }
 
 function blSpire(s, c) {
+  // The hive's construction turret: a stalk of vertebrae with a bud at the
+  // top that the tendrils grow out of.
   const parts = mound(s, c, 0.09);
-  parts.push(cylinder(s * 0.06, s * 0.14, s * 0.85, CHITIN, { y: s * 0.48 }, 10));
-  parts.push(sphere(s * 0.12, c.primary, { y: s * 0.92, sy: 1.2 }, 10));
-  parts.push(sphere(s * 0.07, BILE, { y: s * 1.0 }, 8));
+  for (let i = 0; i < 7; i++) {
+    parts.push(sphere(s * (0.13 - i * 0.008), CHITIN, { y: s * (0.1 + i * 0.12), sy: 0.7 }, 8, 6));
+    parts.push(cone(s * 0.03, s * 0.1, CHITIN_LIGHT, { x: s * (0.12 - i * 0.006), y: s * (0.14 + i * 0.12), rz: -0.9 }, 5));
+  }
+  parts.push(sphere(s * 0.14, CHITIN_LIGHT, { y: s * 0.92, sy: 1.2 }, 10));
+  parts.push(box(s * 0.16, s * 0.05, s * 0.14, c.primary, { y: s * 1.02 }));
+  parts.push(sphere(s * 0.07, BILE, { y: s * 1.06 }, 8));
   parts.push(...tendrils(s * 0.5, c, { y: s * 0.8, count: 4, len: 0.45, spread: 0.4 }));
+  parts.push(...vein(s, { from: [0, s * 0.2, s * 0.1], to: [0, s * 0.85, s * 0.08], thickness: 0.025, kinks: 3 }));
+  parts.push(...pores(s * 0.5, { x: 0, y: s * 0.5, z: s * 0.12, count: 3, spacing: 0.3, size: 0.05 }));
   return { body: merge(parts) };
 }
 
 function blThorn(s, c, big) {
+  // A defensive growth: a plated carapace with the thorn on a joint, ringed
+  // by smaller spines so the ground around it reads as hostile.
   const parts = mound(s, c, big ? 0.13 : 0.1);
-  parts.push(sphere(s * (big ? 0.26 : 0.2), c.primary, { y: s * 0.22, sy: 0.8 }, 12));
+  const r = big ? 0.26 : 0.2;
+  parts.push(sphere(s * r, CHITIN, { y: s * 0.2, sy: 0.75 }, 12));
+  parts.push(...segments(s, { from: [s * r * 0.8, s * 0.36, 0], to: [-s * r * 0.8, s * 0.3, 0], count: 4, width: r * 2.2, rise: 0.05 }));
+  parts.push(box(s * r * 0.9, s * 0.04, s * r * 0.8, c.primary, { y: s * 0.38, x: -s * 0.02 }));
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.3;
+    parts.push(cone(s * 0.03, s * 0.16, CHITIN_LIGHT, {
+      x: Math.cos(a) * s * (r + 0.1), z: Math.sin(a) * s * (r + 0.1), y: s * 0.12,
+      rx: Math.sin(a) * 0.5, rz: -Math.cos(a) * 0.5,
+    }, 5));
+  }
+  parts.push(...pores(s * 0.6, { x: 0, y: s * 0.18, z: s * r, count: 3, spacing: 0.3, size: 0.06 }));
   return {
     body: merge(parts),
     turret: merge([
       sphere(s * (big ? 0.2 : 0.15), CHITIN, { sy: 0.9 }, 10),
+      ...segments(s * 0.6, { from: [s * 0.1, s * 0.16, 0], to: [-s * 0.14, s * 0.12, 0], count: 3, width: 0.5, rise: 0.05 }),
       cone(s * (big ? 0.13 : 0.09), s * (big ? 0.8 : 0.6), CHITIN_LIGHT,
         { x: s * (big ? 0.34 : 0.26), rz: -Math.PI / 2 }, 8),
+      cylinder(s * (big ? 0.12 : 0.09), s * (big ? 0.12 : 0.09), s * 0.05, CHITIN_DARK, { x: s * 0.1, rz: Math.PI / 2 }, 8),
       cylinder(s * 0.05, s * 0.07, s * 0.1, BILE,
         { x: s * (big ? 0.7 : 0.54), rz: Math.PI / 2 }, 8),
       ...spines(s * 0.6, c, { y: s * 0.14, count: 3, len: 0.3, spacing: 0.22 }),
+      sphere(s * 0.04, BILE, { x: s * 0.05, y: s * 0.12, z: s * 0.1 }, 6, 5),
+      sphere(s * 0.04, BILE, { x: s * 0.05, y: s * 0.12, z: -s * 0.1 }, 6, 5),
     ]),
-    turretY: s * (big ? 0.42 : 0.34),
+    turretY: s * (big ? 0.44 : 0.36),
   };
 }
 
 function blAntenna(s, c) {
+  // A sensory stalk: a ribbed stem with a fleshy head whose feelers turn.
   const parts = mound(s, c, 0.08);
   parts.push(cylinder(s * 0.05, s * 0.1, s * 0.6, CHITIN_DARK, { y: s * 0.34 }, 8));
+  for (let i = 0; i < 4; i++) {
+    parts.push(cylinder(s * (0.09 - i * 0.008), s * (0.09 - i * 0.008), s * 0.025, CHITIN, { y: s * (0.12 + i * 0.13) }, 8));
+  }
+  parts.push(...vein(s, { from: [s * 0.06, s * 0.1, 0], to: [s * 0.04, s * 0.6, 0], thickness: 0.02, kinks: 2 }));
+  parts.push(box(s * 0.1, s * 0.03, s * 0.1, c.primary, { y: s * 0.62 }));
+  parts.push(...pores(s * 0.5, { x: s * 0.06, y: s * 0.4, z: 0, count: 3, spacing: 0.25, size: 0.05 }));
   return {
     body: merge(parts),
     spinner: merge([
       sphere(s * 0.13, FLESH, { sy: 0.7 }, 10),
+      ...segments(s * 0.5, { from: [s * 0.1, s * 0.12, 0], to: [-s * 0.1, s * 0.1, 0], count: 3, width: 0.5, rise: 0.06 }),
       ...tendrils(s * 0.8, c, { count: 5, len: 0.75, spread: 0.55 }),
       sphere(s * 0.06, BILE, { y: s * 0.08 }, 8),
+      sphere(s * 0.03, BILE, { x: s * 0.1, y: s * 0.02 }, 6, 5),
     ]),
     spinnerY: s * 0.66,
     spinSpeed: 0.5,
